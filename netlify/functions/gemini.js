@@ -28,7 +28,8 @@ export const handler = async (event) => {
   const hdrs = {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -69,8 +70,11 @@ export const handler = async (event) => {
 
     const data = await r.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-
-    return { statusCode: 200, headers: hdrs, body: json ? text : JSON.stringify({ text }) };
+    if (json) {
+      const obj = JSON.parse(text);
+      return { statusCode: 200, headers: hdrs, body: JSON.stringify(obj) };
+    }
+    return { statusCode: 200, headers: hdrs, body: JSON.stringify({ text }) };
   } catch (e) {
     return { statusCode: 500, headers: hdrs, body: JSON.stringify({ error: e.message }) };
   }
