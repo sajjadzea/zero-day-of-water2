@@ -129,5 +129,35 @@ async function callGeminiAPI(prompt, isJson=false){
   else { const data = await res.json(); return data.text; }
 }
     </script>
+    <script>
+(function(){
+  function initSimulatorUI(){
+    const cs = document.getElementById('consumption-slider');
+    const rs = document.getElementById('rainfall-slider');
+    const cv = document.getElementById('consumption-value');
+    const rv = document.getElementById('rainfall-value');
+    if(!cs || !rs || !cv || !rv) return; // DOM not ready or ids wrong
+
+    const sync = () => {
+      if (cv && cs) cv.textContent = String(cs.value);
+      if (rv && rs) rv.textContent = String(rs.value);
+    };
+
+    ['input','change'].forEach(evt => {
+      cs.addEventListener(evt, sync, { passive: true });
+      rs.addEventListener(evt, sync, { passive: true });
+    });
+
+    // مقدار اولیه
+    sync();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSimulatorUI, { once:true });
+  } else {
+    initSimulatorUI();
+  }
+})();
+    </script>
 </body>
 </html>
