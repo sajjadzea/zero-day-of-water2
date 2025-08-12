@@ -15,10 +15,18 @@ function isRateLimited(ip) {
 }
 
 export const handler = async (event) => {
-  const allowed = ['https://dashboard.YOURDOMAIN.ir'];
   const origin = event.headers.origin || '';
+  const allowed = process.env.ALLOWED_ORIGIN;
+  if (allowed && origin !== allowed) {
+    const hdrs = {
+      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    };
+    return { statusCode: 403, headers: hdrs, body: 'Forbidden' };
+  }
   const hdrs = {
-    'Access-Control-Allow-Origin': allowed.includes(origin) ? origin : 'https://dashboard.YOURDOMAIN.ir',
+    'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type'
   };
