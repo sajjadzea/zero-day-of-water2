@@ -9,6 +9,16 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <script>
       window.API_BASE = window.location.origin;
+      async function askGemini(prompt, opts={}) {
+        const res = await fetch('/api/gemini', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: prompt, ...opts })
+        });
+        if (!res.ok) throw new Error('Gemini request failed');
+        const data = await res.json();
+        return data.text || '';
+      }
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800&display=swap');
@@ -141,17 +151,6 @@
         </footer>
     </div>
     <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"><div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center"><div class="text-red-500 mb-4"><i class="fas fa-exclamation-circle fa-3x"></i></div><h3 class="text-lg font-bold text-red-600 mb-2">خطا در ارتباط با سرور</h3><p id="error-message" class="text-slate-700">متاسفانه مشکلی در دریافت اطلاعات پیش آمد. لطفا دوباره تلاش کنید.</p><button id="close-modal-btn" class="mt-6 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">بستن</button></div></div>
-    <script>
-async function callGeminiAPI(prompt, isJson=false){
-  const res = await fetch(`${window.API_BASE}/api/gemini`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, json: !!isJson })
-  });
-  if(!res.ok) throw new Error(`API error ${res.status}`);
-  return isJson ? await res.json() : (await res.json()).text;
-}
-    </script>
     <script>
 (function(){
   function initSimulatorUI(){
