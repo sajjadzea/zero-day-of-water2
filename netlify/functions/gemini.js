@@ -1,78 +1,84 @@
-const rateMap = new Map();
-
-function isRateLimited(ip) {
-  const now = Date.now();
-  const windowMs = 60 * 1000;
-  const limit = 60;
-  const entry = rateMap.get(ip) || { count: 0, start: now };
-  if (now - entry.start > windowMs) {
-    entry.count = 0;
-    entry.start = now;
-  }
-  entry.count += 1;
-  rateMap.set(ip, entry);
-  return entry.count > limit;
-}
-
-const allowlist = [
-  'https://wesh360.ir',
-  process.env.PREVIEW_ORIGIN, // اگر پریویو لازم است، در نتلیفای ست شود
-].filter(Boolean);
-
 export const handler = async (event) => {
-  const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || '';
+  const origin = event.headers.origin || event.headers.Origin || '';
+  const allowlist = ['https://wesh360.ir', process.env.PREVIEW_ORIGIN].filter(Boolean);
   const allowed = allowlist.includes(origin);
 
-  const baseHeaders = {
+  const base = {
     'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400'
+    'Access-Control-Max-Age': '86400',
   };
-  const corsHeaders = allowed ? { ...baseHeaders, 'Access-Control-Allow-Origin': origin } : baseHeaders;
+  const headers = allowed ? { ...base, 'Access-Control-Allow-Origin': origin } : base;
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers };
 
   if (!allowed) {
     return {
       statusCode: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Origin not allowed' })
     };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Method Not Allowed' }) };
-  }
-
-  const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || event.ip || '';
-  if (isRateLimited(ip)) {
-    return { statusCode: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Too Many Requests' }) };
-  }
+  const respond = (code, body) =>
+    ({ statusCode: code, headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
   try {
-    const { prompt, json } = JSON.parse(event.body || '{}');
-    if (!prompt) return { statusCode: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing prompt' }) };
+    const { q, model = 'gemini-2.0-flash', temperature = 0.8, system } = JSON.parse(event.body || '{}');
+    if (!q) return respond(400, { error: 'Missing prompt "q"' });
 
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Server misconfig: GEMINI_API_KEY' }) };
+    const API_KEY = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${API_KEY}`;
 
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=' + encodeURIComponent(key);
-    const payload = { contents: [{ parts: [{ text: prompt }] }], ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}) };
+    const payload = {
+      contents: [
+        ...(system ? [{ role: 'user', parts: [{ text: system }] }] : []),
+        { role: 'user', parts: [{ text: q }] }
+      ],
+      generationConfig: { temperature }
+    };
 
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    const data = await r.json().catch(() => ({}));
+    const fetchWithTimeout = (resource, options = {}) => {
+      const { timeout = 12000 } = options;
+      return Promise.race([
+        fetch(resource, options),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeout))
+      ]);
+    };
 
-    if (!r.ok) {
-      return { statusCode: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Upstream error', status: r.status, details: data?.error || data }) };
+    let attempts = 0, resp, errText;
+    while (attempts < 3) {
+      attempts++;
+      try {
+        resp = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          timeout: 12000
+        });
+        if (resp.ok) break;
+        if (![429, 500, 502, 503, 504].includes(resp.status)) break;
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempts - 1)));
+      } catch (e) {
+        if (attempts >= 3) throw e;
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempts - 1)));
+      }
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const body = json ? JSON.stringify(JSON.parse(text || '{}')) : JSON.stringify({ text });
-    return { statusCode: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body };
+    if (!resp || !resp.ok) {
+      errText = resp ? await resp.text() : 'no response';
+      return respond(resp?.status || 502, { error: 'Gemini error', detail: errText });
+    }
+
+    const data = await resp.json();
+    const text =
+      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ??
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+    return respond(200, { text, raw: data });
   } catch (e) {
-    return { statusCode: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Unhandled', message: String(e?.message || e) }) };
+    return respond(500, { error: 'Server error', detail: String(e) });
   }
 };
+
