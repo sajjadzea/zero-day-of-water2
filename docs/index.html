@@ -125,7 +125,7 @@ async function callGeminiAPI(prompt, isJson=false){
     body: JSON.stringify({ prompt, json: !!isJson })
   });
   if(!res.ok) throw new Error(`API error ${res.status}`);
-  if(isJson){ const txt = await res.text(); return JSON.parse(txt); }
+  if(isJson){ return res.json(); }
   else { const data = await res.json(); return data.text; }
 }
     </script>
