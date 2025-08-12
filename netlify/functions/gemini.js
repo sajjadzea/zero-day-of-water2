@@ -15,85 +15,55 @@ function isRateLimited(ip) {
 }
 
 export const handler = async (event) => {
+  const allowlist = [
+    'https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app',
+    'https://polite-zuccutto-cdf931.netlify.app',
+    process.env.ALLOWED_ORIGIN
+  ].filter(Boolean);
   const origin = event.headers.origin || '';
-  const allowed = process.env.ALLOWED_ORIGIN;
-  if (allowed && origin !== allowed) {
-    const hdrs = {
-      'Access-Control-Allow-Origin': origin || '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    };
-    return { statusCode: 403, headers: hdrs, body: 'Forbidden' };
-  }
-  const hdrs = {
-    'Access-Control-Allow-Origin': origin || '*',
+  const allowOrigin = allowlist.includes(origin) ? origin : allowlist[1] || origin;
+
+  const headers = {
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
     'Content-Type': 'application/json'
   };
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers: hdrs, body: '' };
+    return { statusCode: 204, headers, body: '' };
   }
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers: hdrs, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
   }
 
   const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || event.ip || '';
   if (isRateLimited(ip)) {
-    return { statusCode: 429, headers: hdrs, body: JSON.stringify({ error: 'Too Many Requests' }) };
+    return { statusCode: 429, headers, body: JSON.stringify({ error: 'Too Many Requests' }) };
   }
 
   try {
     const { prompt, json } = JSON.parse(event.body || '{}');
-    if (!prompt) return { statusCode: 400, headers: hdrs, body: JSON.stringify({ error: 'prompt required' }) };
+    if (!prompt) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing prompt' }) };
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return {
-        statusCode: 500,
-        headers: hdrs,
-        body: JSON.stringify({ error: 'GEMINI_API_KEY not set' })
-      };
-    }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server misconfig: GEMINI_API_KEY' }) };
 
-    const model = 'gemini-1.5-flash';
-    const url = `https://generativeai.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=' + encodeURIComponent(key);
+    const payload = { contents: [{ parts: [{ text: prompt }] }], ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}) };
 
-    const r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }]}],
-        ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {})
-      })
-    });
-
-    if (r.status === 401) {
-      return {
-        statusCode: 401,
-        headers: hdrs,
-        body: JSON.stringify({ error: 'invalid GEMINI_API_KEY' })
-      };
-    }
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await r.json().catch(() => ({}));
 
     if (!r.ok) {
-      const t = await r.text();
-      return {
-        statusCode: r.status,
-        headers: hdrs,
-        body: JSON.stringify({ error: t })
-      };
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Upstream error', status: r.status, details: data?.error || data }) };
     }
 
-    const data = await r.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    if (json) {
-      const obj = JSON.parse(text);
-      return { statusCode: 200, headers: hdrs, body: JSON.stringify(obj) };
-    }
-    return { statusCode: 200, headers: hdrs, body: JSON.stringify({ text }) };
+    const body = json ? JSON.stringify(JSON.parse(text || '{}')) : JSON.stringify({ text });
+    return { statusCode: 200, headers, body };
   } catch (e) {
-    return { statusCode: 500, headers: hdrs, body: JSON.stringify({ error: e.message }) };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Unhandled', message: String(e?.message || e) }) };
   }
 };
