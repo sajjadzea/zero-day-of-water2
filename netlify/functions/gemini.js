@@ -49,7 +49,13 @@ export const handler = async (event) => {
     if (!prompt) return { statusCode: 400, headers: hdrs, body: JSON.stringify({ error: 'prompt required' }) };
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return { statusCode: 500, headers: hdrs, body: JSON.stringify({ error: 'missing GEMINI_API_KEY' }) };
+    if (!apiKey) {
+      return {
+        statusCode: 500,
+        headers: hdrs,
+        body: JSON.stringify({ error: 'GEMINI_API_KEY not set' })
+      };
+    }
 
     const model = 'gemini-1.5-flash';
     const url = `https://generativeai.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -63,9 +69,21 @@ export const handler = async (event) => {
       })
     });
 
+    if (r.status === 401) {
+      return {
+        statusCode: 401,
+        headers: hdrs,
+        body: JSON.stringify({ error: 'invalid GEMINI_API_KEY' })
+      };
+    }
+
     if (!r.ok) {
       const t = await r.text();
-      return { statusCode: r.status, headers: hdrs, body: JSON.stringify({ error: t }) };
+      return {
+        statusCode: r.status,
+        headers: hdrs,
+        body: JSON.stringify({ error: t })
+      };
     }
 
     const data = await r.json();
