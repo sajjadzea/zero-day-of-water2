@@ -258,38 +258,65 @@
       try {
         const foods = (inp.value || '').trim();
         if (!foods) { out.textContent = 'لطفاً مواد غذایی را وارد کنید.'; return; }
-        setLoading(btn, true); out.textContent = '⏳';
-        const prompt =
-`دستور: تو محاسبه‌گر ردپای آب مواد غذایی هستی.
-ورودی: ${foods}
-فقط JSON معتبر با ساختار ثابت زیر برگردان:
+
+        // پاک کردن نتایج قبلی و نمایش لودر
+        out.innerHTML = '';
+        setLoading(btn, true);
+        out.innerHTML = '<div class="flex items-center justify-center text-slate-600 gap-2"><i class="fas fa-spinner fa-spin"></i><span>در حال محاسبه با هوش مصنوعی…</span></div>';
+
+        const basePrompt = `
+You are a virtual water footprint expert.
+Input: list of food items in Persian.
+Task: Calculate the total water footprint in liters and provide a short comparison in Persian (e.g., equivalent showers).
+Your output MUST be a JSON object with this structure:
 {
-  "items":[{"name":"نام","liters":عدد}],
-  "total_liters":عدد,
-  "summary_fa":"متن کوتاه فارسی"
-}`;
-        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+  "total_liters": <number>,
+  "comparison_text_persian": "<string>",
+  "details": [
+    {"item": "<string>", "liters": <number>}
+  ]
+}
+All numbers must be numeric (no units attached in JSON).
+`;
+
+        const text = await askGemini(`${basePrompt}\nFood list: ${foods}`, { model: 'gemini-2.0-flash' });
+
         let data; try { data = JSON.parse(text); } catch(_) { out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
-        const ul = document.createElement('ul');
-        ul.className = 'list-disc pr-4';
-        (data.items || []).forEach(it => {
+        if (
+          typeof data.total_liters !== 'number' ||
+          !Array.isArray(data.details) ||
+          !data.details.every(d => typeof d.item === 'string' && typeof d.liters === 'number')
+        ) {
+          out.textContent = '⚠️ پاسخ نامعتبر.';
+          return;
+        }
+
+        // ساخت خروجی
+        out.innerHTML = '';
+
+        const total = document.createElement('p');
+        total.className = 'text-4xl font-extrabold text-blue-600';
+        total.textContent = nf.format(data.total_liters) + ' لیتر';
+
+        const comparison = document.createElement('p');
+        comparison.className = 'text-slate-600 mt-2';
+        comparison.textContent = data.comparison_text_persian || '';
+
+        const list = document.createElement('ul');
+        list.className = 'mt-4 space-y-1';
+        data.details.forEach(it => {
           const li = document.createElement('li');
           li.className = 'flex justify-between';
-          const name = document.createElement('span');
-          name.textContent = it.name;
+          const item = document.createElement('span');
+          item.textContent = it.item;
           const liters = document.createElement('span');
           liters.textContent = nf.format(it.liters) + ' لیتر';
-          li.appendChild(name);
-          li.appendChild(liters);
-          ul.appendChild(li);
+          li.append(item, liters);
+          list.appendChild(li);
         });
-        const total = document.createElement('p');
-        total.className = 'font-bold mt-2';
-        total.textContent = 'جمع کل: ' + nf.format(data.total_liters) + ' لیتر';
-        const summary = document.createElement('p');
-        summary.className = 'mt-1';
-        summary.textContent = data.summary_fa || '';
-        out.replaceChildren(ul, total, summary);
+
+        out.append(total, comparison, list);
+
       } catch(e){ out.textContent = '⚠️ خطا در محاسبه.'; console.error(e); }
       finally { setLoading(btn, false); }
     });
