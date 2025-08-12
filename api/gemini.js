@@ -31,7 +31,9 @@ export default async function handler(req, res) {
     if (!prompt) return res.status(400).json({ error: 'prompt required' });
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'missing GEMINI_API_KEY' });
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not set' });
+    }
 
     const model = 'gemini-1.5-flash';
     const url = `https://generativeai.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -45,7 +47,13 @@ export default async function handler(req, res) {
       })
     });
 
-    if (!r.ok) return res.status(r.status).json({ error: await r.text() });
+    if (r.status === 401) {
+      return res.status(401).json({ error: 'invalid GEMINI_API_KEY' });
+    }
+
+    if (!r.ok) {
+      return res.status(r.status).json({ error: await r.text() });
+    }
     const data = await r.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     return json ? res.status(200).send(text) : res.status(200).json({ text });
