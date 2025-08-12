@@ -32,6 +32,18 @@ curl -i -X POST https://wesh360.ir/api/gemini \
 Expected: 204 for OPTIONS, 200 for POST, and no query ?key= in downstream calls.
 ```
 
+**Local check (netlify dev)**
+```bash
+curl -i -X OPTIONS http://localhost:8888/api/gemini \
+  -H "Origin: https://wesh360.ir" \
+  -H "Access-Control-Request-Method: POST"
+
+curl -i -X POST http://localhost:8888/api/gemini \
+  -H "Origin: https://wesh360.ir" \
+  -H "Content-Type: application/json" \
+  --data '{"q":"ping"}'
+```
+
 ## Backlog
 
 - Migrate from `cdn.tailwindcss.com` to CSS compiled with Tailwind CLI at build time.

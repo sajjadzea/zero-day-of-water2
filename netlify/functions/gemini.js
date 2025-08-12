@@ -114,8 +114,12 @@ export const handler = async (event) => {
     }
 
     if (!resp || !resp.ok) {
-      const detail = resp ? await resp.text() : 'no response';
-      return respond(resp?.status || 502, { error: 'Gemini error', detail });
+      let msg = resp ? await resp.text() : 'no response';
+      try {
+        const parsed = JSON.parse(msg);
+        msg = parsed.error?.message || msg;
+      } catch (_) { /* ignore JSON parse errors */ }
+      return respond(resp?.status || 502, { error: msg });
     }
 
     const data = await resp.json();
@@ -131,7 +135,7 @@ export const handler = async (event) => {
     return respond(200, { text, raw: data });
 
   } catch (e) {
-    return respond(500, { error: 'Server error', detail: String(e) });
+    return respond(500, { error: String(e) });
   }
 };
 
