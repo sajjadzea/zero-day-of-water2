@@ -4,11 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>داشبورد پایش آب</title>
+ codex/fix-ui-bug-in-deploy-preview
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app; form-action 'self'; frame-ancestors 'self';">
+
+  <meta http-equiv="Content-Security-Policy"
+  content="default-src 'self'; base-uri 'self'; object-src 'none';
+           img-src 'self' data: https:;
+           style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+           font-src 'self' https://fonts.gstatic.com;
+           script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+           connect-src 'self' https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app;
+           form-action 'self'; frame-ancestors 'self';">
+ main
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"/>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>window.API_BASE='https://YOUR_FUNC_HOST';</script>
+  <script>window.API_BASE='https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app';</script>
 </head>
 <body class="font-[Vazirmatn] bg-gray-50 text-gray-800 p-4">
   <div class="max-w-4xl mx-auto space-y-6">
@@ -66,10 +77,12 @@
   </div>
 
   <script>
-const apiUrl = (window.API_BASE ?? 'https://YOUR_FUNC_HOST') + '/api/gemini';
+const apiUrl = (window.API_BASE ?? 'https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app') + '/api/gemini';
 async function callGeminiAPI(prompt, isJson=false){
-  const payload = { prompt, json: !!isJson };
-  const res = await fetch(apiUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  const res = await fetch(apiUrl, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ prompt, json: !!isJson })
+  });
   if(!res.ok) throw new Error(`API error ${res.status}`);
   if(isJson){ const txt = await res.text(); return JSON.parse(txt); }
   else { const data = await res.json(); return data.text; }
