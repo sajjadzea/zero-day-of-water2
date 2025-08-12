@@ -100,6 +100,7 @@ export const handler = async (event) => {
           headers: {
             'Content-Type': 'application/json',
             'X-goog-api-key': API_KEY, // ← ارسال کلید در هدر
+            'Referer': 'https://wesh360.ir',
           },
           body: JSON.stringify(payload),
           timeout: 12000,
