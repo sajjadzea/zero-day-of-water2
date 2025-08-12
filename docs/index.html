@@ -102,9 +102,21 @@
                         <input type="text" id="food-input" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition" placeholder="مثال: نان، گوشت گاو، گوجه فرنگی">
                     </div>
                     <div class="text-center">
-                        <button id="btn-footprint" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i>محاسبه ردپای آب</button>
+                        <button id="btn-footprint" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i><span>محاسبه ردپای آب</span></button>
+                        <div id="ai-thinking" class="mt-4 hidden">
+                            <div class="flex items-center justify-center gap-2 text-gray-700">
+                                <span class="text-xl">✨</span>
+                                <span class="text-sm">در حال محاسبه با هوش مصنوعی…</span>
+                                <span class="flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:120ms]"></span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:240ms]"></span>
+                                </span>
+                            </div>
+                            <div class="mt-3 h-8 w-20 rounded-full border-2 border-dashed border-purple-400 animate-spin mx-auto"></div>
+                        </div>
                     </div>
-                    <div id="out-footprint"></div>
+                    <div id="out-footprint" class="mt-4 p-4 bg-white/70 rounded-xl shadow-inner" aria-live="polite" tabindex="-1"></div>
                 </div>
             </div>
         </section>
@@ -238,12 +250,17 @@
   function setLoading(el, on=true) {
     if (!el) return;
     if (on) {
-      el.dataset.prev = el.innerHTML;
-      el.innerHTML = '<i class="fas fa-spinner fa-spin ml-1"></i> در حال پردازش…';
+      if (!el.dataset.prev) el.dataset.prev = el.innerHTML;
+      el.textContent = '✨ در حال پردازش…';
+      el.classList.add('opacity-90','animate-pulse');
       el.disabled = true;
     } else {
-      el.innerHTML = el.dataset.prev || '';
-      el.disabled = false;
+      if (el.dataset.prev) {
+        el.innerHTML = el.dataset.prev;
+        el.classList.remove('opacity-90','animate-pulse');
+        el.disabled = false;
+        delete el.dataset.prev;
+      }
     }
   }
 
@@ -252,18 +269,38 @@
     const btn = document.getElementById('btn-footprint');
     const inp = document.getElementById('food-input');
     const out = document.getElementById('out-footprint');
-    if (!btn || !inp || !out) return;
+    const thinking = document.getElementById('ai-thinking');
+    if (!btn || !inp || !out || !thinking) return;
+
+    function renderSkeleton(){
+      out.innerHTML = '<div class="space-y-2 animate-pulse"><div class="h-4 bg-gray-200 rounded"></div><div class="h-4 bg-gray-200 rounded w-5/6"></div><div class="h-4 bg-gray-200 rounded w-4/6"></div></div>';
+    }
+
+    function clearSkeleton(){
+      out.innerHTML = '';
+    }
+
+    function showThinkingUI(){
+      thinking.classList.remove('hidden');
+      setLoading(btn, true);
+      inp.setAttribute('aria-busy','true');
+    }
+
+    function hideThinkingUI(){
+      thinking.classList.add('hidden');
+      setLoading(btn, false);
+      inp.removeAttribute('aria-busy');
+    }
 
     btn.addEventListener('click', async () => {
+      const foods = (inp.value || '').trim();
+      if (!foods) { out.textContent = 'لطفاً مواد غذایی را وارد کنید.'; out.focus(); return; }
+
+      clearSkeleton();
+      renderSkeleton();
+      showThinkingUI();
+
       try {
-        const foods = (inp.value || '').trim();
-        if (!foods) { out.textContent = 'لطفاً مواد غذایی را وارد کنید.'; return; }
-
-        // پاک کردن نتایج قبلی و نمایش لودر
-        out.innerHTML = '';
-        setLoading(btn, true);
-        out.innerHTML = '<div class="flex items-center justify-center text-slate-600 gap-2"><i class="fas fa-spinner fa-spin"></i><span>در حال محاسبه با هوش مصنوعی…</span></div>';
-
         const basePrompt = `
 You are a virtual water footprint expert.
 Input: list of food items in Persian.
@@ -281,18 +318,21 @@ All numbers must be numeric (no units attached in JSON).
 
         const text = await askGemini(`${basePrompt}\nFood list: ${foods}`, { model: 'gemini-2.0-flash' });
 
-        let data; try { data = JSON.parse(text); } catch(_) { out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
+        let data; try { data = JSON.parse(text); } catch(_) { clearSkeleton(); out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
         if (
           typeof data.total_liters !== 'number' ||
           !Array.isArray(data.details) ||
           !data.details.every(d => typeof d.item === 'string' && typeof d.liters === 'number')
         ) {
+          clearSkeleton();
           out.textContent = '⚠️ پاسخ نامعتبر.';
           return;
         }
 
         // ساخت خروجی
-        out.innerHTML = '';
+        clearSkeleton();
+        const wrapper = document.createElement('div');
+        wrapper.className = 'space-y-1';
 
         const total = document.createElement('p');
         total.className = 'text-4xl font-extrabold text-blue-600';
@@ -315,10 +355,18 @@ All numbers must be numeric (no units attached in JSON).
           list.appendChild(li);
         });
 
-        out.append(total, comparison, list);
+        wrapper.append(total, comparison, list);
+        out.appendChild(wrapper);
+        out.focus();
 
-      } catch(e){ out.textContent = '⚠️ خطا در محاسبه.'; console.error(e); }
-      finally { setLoading(btn, false); }
+      } catch(e){
+        clearSkeleton();
+        out.textContent = '⚠️ خطا در محاسبه.';
+        out.focus();
+        console.error(e);
+      } finally {
+        hideThinkingUI();
+      }
     });
   })();
 
