@@ -7,19 +7,6 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231f7aff'/%3E%3Cpath d='M20 36c8 4 16-4 24 0' stroke='white' stroke-width='4' fill='none'/%3E%3C/svg%3E" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <script>
-      window.API_BASE = window.API_BASE || window.location.origin;
-      async function askGemini(prompt, opts={}) {
-        const res = await fetch(`${window.API_BASE || window.location.origin}/api/gemini`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: prompt, ...opts })
-        });
-        if (!res.ok) throw new Error('Gemini request failed');
-        const data = await res.json();
-        return data.text || '';
-      }
-    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800&display=swap');
         body { font-family: 'Vazirmatn', sans-serif; background-color: #f0f4f8; }
@@ -63,6 +50,12 @@
             width: 120px;
             height: auto;
             z-index: 1000;
+        }
+
+        #out-footprint, #out-sim, #out-tips {
+            margin-top: .75rem;
+            line-height: 1.9;
+            font-size: .9rem;
         }
     </style>
 </head>
@@ -109,12 +102,9 @@
                         <input type="text" id="food-input" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition" placeholder="مثال: نان، گوشت گاو، گوجه فرنگی">
                     </div>
                     <div class="text-center">
-                        <button id="calculate-footprint-btn" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i>محاسبه ردپای آب</button>
+                        <button id="btn-footprint" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i>محاسبه ردپای آب</button>
                     </div>
-                </div>
-                <div id="footprint-result-container" class="mt-8 hidden">
-                    <div id="footprint-loader" class="text-center"><i class="fas fa-spinner fa-spin fa-3x text-amber-500"></i><p class="mt-2 text-slate-600">در حال محاسبه با هوش مصنوعی...</p></div>
-                    <div id="footprint-result" class="p-6 bg-white rounded-lg shadow-inner text-center"></div>
+                    <div id="out-footprint"></div>
                 </div>
             </div>
         </section>
@@ -124,12 +114,12 @@
                 <p class="text-center text-slate-600 mb-8">ببینید مشارکت شما و رحمت الهی چگونه می‌تواند آینده را تغییر دهد!</p>
                 <div class="max-w-2xl mx-auto">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                        <div><label for="consumption-slider" class="font-semibold text-slate-700 block mb-2">کاهش مصرف همگانی:</label><input type="range" id="consumption-slider" min="0" max="30" value="10" class="w-full"><div class="text-center font-bold text-xl text-blue-600 mt-2"><span id="consumption-value">10</span>%</div></div>
-                        <div><label for="rainfall-slider" class="font-semibold text-slate-700 block mb-2">بارش باران در ماه آینده:</label><input type="range" id="rainfall-slider" min="0" max="50" value="5" class="w-full"><div class="text-center font-bold text-xl text-blue-600 mt-2"><span id="rainfall-value">5</span> میلی‌متر</div></div>
+                        <div><label for="cut-slider" class="font-semibold text-slate-700 block mb-2">کاهش مصرف همگانی:</label><input type="range" id="cut-slider" min="0" max="30" value="10" class="w-full"><div class="text-center font-bold text-xl text-blue-600 mt-2"><span id="cut-value">10</span>%</div></div>
+                        <div><label for="rain-slider" class="font-semibold text-slate-700 block mb-2">بارش باران در ماه آینده:</label><input type="range" id="rain-slider" min="0" max="50" value="5" class="w-full"><div class="text-center font-bold text-xl text-blue-600 mt-2"><span id="rain-value">5</span> میلی‌متر</div></div>
                     </div>
-                    <div class="text-center"><button id="simulate-btn" class="btn-gemini text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg bg-green-500 hover:bg-green-600"><i class="fas fa-chart-line ml-2"></i>آینده را شبیه‌سازی کن</button></div>
+                    <div class="text-center"><button id="btn-simulate" class="btn-gemini text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg bg-green-500 hover:bg-green-600"><i class="fas fa-chart-line ml-2"></i>آینده را شبیه‌سازی کن</button></div>
+                    <div id="out-sim"></div>
                 </div>
-                <div id="simulation-result-container" class="mt-8 hidden"><div id="simulation-loader" class="text-center"><i class="fas fa-spinner fa-spin fa-3x text-green-500"></i><p class="mt-2 text-slate-600">در حال تحلیل آینده با هوش مصنوعی...</p></div><div id="simulation-result" class="p-6 bg-white rounded-lg shadow-inner text-center"></div></div>
             </div>
         </section>
         <section class="mb-12">
@@ -138,12 +128,12 @@
                 <p class="text-center text-slate-600 mb-8">با پاسخ به چند سوال ساده...</p>
                 <div class="max-w-xl mx-auto">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                        <div><label for="family-size" class="font-semibold text-slate-700 block mb-2">تعداد اعضای خانواده:</label><input type="number" id="family-size" value="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></div>
-                        <div><label for="shower-time" class="font-semibold text-slate-700 block mb-2">مدت زمان حمام (دقیقه):</label><input type="number" id="shower-time" value="10" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></div>
+                        <div><label for="family-input" class="font-semibold text-slate-700 block mb-2">تعداد اعضای خانواده:</label><input type="number" id="family-input" value="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></div>
+                        <div><label for="shower-input" class="font-semibold text-slate-700 block mb-2">مدت زمان حمام (دقیقه):</label><input type="number" id="shower-input" value="10" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"></div>
                     </div>
-                    <div class="text-center"><button id="generate-tips-btn" class="btn-gemini text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-magic ml-2"></i>برایم راهکار بساز</button></div>
+                    <div class="text-center"><button id="btn-tips" class="btn-gemini text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-magic ml-2"></i>برایم راهکار بساز</button></div>
+                    <div id="out-tips"></div>
                 </div>
-                <div id="tips-result-container" class="mt-8 hidden"><div id="tips-loader" class="text-center"><i class="fas fa-spinner fa-spin fa-3x text-blue-500"></i><p class="mt-2 text-slate-600">در حال آماده‌سازی راهکارهای هوشمند...</p></div><div id="tips-result" class="p-6 bg-white rounded-lg shadow-inner prose prose-vazir max-w-none"></div></div>
             </div>
         </section>
         <section class="mb-12">
@@ -202,10 +192,10 @@
     <script>
 (function(){
   function initSimulatorUI(){
-    const cs = document.getElementById('consumption-slider');
-    const rs = document.getElementById('rainfall-slider');
-    const cv = document.getElementById('consumption-value');
-    const rv = document.getElementById('rainfall-value');
+    const cs = document.getElementById('cut-slider');
+    const rs = document.getElementById('rain-slider');
+    const cv = document.getElementById('cut-value');
+    const rv = document.getElementById('rain-value');
     if(!cs || !rs || !cv || !rv) return; // DOM not ready or ids wrong
 
     const sync = () => {
@@ -228,6 +218,99 @@
     initSimulatorUI();
   }
 })();
+    </script>
+    <script>
+  // پایهٔ اندپوینت
+  window.API_BASE = window.location.origin;
+
+  async function askGemini(prompt, opts={}) {
+    const r = await fetch(`${window.API_BASE}/api/gemini`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: prompt, ...opts })
+    });
+    if (!r.ok) throw new Error('Gemini failed: ' + r.status);
+    const d = await r.json();
+    return d.text || '';
+  }
+
+  function setLoading(el, on=true) {
+    if (!el) return;
+    el.dataset.prev = el.textContent;
+    el.textContent = on ? 'در حال پردازش…' : (el.dataset.prev || el.textContent);
+    el.disabled = on;
+  }
+
+  // 1) ردپای پنهان آبِ غذا
+  (function wireFootprint(){
+    const btn = document.getElementById('btn-footprint');
+    const inp = document.getElementById('food-input');
+    const out = document.getElementById('out-footprint');
+    if (!btn || !inp || !out) return;
+
+    btn.addEventListener('click', async () => {
+      try {
+        const foods = (inp.value || '').trim();
+        if (!foods) { out.textContent = 'لطفاً مواد غذایی را وارد کنید.'; return; }
+        setLoading(btn, true); out.textContent = '⏳';
+        const prompt =
+`برای مواد غذایی زیر، برآورد «ردپای آب پنهان» هرکدام را به‌صورت لیست بولت‌پوینت فارسی بده و در انتها جمع کل را تقریبی اعلام کن.
+مواد غذایی: ${foods}
+خروجی کوتاه، عددها با واحد لیتر آب/هر واحد مصرف.`;
+        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+        out.innerHTML = text.replace(/\n/g,'<br>');
+      } catch(e){ out.textContent = '⚠️ خطا در محاسبه.'; console.error(e); }
+      finally { setLoading(btn, false); }
+    });
+  })();
+
+  // 2) شبیه‌ساز آینده آب
+  (function wireSimulator(){
+    const btn = document.getElementById('btn-simulate');
+    const rain = document.getElementById('rain-slider');
+    const cut  = document.getElementById('cut-slider');
+    const out  = document.getElementById('out-sim');
+    if (!btn || !rain || !cut || !out) return;
+
+    btn.addEventListener('click', async () => {
+      try {
+        setLoading(btn, true); out.textContent = '⏳';
+        const rainVal = rain.value || rain.getAttribute('value') || '0';
+        const cutVal  = cut.value  || cut.getAttribute('value')  || '0';
+        const prompt =
+`یک سناریوی کوتاه و قابل‌فهم از وضعیت منابع آب شهر مشهد شبیه‌سازی کن با این ورودی‌ها:
+- تغییر بارش ماه آینده: ${rainVal} میلی‌متر
+- کاهش مصرف همگانی: ${cutVal} درصد
+در خروجی، ۳ نکتهٔ کلیدی و یک جمع‌بندی بده. فارسی و مختصر.`;
+        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+        out.innerHTML = text.replace(/\n/g,'<br>');
+      } catch(e){ out.textContent = '⚠️ خطا در شبیه‌سازی.'; console.error(e); }
+      finally { setLoading(btn, false); }
+    });
+  })();
+
+  // 3) راهکارهای هوشمند شخصی‌سازی‌شده
+  (function wireTips(){
+    const btn = document.getElementById('btn-tips');
+    const fam = document.getElementById('family-input') || document.querySelector('[name="familySize"]');
+    const shw = document.getElementById('shower-input') || document.querySelector('[name="showerMins"]');
+    const out = document.getElementById('out-tips');
+    if (!btn || !fam || !shw || !out) return;
+
+    btn.addEventListener('click', async () => {
+      try {
+        setLoading(btn, true); out.textContent = '⏳';
+        const members = fam.value || '4';
+        const shower  = shw.value || '10';
+        const prompt =
+`برای خانواده‌ای با ${members} نفر و میانگین زمان حمام ${shower} دقیقه، ۵ راهکار کوتاه و عملی برای کاهش مصرف آب ارائه بده.
+خروجی را با بولت‌پوینت فارسی و اعداد تقریبی صرفه‌جویی (لیتر/روز) بنویس.`;
+        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+        out.innerHTML = text.replace(/\n/g,'<br>');
+      } catch(e){ out.textContent = '⚠️ خطا در تولید راهکار.'; console.error(e); }
+      finally { setLoading(btn, false); }
+    });
+  })();
     </script>
 </body>
 </html>
