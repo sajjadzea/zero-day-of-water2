@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد وضعیت آب مشهد (مجهز به Gemini)</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self' https://689a0a959fa2471e109de0c8--polite-zuccutto-cdf931.netlify.app https://polite-zuccutto-cdf931.netlify.app; form-action 'self'; frame-ancestors 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; connect-src 'self'; frame-ancestors 'self'; form-action 'self';">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <script>window.API_BASE=window.location.origin;</script>
+    <script>
+      window.API_BASE = window.location.origin;
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800&display=swap');
         body { font-family: 'Vazirmatn', sans-serif; background-color: #f0f4f8; }
@@ -119,14 +121,13 @@
     <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"><div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center"><div class="text-red-500 mb-4"><i class="fas fa-exclamation-circle fa-3x"></i></div><h3 class="text-lg font-bold text-red-600 mb-2">خطا در ارتباط با سرور</h3><p id="error-message" class="text-slate-700">متاسفانه مشکلی در دریافت اطلاعات پیش آمد. لطفا دوباره تلاش کنید.</p><button id="close-modal-btn" class="mt-6 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">بستن</button></div></div>
     <script>
 async function callGeminiAPI(prompt, isJson=false){
-  const apiUrl = (window.API_BASE ?? '') + '/api/gemini';
-  const res = await fetch(apiUrl, {
-    method:'POST', headers:{'Content-Type':'application/json'},
+  const res = await fetch(`${window.API_BASE}/api/gemini`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ prompt, json: !!isJson })
   });
   if(!res.ok) throw new Error(`API error ${res.status}`);
-  if(isJson){ return res.json(); }
-  else { const data = await res.json(); return data.text; }
+  return isJson ? await res.json() : (await res.json()).text;
 }
     </script>
     <script>
