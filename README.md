@@ -14,13 +14,23 @@ GitHub Pages is configured to deploy the `docs` directory. To use a custom subdo
 
 Gemini API calls are routed through a serverless function so the API key is kept server side.
 
-### Netlify
-- Files under `netlify/` contain a function at `/api/gemini`.
-- Set the `GEMINI_API_KEY` environment variable in Netlify.
-- Deploy the repo and the site will serve from `docs`.
-- Content-Security-Policy headers are configured in `netlify.toml` rather than HTML meta tags; production blocks all framing while Deploy Previews allow Netlify embeds to avoid console errors.
+### Netlify (Serverless Function)
+- The frontend calls the relative endpoint `/api/gemini`.
+- Set `GEMINI_API_KEY` (and optional `PREVIEW_ORIGIN`) in Netlify Environment Variables.
+- CSP headers are configured in `netlify.toml`; `connect-src 'self'` is sufficient.
 
-The frontend assumes the function lives on the same origin and calls `/api/gemini` accordingly.
+**Post-deploy tests**
+```bash
+curl -i -X OPTIONS https://wesh360.ir/api/gemini \
+  -H "Origin: https://wesh360.ir" \
+  -H "Access-Control-Request-Method: POST"
+
+curl -i -X POST https://wesh360.ir/api/gemini \
+  -H "Origin: https://wesh360.ir" \
+  -H "Content-Type: application/json" \
+  --data '{"q":"ping"}'
+Expected: 204 for OPTIONS, 200 for POST, and no query ?key= in downstream calls.
+```
 
 ## Backlog
 
