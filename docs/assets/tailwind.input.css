@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  #curtain {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    pointer-events: none;
+  }
+
+  .curtain-half {
+    flex: 1;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    transform: translateX(0);
+    transition: transform .8s ease-in-out;
+    will-change: transform;
+  }
+
+  .curtain-half.left {
+    transform-origin: left center;
+  }
+
+  .curtain-half.right {
+    transform-origin: right center;
+  }
+
+  #curtain.open .curtain-half.left {
+    transform: translateX(-100%);
+  }
+
+  #curtain.open .curtain-half.right {
+    transform: translateX(100%);
+  }
+}
