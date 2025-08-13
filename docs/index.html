@@ -10,27 +10,38 @@
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
   <main class="w-full text-center space-y-12">
     <img src="page/landing/logo2.jfif" alt="لوگوی wesh360" class="mx-auto w-32 h-32 object-contain" />
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-      <a href="water/" data-sector="water" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
-        <span class="text-5xl mb-4">💧</span>
-        آب
-      </a>
-      <a href="electricity/" data-sector="electricity" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
-        <span class="text-5xl mb-4">⚡</span>
-        برق
-      </a>
-      <a href="gas/" data-sector="gas" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
-        <span class="text-5xl mb-4">🛢</span>
-        گاز و فرآورده‌های نفتی
-      </a>
-    </div>
-    <a id="quick-entry" href="#" class="hidden landing-option bg-blue-600 text-white rounded-xl py-4 px-8 inline-block font-bold"></a>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+        <a href="water/" data-sector="water" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">💧</span>
+          آب
+        </a>
+        <a href="electricity/" data-sector="electricity" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">⚡</span>
+          برق
+        </a>
+        <a href="gas/" data-sector="gas" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">🛢</span>
+          گاز و فرآورده‌های نفتی
+        </a>
+      </div>
+      <a id="quick-entry" href="#" class="hidden landing-option bg-blue-600 text-white rounded-xl py-4 px-8 inline-block font-bold"></a>
   </main>
+  <div id="curtain" class="curtain hidden"><div class="curtain-half left"></div><div class="curtain-half right"></div></div>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('[data-sector]').forEach(function (el) {
-        el.addEventListener('click', function () {
-          localStorage.setItem('sector', el.getAttribute('data-sector'));
+        el.addEventListener('click', function (e) {
+          e.preventDefault();
+          var sector = el.getAttribute('data-sector');
+          localStorage.setItem('sector', sector);
+          var curtain = document.getElementById('curtain');
+          curtain.classList.remove('hidden');
+          requestAnimationFrame(function () {
+            curtain.classList.add('open');
+          });
+          setTimeout(function () {
+            window.location.href = el.href;
+          }, 800);
         });
       });
       var sector = localStorage.getItem('sector');
