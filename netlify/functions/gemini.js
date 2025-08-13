@@ -125,8 +125,8 @@ export default async function handler(req) {
   }
 
   const systemPromptText = `
-You are an API. Return ONLY valid JSON for the requested feature.
-No prose, no markdown, no code fences.
+You are an API. Output ONLY valid JSON.
+All explanatory texts (notes, tips.title) MUST be in Persian (fa-IR).
 Schemas:
 - water: {"type":"water","totalWater":number,"items":[{"name":string,"water":number}]}
 - simulate: {"type":"simulate","forecast":{"status":string,"reservoirChangePct":number,"notes":string}}
