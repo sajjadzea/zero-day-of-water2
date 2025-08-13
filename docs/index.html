@@ -32,28 +32,42 @@
   <div id="curtain" class="curtain hidden"><div class="curtain-half left"></div><div class="curtain-half right"></div></div>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      document.querySelectorAll('[data-sector]').forEach(function (el) {
-        el.addEventListener('click', function (e) {
-          e.preventDefault();
-          var sector = el.getAttribute('data-sector');
+      function animateAndNavigate(e) {
+        e.preventDefault();
+        var el = e.currentTarget;
+        var sector = el.getAttribute('data-sector');
+        if (sector) {
           localStorage.setItem('sector', sector);
-          var curtain = document.getElementById('curtain');
-          curtain.classList.remove('hidden');
-          requestAnimationFrame(function () {
-            curtain.classList.add('open');
-          });
-          setTimeout(function () {
-            window.location.href = el.href;
-          }, 800);
+        }
+        var curtain = document.getElementById('curtain');
+        curtain.classList.remove('hidden');
+        void curtain.offsetWidth; // force reflow to ensure transition
+        curtain.classList.add('open');
+        var halves = curtain.querySelectorAll('.curtain-half');
+        var remaining = halves.length;
+        halves.forEach(function (half) {
+          half.addEventListener('transitionend', function () {
+            remaining--;
+            if (remaining === 0) {
+              window.location.href = el.href;
+            }
+          }, { once: true });
         });
+      }
+
+      document.querySelectorAll('[data-sector]').forEach(function (el) {
+        el.addEventListener('click', animateAndNavigate);
       });
+
       var sector = localStorage.getItem('sector');
       if (sector) {
         var names = { water: 'آب', electricity: 'برق', gas: 'گاز و فرآورده‌های نفتی' };
         var quick = document.getElementById('quick-entry');
         quick.href = sector + '/';
         quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
+        quick.setAttribute('data-sector', sector);
         quick.classList.remove('hidden');
+        quick.addEventListener('click', animateAndNavigate);
       }
     });
   </script>
