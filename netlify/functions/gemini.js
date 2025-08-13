@@ -124,14 +124,24 @@ export default async function handler(req) {
     userPrompt = `family=${reqBody.family}; shower=${reqBody.shower}`;
   }
 
-  const systemPrompt = `You are an API. Return ONLY valid JSON for the feature "${feature}".\nDo not include any prose, markdown, or code fences.\nIf input is insufficient, return {"error":"insufficient_input"}.\n\nSchemas:\n- water: {"type":"water","totalWater":number,"items":[{"name":string,"water":number}]}\n- simulate: {"type":"simulate","forecast":{"status":string,"reservoirChangePct":number,"notes":string}}\n- solutions: {"type":"solutions","tips":[{"title":string,"impact_liters":number}]}`;
+  const systemPromptText = `
+You are an API. Return ONLY valid JSON for the requested feature.
+No prose, no markdown, no code fences.
+Schemas:
+- water: {"type":"water","totalWater":number,"items":[{"name":string,"water":number}]}
+- simulate: {"type":"simulate","forecast":{"status":string,"reservoirChangePct":number,"notes":string}}
+- solutions: {"type":"solutions","tips":[{"title":string,"impact_liters":number}]}
+`;
 
   const model = reqBody.model || 'gemini-2.0-flash';
   const temperature = typeof reqBody.temperature === 'number' ? reqBody.temperature : 0.8;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${API_KEY}`;
 
   const payload = {
-    system: systemPrompt,
+    systemInstruction: {
+      role: 'system',
+      parts: [{ text: systemPromptText }],
+    },
     contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
     generationConfig: {
       temperature,
@@ -144,17 +154,16 @@ export default async function handler(req) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-goog-api-key': API_KEY,
         Referer: 'https://wesh360.ir',
       },
       body: JSON.stringify(payload),
     });
 
     if (!resp.ok) {
-      const body = await resp.text();
-      console.error('[Gemini ERROR]', resp.status, body);
+      const details = await resp.text();
+      console.error('[Gemini ERROR]', resp.status, details);
       return new Response(
-        JSON.stringify({ error: 'gemini_error', status: resp.status, details: body }),
+        JSON.stringify({ error: 'gemini_error', status: resp.status, details }),
         {
           status: resp.status === 400 ? 400 : 502,
           headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
@@ -182,10 +191,10 @@ export default async function handler(req) {
     });
   } catch (err) {
     const status = err?.status || 502;
-    const body = err?.response ? await err.response.text() : String(err);
-    console.error('[Gemini ERROR]', status, body);
+    const details = err?.response ? await err.response.text() : String(err);
+    console.error('[Gemini ERROR]', status, details);
     return new Response(
-      JSON.stringify({ error: 'gemini_error', status, details: body }),
+      JSON.stringify({ error: 'gemini_error', status, details }),
       {
         status: status === 400 ? 400 : 502,
         headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
