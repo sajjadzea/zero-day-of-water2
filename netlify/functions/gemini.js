@@ -66,7 +66,7 @@ export const handler = async (event) => {
   });
 
   try {
-    const { q: prompt, model = 'gemini-2.0-flash', temperature = 0.8, system } = JSON.parse(event.body || '{}');
+    const { q: prompt, model = 'gemini-2.0-flash', temperature = 0.8 } = JSON.parse(event.body || '{}');
     if (!prompt) return respond(400, { error: 'Missing prompt "q"' });
 
     const API_KEY = process.env.GEMINI_API_KEY;
@@ -75,11 +75,14 @@ export const handler = async (event) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
     const payload = {
+      system: 'Respond only with valid JSON: {"total_liters":number,...}',
       contents: [
-        ...(system ? [{ role: 'user', parts: [{ text: system }] }] : []),
         { role: 'user', parts: [{ text: prompt }] }
       ],
-      generationConfig: { temperature }
+      generationConfig: {
+        temperature,
+        response_mime_type: 'application/json'
+      }
     };
 
     // fetch with timeout
