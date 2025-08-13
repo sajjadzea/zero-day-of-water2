@@ -107,5 +107,64 @@
     }
   })();
   </script>
+  <script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    if (params.get('debug-curtain') !== '1') return;
+    if (!document.getElementById('curtain') || !document.querySelector('[data-sector]')) return;
+
+    const curtain = document.getElementById('curtain');
+    const halves = Array.from(curtain.querySelectorAll('.curtain-half'));
+    console.log('Curtain present:', !!curtain);
+    console.log('Curtain halves:', halves.length);
+    if (!curtain || !halves.length) return;
+
+    halves.forEach((half, i) => {
+      const cs = getComputedStyle(half);
+      console.log(`Half ${i} computed styles`, {
+        'transition-duration': cs.transitionDuration,
+        'transition-delay': cs.transitionDelay,
+        transform: cs.transform,
+      });
+      ['transitionend', 'transitioncancel', 'animationend'].forEach(ev => {
+        half.addEventListener(ev, e => {
+          console.log(`Half ${i} ${ev}`, { elapsedTime: e.elapsedTime });
+        });
+      });
+    });
+
+    let prev = curtain.className;
+    console.log('Curtain initial classes:', prev);
+    const mo = new MutationObserver(() => {
+      const curr = curtain.className;
+      if (!prev.includes('open') && curr.includes('open')) {
+        console.log('Curtain classes before .open:', prev);
+        console.log('Curtain classes after .open:', curr);
+      } else {
+        console.log('Curtain class change:', curr);
+      }
+      prev = curr;
+    });
+    mo.observe(curtain, { attributes: true });
+
+    function parseMaxTransitionMs(els) {
+      let maxMs = 0;
+      els.forEach(el => {
+        const cs = getComputedStyle(el);
+        const durs = cs.transitionDuration.split(',').map(s => parseFloat(s) || 0);
+        const dels = cs.transitionDelay.split(',').map(s => parseFloat(s) || 0);
+        const n = Math.max(durs.length, dels.length);
+        for (let i = 0; i < n; i++) {
+          const dur = (durs[i] || durs[durs.length - 1] || 0) * 1000;
+          const del = (dels[i] || dels[dels.length - 1] || 0) * 1000;
+          maxMs = Math.max(maxMs, dur + del);
+        }
+      });
+      return Math.max(400, maxMs);
+    }
+
+    console.log('Max transition time (ms):', parseMaxTransitionMs(halves));
+  })();
+  </script>
 </body>
 </html>
