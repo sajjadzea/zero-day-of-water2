@@ -1,4 +1,28 @@
 const nf = new Intl.NumberFormat('fa-IR');
+const pf = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 });
+
+async function parseMaybeJson(res) {
+  const raw = await res.text();
+  console.log('[AI raw]', res.status, raw);
+  try { return JSON.parse(raw); } catch { return raw; }
+}
+
+function pickByType(payload, type) {
+  if (!payload) return null;
+  if (Array.isArray(payload)) {
+    const found = payload.find(x => x && x.type === type);
+    if (found) return found;
+    if (payload.length === 1) return payload[0];
+    return null;
+  }
+  if (payload.type === type) return payload;
+  return null;
+}
+
+function toNum(v) {
+  const n = typeof v === 'string' ? Number(v.replace(/[^\d\.\-]/g,'')) : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
 
 function renderSkeleton(target) {
   const wrapper = document.createElement('div');
@@ -30,28 +54,11 @@ function hideThinking(btn, thinkingEl, inputEls = []) {
   inputEls.forEach(el => el.removeAttribute('aria-busy'));
 }
 
-async function callGemini(payload) {
-  const res = await fetch('/api/gemini', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const raw = await res.clone().text();
-  console.log('[AI raw]', res.status, raw);
-  let data = null;
-  try { data = JSON.parse(raw); } catch (_) {}
-  if (!res.ok) {
-    const msg = data && typeof data === 'object' ? (data.details || data.error || raw) : raw;
-    throw new Error(msg);
-  }
-  return data;
-}
-
 // 1) ردپای آب غذا -------------------------------------------------------
 (function () {
-  const btn = document.getElementById('btn-footprint');
+  const btn = document.getElementById('calc-water-btn');
   const inp = document.getElementById('food-input');
-  const out = document.getElementById('out-footprint');
+  const out = document.getElementById('water-result');
   const thinking = document.getElementById('ai-thinking');
   if (!btn || !inp || !out || !thinking) return;
 
@@ -62,21 +69,31 @@ async function callGemini(payload) {
     renderSkeleton(out);
     showThinking(btn, thinking, [inp]);
     try {
-      const data = await callGemini({ feature: 'water', q: foods });
-      const total = document.createElement('p');
-      total.className = 'font-bold';
-      total.textContent = nf.format(data.totalWater) + ' لیتر';
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feature: 'water', q: foods })
+      });
+      const data = await parseMaybeJson(res);
+      const block = pickByType(data, 'water');
+      if (!block) throw new Error('water: invalid block');
+
+      const total = toNum(block.totalWater);
+      out.innerHTML = '';
+      const h = document.createElement('div');
+      h.className = 'font-bold mb-1';
+      h.textContent = `مجموع ردپای آب: ${nf.format(total)} لیتر`;
       const ul = document.createElement('ul');
       ul.className = 'list-disc pr-4';
-      (data.items || []).forEach(it => {
+      (block.items || []).forEach(it => {
         const li = document.createElement('li');
-        li.textContent = `${it.name}: ${nf.format(it.water)} لیتر`;
-        ul.appendChild(li);
+        li.textContent = `${it.name}: ${nf.format(toNum(it.water))} لیتر`;
+        ul.append(li);
       });
-      out.replaceChildren(total, ul);
+      out.append(h, ul);
     } catch (e) {
-      out.textContent = '⚠️ خطا در محاسبه.';
-      console.error(e);
+      console.error('[water]', e);
+      out.textContent = '⚠ پاسخ نامعتبر.';
     } finally {
       hideThinking(btn, thinking, [inp]);
     }
@@ -98,22 +115,35 @@ async function callGemini(payload) {
     try {
       const payload = {
         feature: 'simulate',
-        rainfall: Number(rain.value || rain.getAttribute('value') || '0'),
-        reduction: Number(cut.value || cut.getAttribute('value') || '0')
+        rainfall: toNum(rain.value || rain.getAttribute('value') || '0'),
+        reduction: toNum(cut.value || cut.getAttribute('value') || '0')
       };
-      const data = await callGemini(payload);
-      const fc = data.forecast || {};
-      const status = document.createElement('p');
-      status.className = 'font-bold';
-      status.textContent = fc.status || '';
-      const change = document.createElement('p');
-      change.textContent = 'تغییر مخزن: ' + nf.format(fc.reservoirChangePct) + '%';
-      const notes = document.createElement('p');
-      notes.textContent = fc.notes || '';
-      out.replaceChildren(status, change, notes);
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await parseMaybeJson(res);
+      const block = pickByType(data, 'simulate');
+      if (!block || !block.forecast) throw new Error('simulate: invalid block');
+
+      const fc = block.forecast;
+      const pct = toNum(fc.reservoirChangePct);
+      const status = fc.status || '';
+      const notes = fc.notes || '';
+
+      out.innerHTML = '';
+      const p1 = document.createElement('p');
+      p1.className = 'font-bold';
+      p1.textContent = `وضعیت: ${status}`;
+      const p2 = document.createElement('p');
+      p2.textContent = `تغییر مخزن: ${pf.format(pct)}%`;
+      const p3 = document.createElement('p');
+      p3.textContent = notes;
+      out.append(p1, p2, p3);
     } catch (e) {
-      out.textContent = '⚠️ خطا در شبیه‌سازی.';
-      console.error(e);
+      console.error('[simulate]', e);
+      out.textContent = '⚠ خطا در شبیه‌سازی.';
     } finally {
       hideThinking(btn, thinking, [rain, cut]);
     }
@@ -135,21 +165,30 @@ async function callGemini(payload) {
     try {
       const payload = {
         feature: 'solutions',
-        family: Number(fam.value || '0'),
-        shower: Number(shw.value || '0')
+        family: toNum(fam.value),
+        shower: toNum(shw.value)
       };
-      const data = await callGemini(payload);
-      const ul = document.createElement('ul');
-      ul.className = 'list-disc pr-4';
-      (data.tips || []).forEach(t => {
-        const li = document.createElement('li');
-        li.textContent = `${t.title}: ${nf.format(t.impact_liters)} لیتر`;
-        ul.appendChild(li);
+      const res = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      out.replaceChildren(ul);
+      const data = await parseMaybeJson(res);
+      const block = pickByType(data, 'solutions');
+      if (!block || !Array.isArray(block.tips)) throw new Error('solutions: invalid block');
+
+      out.innerHTML = '';
+      const ul = document.createElement('ul');
+      ul.className = 'list-disc pr-4 space-y-1';
+      block.tips.forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = `${t.title} — صرفه‌جویی: ${nf.format(toNum(t.impact_liters))} لیتر/روز`;
+        ul.append(li);
+      });
+      out.append(ul);
     } catch (e) {
-      out.textContent = '⚠️ خطا در تولید راهکار.';
-      console.error(e);
+      console.error('[solutions]', e);
+      out.textContent = '⚠ خطا در تولید راهکار.';
     } finally {
       hideThinking(btn, thinking, [fam, shw]);
     }
