@@ -350,8 +350,8 @@ All numbers must be numeric (no units attached in JSON).
           data = JSON.parse(clean);
         } catch (e) {
           clearSkeleton();
-          out.textContent = '⚠️ پاسخ نامعتبر.';
-          console.error('Invalid JSON', e);
+          out.textContent = '⚠️ پاسخ نامعتبر';
+          console.error("Invalid JSON:", text);
           return;
         }
         if (
@@ -360,7 +360,7 @@ All numbers must be numeric (no units attached in JSON).
           !data.details.every(d => typeof d.item === 'string' && typeof d.liters === 'number')
         ) {
           clearSkeleton();
-          out.textContent = '⚠️ پاسخ نامعتبر.';
+          out.textContent = '⚠️ پاسخ نامعتبر';
           return;
         }
 
