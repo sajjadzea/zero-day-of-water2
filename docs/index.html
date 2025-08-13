@@ -45,6 +45,7 @@
         curtain.classList.add('open');
         var halves = curtain.querySelectorAll('.curtain-half');
         var remaining = halves.length;
+ fsbfnf-codex/fix-landing-page-slideshow-animation-issue
         var navigated = false;
         var timeout = setTimeout(function () {
           if (!navigated) {
@@ -59,6 +60,12 @@
             if (remaining === 0) {
               navigated = true;
               clearTimeout(timeout);
+
+        halves.forEach(function (half) {
+          half.addEventListener('transitionend', function () {
+            remaining--;
+            if (remaining === 0) {
+ main
               window.location.href = el.href;
             }
           }, { once: true });
