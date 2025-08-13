@@ -1,14 +1,17 @@
 .landing-option { transition: transform .2s, box-shadow .2s; }
 .landing-option:hover { transform: translateY(-4px); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
-.curtain { position: fixed; inset: 0; display: flex; z-index: 50; }
+#curtain { position: fixed; inset: 0; z-index: 50; display: flex; pointer-events: none; }
 .curtain-half {
   flex: 1;
   background: linear-gradient(135deg, #3b82f6, #06b6d4);
   transform: translateX(0);
   transition: transform .8s ease-in-out;
+  will-change: transform;
 }
-.curtain.open .left { transform: translateX(-100%); }
-.curtain.open .right { transform: translateX(100%); }
+.curtain-half.left { transform-origin: left center; }
+.curtain-half.right { transform-origin: right center; }
+#curtain.open .curtain-half.left { transform: translateX(-100%); }
+#curtain.open .curtain-half.right { transform: translateX(100%); }
 
 .logo-fixed {
   position: absolute;
