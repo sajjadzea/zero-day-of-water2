@@ -31,45 +31,81 @@
   </main>
   <div id="curtain" class="curtain hidden"><div class="curtain-half left"></div><div class="curtain-half right"></div></div>
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      function animateAndNavigate(e) {
-        e.preventDefault();
-        var el = e.currentTarget;
-        var sector = el.getAttribute('data-sector');
-        if (sector) {
-          localStorage.setItem('sector', sector);
+  (function () {
+    function parseMaxTransitionMs(els) {
+      let maxMs = 0;
+      els.forEach(el => {
+        const cs = getComputedStyle(el);
+        const durs = cs.transitionDuration.split(',').map(s => parseFloat(s) || 0);
+        const dels = cs.transitionDelay.split(',').map(s => parseFloat(s) || 0);
+        const n = Math.max(durs.length, dels.length);
+        for (let i = 0; i < n; i++) {
+          const dur = (durs[i] || durs[durs.length - 1] || 0) * 1000;
+          const del = (dels[i] || dels[dels.length - 1] || 0) * 1000;
+          maxMs = Math.max(maxMs, dur + del);
         }
-        var curtain = document.getElementById('curtain');
-        curtain.classList.remove('hidden');
-        void curtain.offsetWidth; // force reflow to ensure transition
-        curtain.classList.add('open');
-        var halves = curtain.querySelectorAll('.curtain-half');
-        var remaining = halves.length;
-        halves.forEach(function (half) {
-          half.addEventListener('transitionend', function () {
-            remaining--;
-            if (remaining === 0) {
-              window.location.href = el.href;
-            }
-          }, { once: true });
-        });
+      });
+      return Math.max(400, maxMs);
+    }
+
+    function animatedNavigate(e) {
+      e.preventDefault();
+      const el = e.currentTarget;
+      const href = el.href;
+      const sector = el.getAttribute('data-sector');
+      if (sector) localStorage.setItem('sector', sector);
+
+      const curtain = document.getElementById('curtain');
+      const halves = curtain ? curtain.querySelectorAll('.curtain-half') : [];
+      if (!curtain || !halves.length) {
+        window.location.href = href;
+        return;
       }
 
-      document.querySelectorAll('[data-sector]').forEach(function (el) {
-        el.addEventListener('click', animateAndNavigate);
-      });
+      curtain.classList.remove('hidden');
+      curtain.offsetWidth;
+      curtain.classList.add('open');
 
-      var sector = localStorage.getItem('sector');
-      if (sector) {
-        var names = { water: 'آب', electricity: 'برق', gas: 'گاز و فرآورده‌های نفتی' };
-        var quick = document.getElementById('quick-entry');
+      let remaining = halves.length;
+      let navigated = false;
+
+      function go() {
+        if (navigated) return;
+        navigated = true;
+        window.location.assign(href);
+      }
+
+      const fallbackMs = parseMaxTransitionMs(halves) + 150;
+      const timeoutId = setTimeout(go, fallbackMs);
+
+      halves.forEach(half => {
+        half.addEventListener('transitionend', function () {
+          if (navigated) return;
+          if (--remaining === 0) {
+            clearTimeout(timeoutId);
+            go();
+          }
+        }, { once: true });
+      });
+    }
+
+    document.querySelectorAll('[data-sector]').forEach(el => {
+      el.addEventListener('click', animatedNavigate);
+    });
+
+    const sector = localStorage.getItem('sector');
+    if (sector) {
+      const names = { water: 'آب', electricity: 'برق', gas: 'گاز و فرآورده‌های نفتی' };
+      const quick = document.getElementById('quick-entry');
+      if (quick) {
         quick.href = sector + '/';
         quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
         quick.setAttribute('data-sector', sector);
         quick.classList.remove('hidden');
-        quick.addEventListener('click', animateAndNavigate);
+        quick.addEventListener('click', animatedNavigate);
       }
-    });
+    }
+  })();
   </script>
 </body>
 </html>
