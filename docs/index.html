@@ -90,6 +90,7 @@
     }
 
     document.querySelectorAll('[data-sector]').forEach(el => {
+      el.removeEventListener('click', animatedNavigate);
       el.addEventListener('click', animatedNavigate);
     });
 
@@ -102,6 +103,7 @@
         quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
         quick.setAttribute('data-sector', sector);
         quick.classList.remove('hidden');
+        quick.removeEventListener('click', animatedNavigate);
         quick.addEventListener('click', animatedNavigate);
       }
     }
