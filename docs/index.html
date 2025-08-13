@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231f7aff'/%3E%3Cpath d='M20 36c8 4 16-4 24 0' stroke='white' stroke-width='4' fill='none'/%3E%3C/svg%3E" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800&display=swap');
         body { font-family: 'Vazirmatn', sans-serif; background-color: #f0f4f8; }
@@ -58,6 +59,17 @@
             font-size: .9rem;
         }
     </style>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"
+            integrity="sha512-3v3L9b5m9q2s0i6gQ0yq+8vJm3a6oI1mG2r3l0X3zv3Y6uFJq1Wc1q9kGmXlM3Yj6fxp2U7N7yqZtCz9D6Qy4A=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // همه ایموجی‌ها را به SVG توییتر تبدیل کن (از جمله 🇮🇷)
+        if (window.twemoji) {
+          twemoji.parse(document.body, { folder: 'svg', ext: '.svg' });
+        }
+      });
+    </script>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
     <img src="../Logo.png" alt="Logo" class="site-logo">
@@ -219,7 +231,7 @@
             </div>
         </section>
         <footer class="text-center mt-12 text-slate-500 text-sm">
-            <p>کلیه حقوق مادی و معنوی این داشبورد متعلق به «خانه هم‌افزایی انرژی و آب استان خراسان رضوی» است. 🇮🇷</p>
+            <p>کلیه حقوق مادی و معنوی این داشبورد متعلق به «خانه هم‌افزایی انرژی و آب استان خراسان رضوی» است. <span class="emoji-flag" role="img" aria-label="پرچم ایران">🇮🇷</span></p>
             <p>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی</p>
             <p>منبع داده‌ها: گزارش رسمی شرکت آب منطقه‌ای خراسان رضوی (سال ۱۴۰۴)</p>
         </footer>
