@@ -52,7 +52,7 @@
             z-index: 1000;
         }
 
-        #out-footprint, #simulate-result, #solution-result {
+        #water-result, #simulate-result, #solution-result {
             margin-top: .75rem;
             line-height: 1.9;
             font-size: .9rem;
@@ -102,7 +102,7 @@
                         <input type="text" id="food-input" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition" placeholder="مثال: نان، گوشت گاو، گوجه فرنگی">
                     </div>
                     <div class="text-center">
-                        <button id="btn-footprint" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i><span>محاسبه ردپای آب</span></button>
+                        <button id="calc-water-btn" class="btn-gemini bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg"><i class="fas fa-seedling ml-2"></i><span>محاسبه ردپای آب</span></button>
                         <div id="ai-thinking" class="mt-4 hidden">
                             <div class="flex items-center justify-center gap-2 text-gray-700">
                                 <span class="text-xl">✨</span>
@@ -116,7 +116,7 @@
                             <div class="mt-3 h-8 w-20 rounded-full border-2 border-dashed border-purple-400 animate-spin mx-auto"></div>
                         </div>
                     </div>
-                    <div id="out-footprint" class="mt-4 p-4 bg-white/70 rounded-xl shadow-inner" aria-live="polite" tabindex="-1"></div>
+                    <div id="water-result" class="mt-4 p-4 bg-white/70 rounded-xl shadow-inner" aria-live="polite" tabindex="-1"></div>
                 </div>
             </div>
         </section>
