@@ -1,14 +1,14 @@
+const nf = new Intl.NumberFormat('fa-IR');
+
 function renderSkeleton(target) {
   const wrapper = document.createElement('div');
   wrapper.className = 'space-y-2 animate-pulse';
-
   const line1 = document.createElement('div');
   line1.className = 'h-4 bg-gray-200 rounded';
   const line2 = document.createElement('div');
   line2.className = 'h-4 bg-gray-200 rounded w-5/6';
   const line3 = document.createElement('div');
   line3.className = 'h-4 bg-gray-200 rounded w-4/6';
-
   wrapper.append(line1, line2, line3);
   target.replaceChildren(wrapper);
 }
@@ -30,7 +30,60 @@ function hideThinking(btn, thinkingEl, inputEls = []) {
   inputEls.forEach(el => el.removeAttribute('aria-busy'));
 }
 
-// شبیه‌ساز آینده آب
+async function callGemini(payload) {
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const raw = await res.clone().text();
+  console.log('[AI raw]', res.status, raw);
+  let data = null;
+  try { data = JSON.parse(raw); } catch (_) {}
+  if (!res.ok) {
+    const msg = data && typeof data === 'object' ? (data.details || data.error || raw) : raw;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+// 1) ردپای آب غذا -------------------------------------------------------
+(function () {
+  const btn = document.getElementById('btn-footprint');
+  const inp = document.getElementById('food-input');
+  const out = document.getElementById('out-footprint');
+  const thinking = document.getElementById('ai-thinking');
+  if (!btn || !inp || !out || !thinking) return;
+
+  btn.addEventListener('click', async () => {
+    const foods = (inp.value || '').trim();
+    if (!foods) { out.textContent = 'لطفاً مواد غذایی را وارد کنید.'; return; }
+
+    renderSkeleton(out);
+    showThinking(btn, thinking, [inp]);
+    try {
+      const data = await callGemini({ feature: 'water', q: foods });
+      const total = document.createElement('p');
+      total.className = 'font-bold';
+      total.textContent = nf.format(data.totalWater) + ' لیتر';
+      const ul = document.createElement('ul');
+      ul.className = 'list-disc pr-4';
+      (data.items || []).forEach(it => {
+        const li = document.createElement('li');
+        li.textContent = `${it.name}: ${nf.format(it.water)} لیتر`;
+        ul.appendChild(li);
+      });
+      out.replaceChildren(total, ul);
+    } catch (e) {
+      out.textContent = '⚠️ خطا در محاسبه.';
+      console.error(e);
+    } finally {
+      hideThinking(btn, thinking, [inp]);
+    }
+  });
+})();
+
+// 2) شبیه‌ساز آینده آب ---------------------------------------------------
 (function () {
   const btn = document.getElementById('simulate-btn');
   const rain = document.getElementById('rain-slider');
@@ -43,41 +96,21 @@ function hideThinking(btn, thinkingEl, inputEls = []) {
     renderSkeleton(out);
     showThinking(btn, thinking, [rain, cut]);
     try {
-      const rainVal = rain.value || rain.getAttribute('value') || '0';
-      const cutVal = cut.value || cut.getAttribute('value') || '0';
-      const prompt = `دستور: شبیه‌ساز منابع آب مشهد.
-ورودی:
-- تغییر بارش ماه آینده: ${rainVal} میلی‌متر
-- کاهش مصرف همگانی: ${cutVal} درصد
-خروجی JSON معتبر با ساختار:
-{
-  "bullets_fa":["نکته"],
-  "impact_index":عدد,
-  "note_fa":"متن",
-}`;
-      const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (_) {
-        out.textContent = '⚠️ پاسخ نامعتبر.';
-        return;
-      }
-      const ul = document.createElement('ul');
-      ul.className = 'list-disc pr-4';
-      (data.bullets_fa || []).forEach(b => {
-        const li = document.createElement('li');
-        li.className = 'mb-1';
-        li.textContent = b;
-        ul.appendChild(li);
-      });
-      const impact = document.createElement('p');
-      impact.className = 'font-bold mt-2';
-      impact.textContent = 'شاخص تأثیر: ' + nf.format(data.impact_index);
-      const note = document.createElement('p');
-      note.className = 'mt-1';
-      note.textContent = data.note_fa || '';
-      out.replaceChildren(ul, impact, note);
+      const payload = {
+        feature: 'simulate',
+        rainfall: Number(rain.value || rain.getAttribute('value') || '0'),
+        reduction: Number(cut.value || cut.getAttribute('value') || '0')
+      };
+      const data = await callGemini(payload);
+      const fc = data.forecast || {};
+      const status = document.createElement('p');
+      status.className = 'font-bold';
+      status.textContent = fc.status || '';
+      const change = document.createElement('p');
+      change.textContent = 'تغییر مخزن: ' + nf.format(fc.reservoirChangePct) + '%';
+      const notes = document.createElement('p');
+      notes.textContent = fc.notes || '';
+      out.replaceChildren(status, change, notes);
     } catch (e) {
       out.textContent = '⚠️ خطا در شبیه‌سازی.';
       console.error(e);
@@ -87,7 +120,7 @@ function hideThinking(btn, thinkingEl, inputEls = []) {
   });
 })();
 
-// راهکارهای هوشمند
+// 3) راهکارهای صرفه‌جویی -------------------------------------------------
 (function () {
   const btn = document.getElementById('solution-btn');
   const fam = document.getElementById('family-input');
@@ -100,33 +133,17 @@ function hideThinking(btn, thinkingEl, inputEls = []) {
     renderSkeleton(out);
     showThinking(btn, thinking, [fam, shw]);
     try {
-      const members = fam.value || '4';
-      const shower = shw.value || '10';
-      const prompt = `دستور: مشاور صرفه‌جویی آب هستی.
-ورودی: خانواده ${members} نفره، زمان حمام ${shower} دقیقه.
-۵ توصیه کوتاه ارائه بده.
-خروجی JSON معتبر با ساختار:
-{
-  "bullets_fa":[{"tip":"متن","liters_per_day":عدد}]
-}`;
-      const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (_) {
-        out.textContent = '⚠️ پاسخ نامعتبر.';
-        return;
-      }
+      const payload = {
+        feature: 'solutions',
+        family: Number(fam.value || '0'),
+        shower: Number(shw.value || '0')
+      };
+      const data = await callGemini(payload);
       const ul = document.createElement('ul');
       ul.className = 'list-disc pr-4';
-      (data.bullets_fa || []).forEach(t => {
+      (data.tips || []).forEach(t => {
         const li = document.createElement('li');
-        const tip = document.createElement('span');
-        tip.textContent = t.tip + ': ';
-        const strong = document.createElement('strong');
-        strong.textContent = nf.format(t.liters_per_day) + ' لیتر/روز';
-        li.appendChild(tip);
-        li.appendChild(strong);
+        li.textContent = `${t.title}: ${nf.format(t.impact_liters)} لیتر`;
         ul.appendChild(li);
       });
       out.replaceChildren(ul);

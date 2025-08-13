@@ -1,12 +1,13 @@
 // netlify/functions/gemini.js
 
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1min
+// Rate limiting helpers -------------------------------------------------
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX = 30;
 const rateMap = new Map();
 
-function getClientIp(event) {
-  const xfwd = event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For'] || '';
-  const ip = (xfwd.split(',')[0] || '').trim() || event.headers['client-ip'] || '';
+function getClientIp(req) {
+  const xfwd = req.headers.get('x-forwarded-for') || '';
+  const ip = (xfwd.split(',')[0] || '').trim() || req.headers.get('client-ip') || '';
   return ip || 'unknown';
 }
 
@@ -21,124 +22,175 @@ function isRateLimited(ip) {
   return entry.count > RATE_LIMIT_MAX;
 }
 
+// Allowed origins -------------------------------------------------------
 const allowlist = [
   'https://wesh360.ir',
   process.env.PREVIEW_ORIGIN,
 ].filter(Boolean);
 
-export const handler = async (event) => {
-  const origin = event.headers.origin || event.headers.Origin || '';
+// Main handler ----------------------------------------------------------
+export default async function handler(req) {
+  const origin = req.headers.get('origin') || '';
   const allowed = allowlist.includes(origin);
 
   const baseHeaders = {
-    'Vary': 'Origin',
+    Vary: 'Origin',
     'Access-Control-Allow-Methods': 'POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
   };
   const headers = allowed ? { ...baseHeaders, 'Access-Control-Allow-Origin': origin } : baseHeaders;
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers };
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers });
   }
 
   if (!allowed) {
-    return {
-      statusCode: 403,
+    return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
+      status: 403,
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Origin not allowed' }),
-    };
+    });
   }
 
-  const ip = getClientIp(event);
+  const ip = getClientIp(req);
   if (isRateLimited(ip)) {
-    return {
-      statusCode: 429,
+    return new Response(JSON.stringify({ error: 'Too Many Requests' }), {
+      status: 429,
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Too Many Requests' }),
-    };
+    });
   }
 
-  const respond = (code, body) => ({
-    statusCode: code,
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  // Parse request body ---------------------------------------------------
+  const reqBody = await req.json().catch(() => null);
+  if (!reqBody || typeof reqBody !== 'object') {
+    return new Response(
+      JSON.stringify({ error: 'bad_request', details: 'invalid JSON body' }),
+      { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const { feature } = reqBody;
+  if (!feature) {
+    return new Response(
+      JSON.stringify({ error: 'bad_request', details: 'missing feature' }),
+      { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Validate per feature -------------------------------------------------
+  if (feature === 'water') {
+    if (typeof reqBody.q !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'bad_request', details: 'water requires {feature:"water", q:string}' }),
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+  } else if (feature === 'simulate') {
+    if (typeof reqBody.rainfall !== 'number' || typeof reqBody.reduction !== 'number') {
+      return new Response(
+        JSON.stringify({ error: 'bad_request', details: 'simulate requires {rainfall:number,reduction:number}' }),
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+  } else if (feature === 'solutions') {
+    if (typeof reqBody.family !== 'number' || typeof reqBody.shower !== 'number') {
+      return new Response(
+        JSON.stringify({ error: 'bad_request', details: 'solutions requires {family:number,shower:number}' }),
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+  } else {
+    return new Response(
+      JSON.stringify({ error: 'bad_request', details: `unknown feature: ${feature}` }),
+      { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const API_KEY = process.env.GEMINI_API_KEY;
+  if (!API_KEY) {
+    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not set' }), {
+      status: 500,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Build prompt ---------------------------------------------------------
+  let userPrompt = '';
+  if (feature === 'water') {
+    userPrompt = `Foods: ${reqBody.q}`;
+  } else if (feature === 'simulate') {
+    userPrompt = `rainfall=${reqBody.rainfall}; reduction=${reqBody.reduction}`;
+  } else {
+    userPrompt = `family=${reqBody.family}; shower=${reqBody.shower}`;
+  }
+
+  const systemPrompt = `You are an API. Return ONLY valid JSON for the feature "${feature}".\nDo not include any prose, markdown, or code fences.\nIf input is insufficient, return {"error":"insufficient_input"}.\n\nSchemas:\n- water: {"type":"water","totalWater":number,"items":[{"name":string,"water":number}]}\n- simulate: {"type":"simulate","forecast":{"status":string,"reservoirChangePct":number,"notes":string}}\n- solutions: {"type":"solutions","tips":[{"title":string,"impact_liters":number}]}`;
+
+  const model = reqBody.model || 'gemini-2.0-flash';
+  const temperature = typeof reqBody.temperature === 'number' ? reqBody.temperature : 0.8;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+  const payload = {
+    system: systemPrompt,
+    contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+    generationConfig: {
+      temperature,
+      response_mime_type: 'application/json',
+    },
+  };
 
   try {
-    const { q: prompt, model = 'gemini-2.0-flash', temperature = 0.8 } = JSON.parse(event.body || '{}');
-    if (!prompt) return respond(400, { error: 'Missing prompt "q"' });
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-goog-api-key': API_KEY,
+        Referer: 'https://wesh360.ir',
+      },
+      body: JSON.stringify(payload),
+    });
 
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) return respond(500, { error: 'GEMINI_API_KEY not set' });
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-
-    const payload = {
-      system: 'Respond only with valid JSON: {"total_liters":number,...}',
-      contents: [
-        { role: 'user', parts: [{ text: prompt }] }
-      ],
-      generationConfig: {
-        temperature,
-        response_mime_type: 'application/json'
-      }
-    };
-
-    // fetch with timeout
-    const fetchWithTimeout = (resource, options = {}) => {
-      const { timeout = 12000 } = options;
-      return Promise.race([
-        fetch(resource, options),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), timeout)),
-      ]);
-    };
-
-    // basic retry for 429/5xx
-    let resp;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        resp = await fetchWithTimeout(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-goog-api-key': API_KEY, // ← ارسال کلید در هدر
-            'Referer': 'https://wesh360.ir',
-          },
-          body: JSON.stringify(payload),
-          timeout: 12000,
-        });
-        if (resp.ok || ![429, 500, 502, 503, 504].includes(resp.status)) break;
-        await new Promise(r => setTimeout(r, 500 * 2 ** attempt));
-      } catch (e) {
-        if (attempt === 2) throw e;
-        await new Promise(r => setTimeout(r, 500 * 2 ** attempt));
-      }
-    }
-
-    if (!resp || !resp.ok) {
-      let msg = resp ? await resp.text() : 'no response';
-      try {
-        const parsed = JSON.parse(msg);
-        msg = parsed.error?.message || msg;
-      } catch (_) { /* ignore JSON parse errors */ }
-      return respond(resp?.status || 502, { error: msg });
+    if (!resp.ok) {
+      const body = await resp.text();
+      console.error('[Gemini ERROR]', resp.status, body);
+      return new Response(
+        JSON.stringify({ error: 'gemini_error', status: resp.status, details: body }),
+        {
+          status: resp.status === 400 ? 400 : 502,
+          headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+        }
+      );
     }
 
     const data = await resp.json();
-    const text =
-      data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ??
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const aiText =
+      data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
 
-    // production: فقط متن
-    if (process.env.NODE_ENV === 'production') {
-      return respond(200, { text });
+    let out;
+    try {
+      out = JSON.parse(aiText);
+    } catch (_) {
+      return new Response(JSON.stringify({ error: 'invalid_ai_output' }), {
+        status: 502,
+        headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      });
     }
-    // غیرپرود: متن + خام برای دیباگ
-    return respond(200, { text, raw: data });
 
-  } catch (e) {
-    return respond(500, { error: String(e) });
+    return new Response(JSON.stringify(out), {
+      status: 200,
+      headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  } catch (err) {
+    const status = err?.status || 502;
+    const body = err?.response ? await err.response.text() : String(err);
+    console.error('[Gemini ERROR]', status, body);
+    return new Response(
+      JSON.stringify({ error: 'gemini_error', status, details: body }),
+      {
+        status: status === 400 ? 400 : 502,
+        headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      }
+    );
   }
-};
+}
 
