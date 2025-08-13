@@ -6,3 +6,19 @@ body { font-family: 'Vazirmatn', sans-serif; }
 .curtain-half { flex: 1; background: #f1f5f9; transform: translateX(0); transition: transform .8s ease-in-out; }
 .curtain.open .left { transform: translateX(-100%); }
 .curtain.open .right { transform: translateX(100%); }
+
+.logo-fixed {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-height: 60px;
+  margin-top: 10px;
+  margin-right: 10px;
+}
+
+.welcome-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+}
