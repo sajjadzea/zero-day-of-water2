@@ -1,0 +1,20 @@
+{
+  "name": "zero-day-of-water2",
+  "version": "1.0.0",
+  "description": "This repository hosts a simple dashboard served from the `/docs` directory and a proxy for Gemini API requests.",
+  "main": "tailwind.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify",
+    "test": "echo \"No tests\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
