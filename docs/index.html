@@ -342,8 +342,18 @@ All numbers must be numeric (no units attached in JSON).
 `;
 
         const text = await askGemini(`${basePrompt}\nFood list: ${foods}`, { model: 'gemini-2.0-flash' });
+        console.log("Raw API response:", text);
+        const clean = text.replace(/```json|```/g, '').trim();
 
-        let data; try { data = JSON.parse(text); } catch(_) { clearSkeleton(); out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
+        let data;
+        try {
+          data = JSON.parse(clean);
+        } catch (e) {
+          clearSkeleton();
+          out.textContent = '⚠️ پاسخ نامعتبر.';
+          console.error('Invalid JSON', e);
+          return;
+        }
         if (
           typeof data.total_liters !== 'number' ||
           !Array.isArray(data.details) ||
