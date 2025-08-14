@@ -1,6 +1,11 @@
 /* فونت‌های ایموجی رنگی در سیستم‌های مختلف */
 body {
   font-family: 'Vazirmatn', sans-serif;
+  font-weight: 400;
+}
+
+h1, h2, h3, .result-number {
+  font-weight: 900;
 }
 
 .emoji-flag{

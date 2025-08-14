@@ -56,25 +56,27 @@ async function handleSimulation(){
       raw = SAMPLE_SIMULATION;
     }
     const data = JSON.parse(raw);
-    const newDay = data.newZeroDay || '';
+    const newDayRaw = data.newZeroDay ?? '';
+    const days = toNum(newDayRaw);
+    const newDay = Number.isFinite(days) && days !== 0 ? nf.format(days) : newDayRaw;
     const delta = toNum(data.daysChange);
     const note = data.note || data.description || '';
 
     const color = delta >= 0 ? 'text-green-600' : 'text-red-600';
-    const container = Object.assign(document.createElement('div'), { className: 'space-y-2 text-center' });
-    const p1 = Object.assign(document.createElement('p'), {
-      innerHTML: `روز صفر جدید: <span class="font-bold">${newDay}</span>`
-    });
-    const p2 = Object.assign(document.createElement('p'), {
-      innerHTML: `تغییر تعداد روزها: <span class="${color} font-bold">${nf.format(delta)}</span> روز`
-    });
-    const p3 = Object.assign(document.createElement('p'), {
-      className: 'text-slate-600 text-sm',
-      textContent: note
-    });
-    container.append(p1, p2, p3);
-    out.innerHTML = '';
-    out.append(container);
+    const sign = delta >= 0 ? '+' : '-';
+    const deltaHtml = `<span class="${color} font-bold text-xl">(${sign}${nf.format(Math.abs(delta))} روز)</span>`;
+
+    out.className = 'mt-4 bg-green-50 rounded-xl p-6 shadow-sm text-right space-y-2';
+    out.setAttribute('dir','rtl');
+    out.innerHTML = `
+        <p class="text-slate-600">روز صفر جدید:</p>
+        <div class="flex items-baseline gap-2">
+          <span class="result-number text-blue-600 text-6xl">${newDay}</span>
+          <span class="text-blue-600 text-2xl">روز</span>
+          ${deltaHtml}
+        </div>
+        <p class="text-slate-700">${note}</p>
+      `;
 
     if (window.renderShareBar) renderShareBar(document.getElementById('simulate-share'), {
       feature:'simulate',
