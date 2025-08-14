@@ -66,3 +66,6 @@ h1, h2, h3, .result-number {
 [data-fa-digits], .js-fa-digits {
   unicode-bidi: plaintext;  /* کمک به ترتیب نمایش در برخی مرورگرها */
 }
+
+.simulate-result .result-number.main { line-height: 1; }
+.simulate-result .result-number.delta { line-height: 1; }
