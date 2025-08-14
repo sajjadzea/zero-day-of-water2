@@ -5,3 +5,11 @@
   font-variant-emoji: emoji; /* برای مرورگرهایی که پشتیبانی می‌کنند */
   line-height: 1;
 }
+
+/* Flag image produced by Twemoji/local fallback */
+.emoji-flag-img {
+  width: 1.25rem;   /* ~20px */
+  height: 1.25rem;
+  vertical-align: -0.125em;
+  display: inline-block;
+}
