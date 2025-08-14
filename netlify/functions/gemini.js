@@ -129,7 +129,7 @@ You are an API. Output ONLY valid JSON.
 All explanatory texts (notes, tips.title) MUST be in Persian (fa-IR).
 Schemas:
 - water: {"type":"water","totalWater":number,"items":[{"name":string,"water":number}]}
-- simulate: {"type":"simulate","forecast":{"status":string,"reservoirChangePct":number,"notes":string}}
+ - simulate: {"type":"simulate","newZeroDay":string,"daysChange":number,"note":string}
 - solutions: {"type":"solutions","tips":[{"title":string,"impact_liters":number}]}
 `;
 
@@ -183,6 +183,15 @@ Schemas:
         status: 502,
         headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       });
+    }
+
+    if (feature === 'simulate' && out && typeof out === 'object') {
+      out = {
+        type: 'simulate',
+        newZeroDay: out.newZeroDay,
+        daysChange: out.daysChange,
+        note: out.note,
+      };
     }
 
     return new Response(JSON.stringify(out), {
