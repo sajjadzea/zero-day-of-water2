@@ -22,16 +22,6 @@ function pickByType(payload, type){
 }
 const faStatus = s => ({normal:'عادی', improving:'روبه‌بهبود', critical:'بحرانی'}[(s||'').toLowerCase()] || (s||''));
 
-async function callGeminiAPI(payload){
-  const res = await fetch('/api/gemini', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
-  return await res.text();
-}
-
-const SAMPLE_SIMULATION = '{"newZeroDay":"۲۵ مهر ۱۴۰۴","daysChange":3,"note":"با این شرایط، روز صفر سه روز به تعویق می‌افتد."}';
-
 function skeleton(){
   return '<div class="space-y-2 animate-pulse"><div class="h-4 bg-slate-200 rounded"></div><div class="h-4 bg-slate-200 rounded w-5/6"></div><div class="h-4 bg-slate-200 rounded w-4/6"></div></div>';
 }
@@ -40,65 +30,73 @@ function showThinkingUI(){}
 function hideThinkingUI(){}
 
 // شبیه‌ساز ---------------------------------------------------------------
-async function handleSimulation(){
-  showThinkingUI();
-  const btn = document.getElementById('simulate-btn');
-  const thinking = document.getElementById('simulate-thinking');
-  const out = document.getElementById('simulate-result');
-  thinking?.classList.remove('hidden');
-  btn?.setAttribute('disabled','true');
-  out.innerHTML = skeleton();
+async function handleSimulation() {
+  const consumptionSlider = document.getElementById('cut-slider');
+  const rainfallSlider = document.getElementById('rain-slider');
+  const simulateBtn = document.getElementById('simulate-btn');
+  const simulationLoader = document.getElementById('simulate-thinking');
+  const simulationResultDiv = document.getElementById('simulate-result');
+  const simulationResultContainer = simulationResultDiv;
+
+  const baseDays = 32;
+  const consumptionReduction = Number(consumptionSlider.value);
+  const futureRainfall = Number(rainfallSlider.value);
+
+  simulationResultContainer.classList.remove('hidden');
+  simulationLoader.classList.remove('hidden');
+  simulationResultDiv.innerHTML = '';
+  simulateBtn.disabled = true;
+  simulateBtn.classList.add('opacity-50');
+
+  const newDaily = 0.953 * (1 - consumptionReduction / 100);
+  const added = futureRainfall * 0.5;
+  const newTotal = 30.5 + added;
+  const newDayZero = Math.round(newTotal / newDaily);
+  const delta = newDayZero - baseDays;
+
+  const deltaColor = delta >= 0 ? 'text-green-600' : 'text-red-600';
+  const deltaSign = delta >= 0 ? '+' : '';
+  const localParagraph = (dz, d, rain, cut) =>
+    `با کاهش ${cut}% مصرف و بارش ${rain} میلی‌متر، روز صفر از ${(dz - d).toLocaleString('fa-IR')} به ${dz.toLocaleString('fa-IR')} رسید (${deltaSign}${Math.abs(d).toLocaleString('fa-IR')} روز). این یعنی با همکاری شهروندان و اندکی بارش، می‌توانیم بحران را عقب بیندازیم.`;
+
+  simulationResultDiv.innerHTML = `
+    <div class="simulate-result rounded-xl bg-green-50 border border-green-200 p-6">
+      <div class="result-line flex items-baseline justify-center flex-wrap gap-2">
+        <span class="result-number main text-blue-600 font-extrabold text-6xl sm:text-7xl">${newDayZero.toLocaleString('fa-IR')}</span>
+        <span class="result-unit font-bold text-2xl">روز</span>
+        <span class="result-number delta ${deltaColor} font-extrabold text-4xl sm:text-5xl">(${deltaSign}${Math.abs(delta).toLocaleString('fa-IR')} روز)</span>
+      </div>
+      <p id="sim-paragraph" class="result-paragraph mt-3 text-slate-700 text-lg">${localParagraph(newDayZero, delta, futureRainfall, consumptionReduction)}</p>
+    </div>
+  `;
+  simulationLoader.classList.add('hidden');
+
   try {
-    const payload = {
-      feature: 'simulate',
-      rainfall: toNum(document.getElementById('rain-slider')?.value),
-      reduction: toNum(document.getElementById('cut-slider')?.value)
-    };
-    let raw;
-    try {
-      raw = await callGeminiAPI(payload);
-    } catch (_) {
-      raw = SAMPLE_SIMULATION;
-    }
-    const data = await parseMaybeJson(raw);
-    if (!data || typeof data !== 'object') throw new Error('invalid');
-    const newDayRaw = data.newZeroDay || data.new_day_zero || '';
-    let newDay = newDayRaw;
-    if (typeof newDayRaw === 'number' || (typeof newDayRaw === 'string' && /^\s*\d+\s*$/.test(newDayRaw))) {
-      newDay = nf.format(toNum(newDayRaw));
-    }
-    const delta = toNum(data.daysChange ?? data.days_change);
-    const note = data.note || data.description || data.explanation || '';
-
-    const color = delta >= 0 ? 'text-green-600' : 'text-red-600';
-    const sign = delta >= 0 ? '+' : '-';
-    const deltaHtml = `<span class="${color} font-bold text-2xl">(${sign}${nf.format(Math.abs(delta))} روز)</span>`;
-    const noteHtml = note ? `<p class="text-slate-700">${note}</p>` : '';
-
-    out.className = 'mt-4 bg-green-50 rounded-xl p-6 shadow-sm text-right space-y-2';
-    out.setAttribute('dir','rtl');
-    out.innerHTML = `
-        <p class="text-slate-600">روز صفر جدید:</p>
-        <div class="flex items-baseline gap-2">
-          <span class="result-number text-blue-600 text-6xl font-bold">${newDay}</span>
-          <span class="text-blue-600 text-2xl">روز</span>
-          ${deltaHtml}
-        </div>
-        ${noteHtml}
-      `;
-
-    if (window.renderShareBar) renderShareBar(document.getElementById('simulate-share'), {
-      feature:'simulate',
-      state:{ rainfall:payload.rainfall, reduction:payload.reduction },
-      result:{ newZeroDay:newDay, daysChange:delta, note }
+    const prompt = `
+      You are a water crisis analyst for Mashhad. Return JSON:
+      {
+        "new_day_zero": ${newDayZero},
+        "explanation": "<FA simple encouraging paragraph>"
+      }
+      Write explanation in Persian, single paragraph, plain text, no markdown.
+    `;
+    const res = await fetch('/.netlify/functions/gemini', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ prompt, json: true })
     });
-  } catch(e){
-    console.error('[simulate]', e);
-    out.textContent = '⚠ پاسخ نامعتبر.';
+    if (!res.ok) throw new Error('AI_HTTP_' + res.status);
+    const data = await res.json();
+    const text = (data && data.text) ? data.text : '';
+    let ai;
+    try { ai = typeof text === 'string' ? JSON.parse(text) : text; } catch {}
+    const expl = ai?.explanation || text || '';
+    if (expl) document.getElementById('sim-paragraph').textContent = expl;
+  } catch (err) {
+    console.warn('AI fallback used', err);
   } finally {
-    thinking?.classList.add('hidden');
-    btn?.removeAttribute('disabled');
-    hideThinkingUI?.();
+    simulateBtn.disabled = false;
+    simulateBtn.classList.remove('opacity-50');
   }
 }
 
