@@ -1,4 +1,8 @@
 /* فونت‌های ایموجی رنگی در سیستم‌های مختلف */
+body {
+  font-family: 'Vazirmatn', sans-serif;
+}
+
 .emoji-flag{
   font-family: inherit, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji",
                "EmojiOne Color", "Twemoji Mozilla", sans-serif;

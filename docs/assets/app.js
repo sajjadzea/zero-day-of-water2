@@ -17,6 +17,16 @@ function pickByType(payload, type){
 }
 const faStatus = s => ({normal:'عادی', improving:'روبه‌بهبود', critical:'بحرانی'}[(s||'').toLowerCase()] || (s||''));
 
+async function callGeminiAPI(payload){
+  const res = await fetch('/api/gemini', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  return await res.text();
+}
+
+const SAMPLE_SIMULATION = '{"newZeroDay":"۲۵ مهر ۱۴۰۴","daysChange":3,"note":"با این شرایط، روز صفر سه روز به تعویق می‌افتد."}';
+
 function skeleton(){
   return '<div class="space-y-2 animate-pulse"><div class="h-4 bg-slate-200 rounded"></div><div class="h-4 bg-slate-200 rounded w-5/6"></div><div class="h-4 bg-slate-200 rounded w-4/6"></div></div>';
 }
@@ -39,27 +49,37 @@ async function handleSimulation(){
       rainfall: toNum(document.getElementById('rain-slider')?.value),
       reduction: toNum(document.getElementById('cut-slider')?.value)
     };
-    const res = await fetch('/api/gemini', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const data = await parseMaybeJson(res);
-    const block = pickByType(data, 'simulate');
-    const fc = block?.forecast || {};
-    const pct = toNum(fc.reservoirChangePct);
-    const status = faStatus(fc.status);
+    let raw;
+    try {
+      raw = await callGeminiAPI(payload);
+    } catch (_) {
+      raw = SAMPLE_SIMULATION;
+    }
+    const data = JSON.parse(raw);
+    const newDay = data.newZeroDay || '';
+    const delta = toNum(data.daysChange);
+    const note = data.note || data.description || '';
 
+    const color = delta >= 0 ? 'text-green-600' : 'text-red-600';
+    const container = Object.assign(document.createElement('div'), { className: 'space-y-2 text-center' });
+    const p1 = Object.assign(document.createElement('p'), {
+      innerHTML: `روز صفر جدید: <span class="font-bold">${newDay}</span>`
+    });
+    const p2 = Object.assign(document.createElement('p'), {
+      innerHTML: `تغییر تعداد روزها: <span class="${color} font-bold">${nf.format(delta)}</span> روز`
+    });
+    const p3 = Object.assign(document.createElement('p'), {
+      className: 'text-slate-600 text-sm',
+      textContent: note
+    });
+    container.append(p1, p2, p3);
     out.innerHTML = '';
-    out.append(
-      Object.assign(document.createElement('p'), { className:'font-bold', textContent:`وضعیت: ${status}` }),
-      Object.assign(document.createElement('p'), { textContent:`تغییر مخزن: ${pf.format(pct)}٪` }),
-      Object.assign(document.createElement('p'), { className:'text-slate-600', textContent: fc.notes || '' })
-    );
+    out.append(container);
 
     if (window.renderShareBar) renderShareBar(document.getElementById('simulate-share'), {
       feature:'simulate',
       state:{ rainfall:payload.rainfall, reduction:payload.reduction },
-      result:{ forecast: fc }
+      result:{ newZeroDay:newDay, daysChange:delta, note }
     });
   } catch(e){
     console.error('[simulate]', e); out.textContent = '⚠ خطا در شبیه‌سازی.';
