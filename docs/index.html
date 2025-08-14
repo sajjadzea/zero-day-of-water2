@@ -17,7 +17,11 @@
     <link rel="stylesheet" href="page/landing/landing.css" /></head>
 <body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
   <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
-  <img src="page/landing/logo2.jfif" alt="لوگوی wesh360" class="logo-fixed" />
+  <picture>
+    <source srcset="page/landing/logo2.avif" type="image/avif">
+    <source srcset="page/landing/logo2.webp" type="image/webp">
+    <img src="page/landing/logo2.jfif" alt="لوگوی wesh360" class="logo-fixed" width="400" height="400" loading="lazy">
+  </picture>
   <main id="main" class="w-full text-center space-y-12">
     <h1 class="welcome-text">به wesh360 خوش آمدید</h1>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
