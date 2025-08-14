@@ -7,6 +7,11 @@ function toNum(v){
   return Number.isFinite(n) ? n : 0;
 }
 async function parseMaybeJson(res){
+  if (!res) return res;
+  if (typeof res === 'string') {
+    try { return JSON.parse(res); } catch { return res; }
+  }
+  if (typeof res === 'object' && typeof res.text !== 'function') return res;
   const raw = await res.text();
   try { return JSON.parse(raw); } catch { return raw; }
 }
@@ -55,12 +60,15 @@ async function handleSimulation(){
     } catch (_) {
       raw = SAMPLE_SIMULATION;
     }
-    const data = JSON.parse(raw);
-    const newDayRaw = data.newZeroDay ?? '';
-    const days = toNum(newDayRaw);
-    const newDay = Number.isFinite(days) && days !== 0 ? nf.format(days) : newDayRaw;
-    const delta = toNum(data.daysChange);
-    const note = data.note || data.description || '';
+    const data = await parseMaybeJson(raw);
+    if (!data || typeof data !== 'object') throw new Error('invalid');
+    const newDayRaw = data.newZeroDay || data.new_day_zero || '';
+    let newDay = newDayRaw;
+    if (typeof newDayRaw === 'number' || (typeof newDayRaw === 'string' && /^\s*\d+\s*$/.test(newDayRaw))) {
+      newDay = nf.format(toNum(newDayRaw));
+    }
+    const delta = toNum(data.daysChange ?? data.days_change);
+    const note = data.note || data.description || data.explanation || '';
 
     const color = delta >= 0 ? 'text-green-600' : 'text-red-600';
     const sign = delta >= 0 ? '+' : '-';
@@ -84,7 +92,8 @@ async function handleSimulation(){
       result:{ newZeroDay:newDay, daysChange:delta, note }
     });
   } catch(e){
-    console.error('[simulate]', e); out.textContent = '⚠ خطا در شبیه‌سازی.';
+    console.error('[simulate]', e);
+    out.textContent = '⚠ پاسخ نامعتبر.';
   } finally {
     thinking?.classList.add('hidden');
     btn?.removeAttribute('disabled');
