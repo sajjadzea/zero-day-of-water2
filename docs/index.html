@@ -31,8 +31,10 @@
   </main>
   <div id="curtain" class="curtain hidden"><div class="curtain-half left"></div><div class="curtain-half right"></div></div>
   <script>
-  (function () {
-    function parseMaxTransitionMs(els) {
+    (function () {
+      const debug = new URLSearchParams(location.search).get('debug-curtain') === '1';
+
+      function parseMaxTransitionMs(els) {
       let maxMs = 0;
       els.forEach(el => {
         const cs = getComputedStyle(el);
@@ -50,9 +52,10 @@
 
     function animatedNavigate(e) {
       e.preventDefault();
-      const el = e.currentTarget;
-      const href = el.href;
-      const sector = el.getAttribute('data-sector');
+        const el = e.currentTarget;
+        const href = el.href;
+        const sector = el.getAttribute('data-sector');
+        if (debug) console.log('Animated navigate start', { href, sector });
       if (sector) localStorage.setItem('sector', sector);
 
       const curtain = document.getElementById('curtain');
@@ -62,9 +65,9 @@
         return;
       }
 
-      curtain.classList.remove('hidden');
-      curtain.offsetWidth;
-      curtain.classList.add('open');
+        curtain.classList.remove('hidden');
+        curtain.offsetWidth;
+        curtain.classList.add('open');
 
       let remaining = halves.length;
       let navigated = false;
@@ -75,8 +78,9 @@
         window.location.assign(href);
       }
 
-      const fallbackMs = parseMaxTransitionMs(halves) + 150;
-      const timeoutId = setTimeout(go, fallbackMs);
+        const fallbackMs = parseMaxTransitionMs(halves) + 150;
+        if (debug) console.log('Curtain fallback timeout', fallbackMs);
+        const timeoutId = setTimeout(go, fallbackMs);
 
       halves.forEach(half => {
         half.addEventListener('transitionend', function () {
@@ -89,22 +93,25 @@
       });
     }
 
-    document.querySelectorAll('[data-sector]').forEach(el => {
-      el.removeEventListener('click', animatedNavigate);
-      el.addEventListener('click', animatedNavigate);
-    });
+      function bind(el){
+        if (el.__curtainBound) return;
+        el.__curtainBound = true;
+        el.addEventListener('click', animatedNavigate);
+        if (debug) console.log('Curtain bound to', el);
+      }
+
+      document.querySelectorAll('[data-sector]').forEach(bind);
 
     const sector = localStorage.getItem('sector');
     if (sector) {
       const names = { water: 'آب', electricity: 'برق', gas: 'گاز و فرآورده‌های نفتی' };
       const quick = document.getElementById('quick-entry');
       if (quick) {
-        quick.href = sector + '/';
-        quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
-        quick.setAttribute('data-sector', sector);
-        quick.classList.remove('hidden');
-        quick.removeEventListener('click', animatedNavigate);
-        quick.addEventListener('click', animatedNavigate);
+          quick.href = sector + '/';
+          quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
+          quick.setAttribute('data-sector', sector);
+          quick.classList.remove('hidden');
+          bind(quick);
       }
     }
   })();
