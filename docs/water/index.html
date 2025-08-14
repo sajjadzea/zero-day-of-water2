@@ -86,7 +86,11 @@
 <body class="p-4 sm:p-6 md:p-8">
     <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
     <header class="w-full flex justify-center mt-4">
-      <img src="header2.jpg" alt="هدر سایت" class="max-w-full h-auto rounded-lg shadow-md">
+      <picture>
+        <source srcset="header2.avif" type="image/avif">
+        <source srcset="header2.webp" type="image/webp">
+        <img src="header2.jpg" alt="هدر سایت" class="max-w-full h-auto rounded-lg shadow-md" width="1584" height="396" loading="lazy">
+      </picture>
     </header>
     <main id="main" class="max-w-7xl mx-auto">
         <header class="text-center mb-12">
