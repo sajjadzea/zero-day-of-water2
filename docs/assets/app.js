@@ -72,18 +72,19 @@ async function handleSimulation(){
 
     const color = delta >= 0 ? 'text-green-600' : 'text-red-600';
     const sign = delta >= 0 ? '+' : '-';
-    const deltaHtml = `<span class="${color} font-bold text-xl">(${sign}${nf.format(Math.abs(delta))} روز)</span>`;
+    const deltaHtml = `<span class="${color} font-bold text-2xl">(${sign}${nf.format(Math.abs(delta))} روز)</span>`;
+    const noteHtml = note ? `<p class="text-slate-700">${note}</p>` : '';
 
     out.className = 'mt-4 bg-green-50 rounded-xl p-6 shadow-sm text-right space-y-2';
     out.setAttribute('dir','rtl');
     out.innerHTML = `
         <p class="text-slate-600">روز صفر جدید:</p>
         <div class="flex items-baseline gap-2">
-          <span class="result-number text-blue-600 text-6xl">${newDay}</span>
+          <span class="result-number text-blue-600 text-6xl font-bold">${newDay}</span>
           <span class="text-blue-600 text-2xl">روز</span>
           ${deltaHtml}
         </div>
-        <p class="text-slate-700">${note}</p>
+        ${noteHtml}
       `;
 
     if (window.renderShareBar) renderShareBar(document.getElementById('simulate-share'), {
