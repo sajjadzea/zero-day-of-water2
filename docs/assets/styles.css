@@ -44,3 +44,8 @@
   /* جلوگیری از فوکوس قدیمی */
   outline: none;
 }
+
+/* Opt-in FA digits containers (non-intrusive) */
+[data-fa-digits], .js-fa-digits {
+  unicode-bidi: plaintext;  /* کمک به ترتیب نمایش در برخی مرورگرها */
+}
