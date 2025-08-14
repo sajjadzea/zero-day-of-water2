@@ -14,6 +14,14 @@
   display: inline-block;
 }
 
+/* Scoped image fix for flag replacement */
+.flag-img-fix {
+  width: 1.5em;
+  height: auto;
+  vertical-align: middle;
+  display: inline-block;
+}
+
 /* ===== A11y: skip link ===== */
 .skip-link {
   position: absolute;
