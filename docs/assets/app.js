@@ -31,17 +31,6 @@ function hideThinkingUI(){}
 
 function showErrorModal(msg){ alert(msg); }
 
-async function callGeminiAPI(prompt, isJson = false) {
-  const response = await fetch('/api/gemini', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, json: !!isJson })
-  });
-  if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
-  const result = await response.json();
-  return result?.text ?? '';
-}
-
 const foodInput = document.getElementById('food-input');
 const calculateFootprintBtn = document.getElementById('calc-water-btn');
 const footprintLoader = document.getElementById('ai-thinking');
@@ -99,20 +88,13 @@ async function handleSimulation() {
       }
       Write explanation in Persian, single paragraph, plain text, no markdown.
     `;
-    const res = await fetch('/.netlify/functions/gemini', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ prompt, json: true })
-    });
-    if (!res.ok) throw new Error('AI_HTTP_' + res.status);
-    const data = await res.json();
-    const text = (data && data.text) ? data.text : '';
+    const text = await askAI(prompt, { json: true });
     let ai;
     try { ai = typeof text === 'string' ? JSON.parse(text) : text; } catch {}
     const expl = ai?.explanation || text || '';
     if (expl) document.getElementById('sim-paragraph').textContent = expl;
   } catch (err) {
-    console.warn('AI fallback used', err);
+    console.warn('AI fallback used:', err.message);
   } finally {
     simulateBtn.disabled = false;
     simulateBtn.classList.remove('opacity-50');
@@ -129,15 +111,22 @@ async function handleSolutions(){
   btn?.setAttribute('disabled','true');
   out.innerHTML = skeleton();
   try {
-    const payload = {
-      feature:'solutions',
-      family: toNum(document.getElementById('family-input')?.value),
-      shower: toNum(document.getElementById('shower-input')?.value)
-    };
-    const res = await fetch('/api/gemini', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const data = await parseMaybeJson(res);
-    const block = pickByType(data, 'solutions');
-    const tips = block?.tips || [];
+    const family = toNum(document.getElementById('family-input')?.value);
+    const shower = toNum(document.getElementById('shower-input')?.value);
+    const prompt = `
+      You are a personalized water-saving assistant.
+      Family members: ${family}
+      Average shower time: ${shower} minutes
+      Provide 5 short tips.
+      Return JSON with structure:
+      {
+        "tips": [ { "title": "<string>", "impact_liters": <number> } ]
+      }
+      All text must be in Persian. No markdown.
+    `;
+    const jsonString = await askAI(prompt, { json: true });
+    const result = JSON.parse(String(jsonString).trim());
+    const tips = Array.isArray(result.tips) ? result.tips : [];
 
     out.innerHTML = '';
     const ul = Object.assign(document.createElement('ul'), { className:'list-disc pr-5 space-y-1' });
@@ -149,10 +138,11 @@ async function handleSolutions(){
     out.append(ul);
 
     if (window.renderShareBar) renderShareBar(document.getElementById('solution-share'), {
-      feature:'solutions', state:{ family:payload.family, shower:payload.shower }, result:{ tips }
+      feature:'solutions', state:{ family, shower }, result:{ tips }
     });
   } catch(e){
-    console.error('[solutions]', e); out.textContent = '⚠ خطا در تولید راهکار.';
+    console.warn('[solutions]', e.message);
+    out.textContent = '⚠ خطا در تولید راهکار.';
   } finally {
     thinking?.classList.add('hidden');
     btn?.removeAttribute('disabled');
@@ -231,7 +221,7 @@ async function handleCalculateFootprint() {
       All text fields must be in Persian. No markdown.
     `;
 
-    const jsonString = await callGeminiAPI(prompt, true);
+    const jsonString = await askAI(prompt, { json: true });
 
     // تلاش برای parse امن—برخی مدل‌ها JSON را داخل backticks می‌فرستند
     const cleaned = String(jsonString).trim().replace(/^```json\s*|\s*```$/g, '');
@@ -257,7 +247,7 @@ async function handleCalculateFootprint() {
       `;
     }
   } catch (error) {
-    console.warn("Gemini API Error (Footprint) – using local fallback:", error);
+    console.warn("Gemini API Error (Footprint) – using local fallback:", error.message);
     // هیچ کاری لازم نیست؛ خروجی محلی باقی می‌ماند و پنهان نمی‌شود.
   } finally {
     calculateFootprintBtn.disabled = false;

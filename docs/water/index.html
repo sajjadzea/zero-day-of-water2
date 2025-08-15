@@ -289,20 +289,9 @@
   }
 })();
     </script>
-    <script src="assets/app.js"></script>
-    <div id="ping-result" class="text-center text-xs text-slate-500 mt-8"></div>
+    <script src="../assets/ai.js"></script>
+    <script src="../assets/app.js"></script>
     <script>
-
-  async function askGemini(prompt, opts={}) {
-    const r = await fetch(`${window.location.origin}/api/gemini`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: prompt, ...opts })
-    });
-    if (!r.ok) throw new Error('Gemini failed: ' + r.status);
-    const d = await r.json();
-    return d.text || '';
-  }
 
   function setLoading(el, on=true) {
     if (!el) return;
@@ -373,7 +362,7 @@ Your output MUST be a JSON object with this structure:
 All numbers must be numeric (no units attached in JSON).
 `;
 
-        const text = await askGemini(`${basePrompt}\nFood list: ${foods}`, { model: 'gemini-2.0-flash' });
+        const text = await askAI(`${basePrompt}\nFood list: ${foods}`, { model: 'gemini-2.0-flash' });
         console.log("Raw API response:", text);
         const clean = text.replace(/```json|```/g, '').trim();
 
@@ -383,7 +372,7 @@ All numbers must be numeric (no units attached in JSON).
         } catch (e) {
           clearSkeleton();
           out.textContent = '⚠️ پاسخ نامعتبر';
-          console.error("Invalid JSON:", text);
+          console.warn('Invalid JSON');
           return;
         }
         if (
@@ -430,7 +419,7 @@ All numbers must be numeric (no units attached in JSON).
         clearSkeleton();
         out.textContent = '⚠️ خطا در محاسبه.';
         out.focus();
-        console.error(e);
+        console.warn(e.message);
       } finally {
         hideThinkingUI();
       }
@@ -461,7 +450,7 @@ All numbers must be numeric (no units attached in JSON).
   "impact_index":عدد,
   "note_fa":"متن"
 }`;
-        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+        const text = await askAI(prompt, { model: 'gemini-2.0-flash' });
         let data; try { data = JSON.parse(text); } catch(_) { out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
         const ul = document.createElement('ul');
         ul.className = 'list-disc pr-4';
@@ -478,7 +467,7 @@ All numbers must be numeric (no units attached in JSON).
         note.className = 'mt-1';
         note.textContent = data.note_fa || '';
         out.replaceChildren(ul, impact, note);
-      } catch(e){ out.textContent = '⚠️ خطا در شبیه‌سازی.'; console.error(e); }
+      } catch(e){ out.textContent = '⚠️ خطا در شبیه‌سازی.'; console.warn(e.message); }
       finally { setLoading(btn, false); }
     });
   })();
@@ -504,7 +493,7 @@ All numbers must be numeric (no units attached in JSON).
 {
   "bullets_fa":[{"tip":"متن","liters_per_day":عدد}]
 }`;
-        const text = await askGemini(prompt, { model: 'gemini-2.0-flash' });
+        const text = await askAI(prompt, { model: 'gemini-2.0-flash' });
         let data; try { data = JSON.parse(text); } catch(_) { out.textContent = '⚠️ پاسخ نامعتبر.'; return; }
         const ul = document.createElement('ul');
         ul.className = 'list-disc pr-4';
@@ -519,24 +508,11 @@ All numbers must be numeric (no units attached in JSON).
           ul.appendChild(li);
         });
         out.replaceChildren(ul);
-      } catch(e){ out.textContent = '⚠️ خطا در تولید راهکار.'; console.error(e); }
+      } catch(e){ out.textContent = '⚠️ خطا در تولید راهکار.'; console.warn(e.message); }
       finally { setLoading(btn, false); }
     });
   })();
 
-  // quick connectivity test
-  (async function(){
-    const el = document.getElementById('ping-result');
-    if(!el) return;
-    try {
-      const txt = await askGemini('ping');
-      console.log('ping', txt);
-      el.textContent = txt;
-    } catch(e){
-      console.error('ping failed', e);
-      el.textContent = 'ping failed';
-    }
-  })();
     </script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"
         integrity="sha512-3v3L9b5m9q2s0i6gQ0yq+8vJm3a6oI1mG2r3l0X3zv3Y6uFJq1Wc1q9kGmXlM3Yj6fxp2U7N7yqZtCz9D6Qy4A=="
