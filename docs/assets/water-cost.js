@@ -24,6 +24,7 @@
   const breakdownTable = document.getElementById('breakdown_table');
   const costChartEl = document.getElementById('costChart');
   const sensitivityTable = document.getElementById('sensitivity_table');
+  const sensitivityChartEl = document.getElementById('sensitivityChart');
   const summaryEl = document.getElementById('summary');
 
   const inputs = [c_production, c_maintenance, p_loss, c_energy, p_power_outage];
@@ -42,6 +43,7 @@
     Chart.defaults.font.family = "'Vazirmatn', sans-serif";
   }
   let chart;
+  let sensitivityChart;
 
   function updateDisplays() {
     c_production_val.textContent = tomanFmt(c_production.value);
@@ -98,25 +100,50 @@
 
   function renderSensitivity(baseVals, baseFinal) {
     const scenarios = [
-      { key: 'c_production', label: 'هزینه تولید', isPercent: false },
-      { key: 'c_maintenance', label: 'هزینه نگهداری', isPercent: false },
-      { key: 'c_energy', label: 'هزینه انرژی', isPercent: false },
-      { key: 'p_loss', label: 'تلفات شبکه', isPercent: true },
-      { key: 'p_power_outage', label: 'قطعی برق', isPercent: true }
+      { key: 'c_production', label: 'هزینه تولید' },
+      { key: 'c_maintenance', label: 'هزینه نگهداری' },
+      { key: 'c_energy', label: 'هزینه انرژی' },
+      { key: 'p_loss', label: 'تلفات شبکه' },
+      { key: 'p_power_outage', label: 'قطعی برق' }
     ];
-    let html = '<thead><tr><th class="p-2">سناریو</th><th class="p-2">قیمت نهایی</th><th class="p-2">تغییر</th></tr></thead><tbody>';
-    scenarios.forEach(sc => {
+    const results = scenarios.map(sc => {
       const newVals = { ...baseVals };
       newVals[sc.key] = baseVals[sc.key] * 1.1;
       const { final } = calcCosts(newVals);
       const change = final - baseFinal;
       const percentageChange = (change / baseFinal) * 100;
-      const sign = change >= 0 ? '+' : '-';
-      const colorClass = change >= 0 ? 'text-red-600' : 'text-green-600';
-      html += `<tr><td class="p-2">+۱۰٪ ${sc.label}</td><td class="p-2">${tomanFmt(final)}</td><td class="p-2 font-semibold ${colorClass}">${sign} ${pctFmt.format(Math.abs(percentageChange))}% (${tomanFmt(Math.abs(change))} تومان)</td></tr>`;
+      return { ...sc, final, change, percentageChange };
+    });
+
+    results.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+
+    let html = '<thead><tr><th class="p-2">سناریو</th><th class="p-2">قیمت نهایی</th><th class="p-2">تغییر</th></tr></thead><tbody>';
+    results.forEach(r => {
+      const sign = r.change >= 0 ? '+' : '-';
+      const colorClass = r.change >= 0 ? 'text-red-600' : 'text-green-600';
+      html += `<tr><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${sign} ${pctFmt.format(Math.abs(r.percentageChange))}% (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
     });
     html += '</tbody>';
     sensitivityTable.innerHTML = html;
+
+    if (hasChart && sensitivityChartEl) {
+      const labels = results.map(r => `+۱۰٪ ${r.label}`);
+      const data = results.map(r => r.percentageChange);
+      if (!sensitivityChart) {
+        sensitivityChart = new Chart(sensitivityChartEl.getContext('2d'), {
+          type: 'bar',
+          data: { labels, datasets: [{ data }] },
+          options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } }
+          }
+        });
+      } else {
+        sensitivityChart.data.labels = labels;
+        sensitivityChart.data.datasets[0].data = data;
+        sensitivityChart.update();
+      }
+    }
   }
 
   function renderSummary(realCost, finalPrice) {
