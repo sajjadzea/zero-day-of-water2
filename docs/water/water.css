@@ -145,14 +145,28 @@ input[type=range]::-moz-range-thumb {
 
 /* ===== Mobile overrides ===== */
 @media (max-width: 768px) {
-  .card-row { flex-direction: column; }
-  .card { width: 100%; }
-  .site-logo { width: 25vw; }
+  .card-row {
+    flex-direction: column;
+    align-items: center;
+  }
+  .card {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .site-logo {
+    position: static;
+    display: block;
+    margin: 0 auto 1rem;
+    width: 80px;
+    max-width: 80px;
+  }
   .water-drop-container {
     width: 25vw;
     height: 25vw;
-    max-width: 100px;
-    max-height: 100px;
+    max-width: 80px;
+    max-height: 80px;
+    margin: 0 auto;
   }
 }
 

@@ -4,9 +4,9 @@
 /* ===== Base (desktop) styles ===== */
 .landing-logo {
   position: relative;
-  margin: 10px auto;
-  width: 40vw;
-  max-width: 400px;
+  margin: 20px auto;
+  width: 400px;
+  max-width: 100%;
   height: auto;
   object-fit: contain;
   display: block;
@@ -22,8 +22,8 @@
 /* ===== Mobile overrides ===== */
 @media (max-width: 768px) {
   .landing-logo {
-    width: 60vw;
-    max-width: 60%;
+    width: 60%;
+    max-width: 240px;
   }
 
   .welcome-text {
