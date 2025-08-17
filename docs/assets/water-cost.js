@@ -13,15 +13,15 @@
     new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1, useGrouping: false }).format(v) + '%';
 
   const c_production = document.getElementById('c_production');
-  const c_production_val = document.getElementById('c_production_val');
+  const c_production_range = document.getElementById('c_production_range');
   const c_maintenance = document.getElementById('c_maintenance');
-  const c_maintenance_val = document.getElementById('c_maintenance_val');
+  const c_maintenance_range = document.getElementById('c_maintenance_range');
   const p_loss = document.getElementById('p_loss');
-  const p_loss_val = document.getElementById('p_loss_val');
+  const p_loss_range = document.getElementById('p_loss_range');
   const c_energy = document.getElementById('c_energy');
-  const c_energy_val = document.getElementById('c_energy_val');
+  const c_energy_range = document.getElementById('c_energy_range');
   const p_power_outage = document.getElementById('p_power_outage');
-  const p_power_outage_val = document.getElementById('p_power_outage_val');
+  const p_power_outage_range = document.getElementById('p_power_outage_range');
   const defaultsBtn = document.getElementById('btn_defaults');
 
   const realCostEl = document.getElementById('real_cost');
@@ -34,7 +34,14 @@
   const sensitivityChartEl = document.getElementById('sensitivityChart');
   const summaryEl = document.getElementById('summary');
 
-  const inputs = [c_production, c_maintenance, p_loss, c_energy, p_power_outage];
+  const pairs = [
+    { input: c_production, range: c_production_range },
+    { input: c_maintenance, range: c_maintenance_range },
+    { input: p_loss, range: p_loss_range },
+    { input: c_energy, range: c_energy_range },
+    { input: p_power_outage, range: p_power_outage_range }
+  ];
+  const inputs = pairs.map(p => p.input);
   inputs.forEach(inp => {
     const hint = document.createElement('span');
     hint.id = `${inp.id}_hint`;
@@ -49,14 +56,6 @@
   }
   let chart;
   let sensitivityChart;
-
-  function updateDisplays() {
-    c_production_val.textContent = tomanFmt(c_production.value);
-    c_maintenance_val.textContent = tomanFmt(c_maintenance.value);
-    c_energy_val.textContent = tomanFmt(c_energy.value);
-    p_loss_val.textContent = pctFmt.format(p_loss.value / 100);
-    p_power_outage_val.textContent = pctFmt.format(p_power_outage.value / 100);
-  }
 
   function calcCosts(vals) {
     const base = vals.c_production + vals.c_maintenance + vals.c_energy;
@@ -249,26 +248,31 @@
   }
 
   const recalcDebounced = debounce(calculate, 200);
-  inputs.forEach(inp => {
-    inp.addEventListener('input', () => {
-      sanitizeInput(inp);
-      updateDisplays();
+  pairs.forEach(({ input, range }) => {
+    range.addEventListener('input', () => {
+      input.value = range.value;
+      sanitizeInput(input);
+      recalcDebounced();
+    });
+    input.addEventListener('input', () => {
+      sanitizeInput(input);
+      range.value = input.value;
       recalcDebounced();
     });
   });
 
   if (defaultsBtn) {
     defaultsBtn.addEventListener('click', () => {
-      inputs.forEach(inp => {
-        inp.value = inp.defaultValue;
-        hideHint(inp);
+      pairs.forEach(({ input, range }) => {
+        input.value = input.defaultValue;
+        range.value = input.defaultValue;
+        hideHint(input);
       });
-      updateDisplays();
       calculate();
     });
   }
 
-  updateDisplays();
+  pairs.forEach(({ input, range }) => (range.value = input.value));
   calculate();
 
   ['pagehide', 'unload'].forEach(ev => {
