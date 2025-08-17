@@ -30,6 +30,7 @@
   const sensitivityList = document.getElementById('sensitivity_list');
   const sensitivityChartEl = document.getElementById('sensitivityChart');
   const summaryEl = document.getElementById('summary');
+  const calcStatusEl = document.getElementById('calc_status');
 
   const pairs = [
     { input: c_production, range: c_production_range },
@@ -231,6 +232,7 @@
     renderChart(breakdownData);
     renderSensitivity(vals, final);
     renderSummary(real, final);
+    if (calcStatusEl) calcStatusEl.textContent = '';
   }
 
   function debounce(fn, delay) {
@@ -244,16 +246,20 @@
   }
 
   const recalcDebounced = debounce(calculate, 200);
+  function triggerRecalc() {
+    if (calcStatusEl) calcStatusEl.textContent = 'در حال محاسبه…';
+    recalcDebounced();
+  }
   pairs.forEach(({ input, range }) => {
     range.addEventListener('input', () => {
       input.value = digits.toFa(range.value);
       sanitizeInput(input);
-      recalcDebounced();
+      triggerRecalc();
     });
     input.addEventListener('input', () => {
       sanitizeInput(input);
       range.value = digits.toEn(input.value);
-      recalcDebounced();
+      triggerRecalc();
     });
   });
 
@@ -265,12 +271,16 @@
         range.value = digits.toEn(input.defaultValue);
         hideHint(input);
       });
+      if (calcStatusEl) calcStatusEl.textContent = 'در حال محاسبه…';
       calculate();
     });
   }
 
   if (calcBtn) {
-    calcBtn.addEventListener('click', () => calculate());
+    calcBtn.addEventListener('click', () => {
+      if (calcStatusEl) calcStatusEl.textContent = 'در حال محاسبه…';
+      calculate();
+    });
   }
 
   pairs.forEach(({ input, range }) => {
