@@ -16,7 +16,85 @@
       <link rel="stylesheet" href="assets/tailwind.css">
       <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
       <link rel="stylesheet" href="assets/styles.css">
+ codex/replace-drop-icon-with-waffle-charts
+      <style>
+          body { background-color: #f0f4f8; }
+        .main-title { font-weight: 800; color: #1e3a8a; }
+        /* --- Cards --- */
+        .card-row {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .card {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 20px rgba(0,0,0,.05);
+            padding: 1.5rem;
+            flex: 1;
+            min-width: 0;
+            width: min(280px, 100%);
+        }
+
+        .footprint-card {
+            background-color: #FFFBEA;
+            border: 1px solid #F5EAC2;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .simulator-card {
+            background-color: #E6FAF0;
+            border: 1px solid #C8EEDA;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        @media (max-width: 768px) {
+            .card-row {
+                flex-direction: column;
+            }
+        }
+        .waffle{ --size:10; --gap:6px; --cell:12px; display:grid;
+          grid-template-columns:repeat(var(--size), var(--cell)); gap:var(--gap); place-content:center}
+        .waffle span{ width:var(--cell); height:var(--cell); border-radius:3px; background:#e5e7eb }
+        .waffle span.f{ background:#1d4ed8 }
+        .waffle[data-state="warn"] span.f{ background:#f59e0b }
+        .waffle[data-state="alert"] span.f{ background:#ef4444 }
+        @media (max-width:640px){ .waffle{ --cell:10px; --gap:4px } }
+        .dark .waffle span{ background:#374151 }
+        .days-left-card { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; }
+        .rain-bar { background-color: #93c5fd; border-radius: .5rem; position: relative; }
+        .rain-bar-fill { background-color: #1d4ed8; border-radius: .5rem; transition: height 1s ease-out; }
+        .btn-gemini { background: linear-gradient(135deg, #4f46e5, #7c3aed); transition: all .3s ease; }
+        .btn-gemini:hover { box-shadow: 0 0 20px rgba(79,70,229,.5); }
+        input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:8px; background:#d1d5db; border-radius:5px; outline:none; opacity:.7; transition:opacity .2s; }
+        input[type=range]:hover{ opacity:1; }
+        input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:24px; height:24px; background:#3b82f6; cursor:pointer; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,.2); }
+        input[type=range]::-moz-range-thumb{ width:24px; height:24px; background:#3b82f6; cursor:pointer; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,.2); }
+        #out-footprint,
+        #water-result,
+        #simulate-result,
+        #solution-result {
+            margin-top: .75rem;
+            line-height: 1.9;
+            font-size: .9rem;
+        }
+
+        .site-logo {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 25vw;
+            height: auto;
+            max-width: 120px;
+            max-height: 120px;
+            z-index: 1000;
+        }
+    </style>
+
       <link rel="stylesheet" href="water/water.css">
+ main
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js"
             integrity="sha512-3v3L9b5m9q2s0i6gQ0yq+8vJm3a6oI1mG2r3l0X3zv3Y6uFJq1Wc1q9kGmXlM3Yj6fxp2U7N7yqZtCz9D6Qy4A=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -63,10 +141,10 @@
         <section class="mb-12">
             <h2 class="text-3xl font-bold text-slate-800 text-center mb-8">پایش لحظه‌ای سدها</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3><div class="water-drop-container mb-4"><div class="water-drop-icon"></div><div class="water-drop-background" style="height: 5%;"></div></div><p class="text-5xl font-extrabold text-blue-600">5%</p><p class="text-slate-500 mt-2">حجم: حدود ۶۵ میلیون متر مکعب</p><div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><i class="fas fa-exclamation-triangle mr-2"></i>نیمی از این حجم متعلق به ترکمنستان است.</div></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3><div class="water-drop-container mb-4"><div class="water-drop-icon"></div><div class="water-drop-background" style="height: 7%;"></div></div><p class="text-5xl font-extrabold text-blue-600">7%</p><p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3><div class="water-drop-container mb-4"><div class="water-drop-icon"></div><div class="water-drop-background" style="height: 0%;"></div></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3><div class="water-drop-container mb-4"><div class="water-drop-icon"></div><div class="water-drop-background" style="height: 0%;"></div></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۴ میلیون متر مکعب</p></div>
+                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3><div class="waffle mb-4" data-name="سد دوستی" data-pct="5" aria-label="پرشدگی سد دوستی 5 درصد"></div><p class="text-5xl font-extrabold text-blue-600">5%</p><p class="text-slate-500 mt-2">حجم: حدود ۶۵ میلیون متر مکعب</p><div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><i class="fas fa-exclamation-triangle mr-2"></i>نیمی از این حجم متعلق به ترکمنستان است.</div></div>
+                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3><div class="waffle mb-4" data-name="سد طرق" data-pct="7" aria-label="پرشدگی سد طرق 7 درصد"></div><p class="text-5xl font-extrabold text-blue-600">7%</p><p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p></div>
+                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3><div class="waffle mb-4" data-name="سد کارده" data-pct="0" aria-label="پرشدگی سد کارده 0 درصد"></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p></div>
+                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3><div class="waffle mb-4" data-name="سد ارداک" data-pct="0" aria-label="پرشدگی سد ارداک 0 درصد"></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۴ میلیون متر مکعب</p></div>
             </div>
         </section>
         <section class="mb-12">
@@ -205,6 +283,26 @@
         </footer>
     </main>
     <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"><div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center"><div class="text-red-500 mb-4"><i class="fas fa-exclamation-circle fa-3x" aria-hidden="true"></i></div><h3 class="text-lg font-bold text-red-600 mb-2">خطا در ارتباط با سرور</h3><p id="error-message" class="text-slate-700">متاسفانه مشکلی در دریافت اطلاعات پیش آمد. لطفا دوباره تلاش کنید.</p><button id="close-modal-btn" type="button" class="mt-6 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">بستن</button></div></div>
+    <script>
+(function(){
+  function renderWaffle(el){
+    const pct = Math.max(0, Math.min(100, Number(el.dataset.pct)||0));
+    const filled = Math.round(pct);
+    const frag = document.createDocumentFragment();
+    for(let i=0;i<100;i++){
+      const s=document.createElement('span');
+      if(i<filled) s.className='f';
+      frag.appendChild(s);
+    }
+    el.replaceChildren(frag);
+    if(pct < 15) el.dataset.state = 'alert';
+    else if(pct < 40) el.dataset.state = 'warn';
+    const name = el.dataset.name || 'سد';
+    el.setAttribute('aria-label', `پرشدگی ${name} ${pct} درصد`);
+  }
+  document.querySelectorAll('.waffle').forEach(renderWaffle);
+})();
+    </script>
     <script>
 (function(){
   function initSimulatorUI(){
