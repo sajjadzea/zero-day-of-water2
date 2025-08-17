@@ -21,19 +21,26 @@
           body { background-color: #f0f4f8; }
         .main-title { font-weight: 800; color: #1e3a8a; }
         /* --- Cards --- */
-        .card-row {
+        .card-row,
+        .card-container {
             display: flex;
-            gap: 1.5rem;
             flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: space-between;
         }
         .card {
             background: #fff;
             border-radius: 18px;
             box-shadow: 0 8px 20px rgba(0,0,0,.05);
             padding: 1.5rem;
-            flex: 1;
-            min-width: 0;
-            width: min(280px, 100%);
+            flex: 1 1 calc(25% - 1.5rem);
+            min-width: 240px;
+            width: 100%;
+        }
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
         .footprint-card {
@@ -51,8 +58,14 @@
         }
 
         @media (max-width: 768px) {
-            .card-row {
+            .card-row,
+            .card-container {
                 flex-direction: column;
+                align-items: center;
+            }
+            .card {
+                flex: 1 1 100%;
+                max-width: 600px;
             }
         }
         .waffle{ --size:10; --gap:6px; --cell:12px; display:grid;
@@ -123,7 +136,7 @@
         <img src="header2.jpg" alt="هدر سایت" class="max-w-full h-auto rounded-lg shadow-md" width="1584" height="396" loading="lazy">
       </picture>
     </header>
-    <main id="main" class="max-w-7xl mx-auto">
+    <main id="main" class="dashboard max-w-7xl mx-auto">
         <header class="text-center mb-12">
             <h1 class="text-4xl md:text-5xl font-extrabold main-title">وضعیت بحرانی آب در مشهد</h1>
             <p class="text-slate-600 text-lg mt-4">آخرین بروزرسانی: شنبه 18مرداد ۱۴۰۴</p>
@@ -259,7 +272,7 @@
             </div>
         </section>
         <section class="mb-12">
-            <div class="card-row">
+            <div class="card-row card-container">
                 <div class="card stats-card" data-fa-digits>
                     <h2 class="text-2xl font-bold text-slate-800 text-center mb-6">آب ما کجا مصرف می‌شود؟</h2>
                     <div class="space-y-5">

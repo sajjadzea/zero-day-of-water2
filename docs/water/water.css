@@ -3,11 +3,12 @@ body { background-color: #f0f4f8; }
 
 .main-title { font-weight: 800; color: #1e3a8a; }
 
-.card-row {
+.card-row,
+.card-container {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .card {
@@ -15,10 +16,15 @@ body { background-color: #f0f4f8; }
   border-radius: 18px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
   padding: 1.5rem;
-  flex: 1;
-  min-width: 0;
-  width: 320px;
-  max-width: 100%;
+  flex: 1 1 calc(25% - 1.5rem);
+  min-width: 240px;
+  width: 100%;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .footprint-card {
@@ -146,13 +152,15 @@ input[type=range]::-moz-range-thumb {
 
 /* ===== Mobile overrides ===== */
 @media (max-width: 768px) {
-  .card-row {
+  .card-row,
+  .card-container {
     flex-direction: column;
     align-items: center;
   }
 
   .card {
-    width: 90%;
+    flex: 1 1 100%;
+    max-width: 600px;
   }
 
   .site-logo {
