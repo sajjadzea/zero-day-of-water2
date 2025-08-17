@@ -17,6 +17,7 @@
   const c_energy_val = document.getElementById('c_energy_val');
   const p_power_outage = document.getElementById('p_power_outage');
   const p_power_outage_val = document.getElementById('p_power_outage_val');
+  const defaultsBtn = document.getElementById('btn_defaults');
 
   const realCostEl = document.getElementById('real_cost');
   const finalPriceEl = document.getElementById('final_price');
@@ -24,6 +25,14 @@
   const costChartEl = document.getElementById('costChart');
   const sensitivityTable = document.getElementById('sensitivity_table');
   const summaryEl = document.getElementById('summary');
+
+  const inputs = [c_production, c_maintenance, p_loss, c_energy, p_power_outage];
+  inputs.forEach(inp => {
+    const hint = document.createElement('span');
+    hint.id = `${inp.id}_hint`;
+    hint.className = 'text-xs text-red-600 ml-2 hidden';
+    inp.insertAdjacentElement('afterend', hint);
+  });
 
   realCostEl.setAttribute('aria-live', 'polite');
   finalPriceEl.setAttribute('aria-live', 'polite');
@@ -71,9 +80,19 @@
         options: { plugins: { legend: { position: 'bottom' } } }
       });
     } else {
-      chart.data.labels = labels;
-      chart.data.datasets[0].data = values;
-      chart.update();
+      const diff = Math.abs(chart.data.labels.length - labels.length);
+      if (diff > 2) {
+        chart.destroy();
+        chart = new Chart(costChartEl.getContext('2d'), {
+          type: 'pie',
+          data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+          options: { plugins: { legend: { position: 'bottom' } } }
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+      }
     }
   }
 
@@ -104,14 +123,50 @@
     summaryEl.textContent = `هزینه واقعی هر مترمکعب ${tomanFmt(realCost)} تومان و قیمت نهایی پیشنهادی ${tomanFmt(finalPrice)} تومان است.`;
   }
 
+  function showHint(inp, msg) {
+    const el = document.getElementById(`${inp.id}_hint`);
+    if (el) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+  }
+
+  function hideHint(inp) {
+    const el = document.getElementById(`${inp.id}_hint`);
+    if (el) {
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+  }
+
+  function sanitizeInput(inp) {
+    let v = inp.valueAsNumber;
+    if (Number.isNaN(v)) {
+      showHint(inp, 'عدد نامعتبر');
+      return NaN;
+    }
+    hideHint(inp);
+    if (inp === p_loss || inp === p_power_outage) {
+      v = Math.min(100, Math.max(0, v));
+    } else {
+      v = Math.max(0, v);
+    }
+    inp.value = v;
+    return v;
+  }
+
   function calculate() {
-    const vals = {
-      c_production: c_production.valueAsNumber,
-      c_maintenance: c_maintenance.valueAsNumber,
-      p_loss: p_loss.valueAsNumber,
-      c_energy: c_energy.valueAsNumber,
-      p_power_outage: p_power_outage.valueAsNumber
-    };
+    const vals = {};
+    let hasNaN = false;
+    inputs.forEach(inp => {
+      const v = sanitizeInput(inp);
+      if (Number.isNaN(v)) {
+        hasNaN = true;
+      } else {
+        vals[inp.id] = v;
+      }
+    });
+    if (hasNaN) return;
     const { real, final } = calcCosts(vals);
     realCostEl.textContent = tomanFmt(real);
     finalPriceEl.textContent = tomanFmt(final);
@@ -132,22 +187,40 @@
 
   function debounce(fn, delay) {
     let timer;
-    return (...args) => {
+    const debounced = (...args) => {
       clearTimeout(timer);
       timer = setTimeout(() => fn(...args), delay);
     };
+    debounced.cancel = () => clearTimeout(timer);
+    return debounced;
   }
 
   const recalcDebounced = debounce(calculate, 200);
-  [c_production, c_maintenance, p_loss, c_energy, p_power_outage].forEach(inp => {
+  inputs.forEach(inp => {
     inp.addEventListener('input', () => {
+      sanitizeInput(inp);
       updateDisplays();
       recalcDebounced();
     });
   });
 
+  if (defaultsBtn) {
+    defaultsBtn.addEventListener('click', () => {
+      inputs.forEach(inp => {
+        inp.value = inp.defaultValue;
+        hideHint(inp);
+      });
+      updateDisplays();
+      calculate();
+    });
+  }
+
   updateDisplays();
   calculate();
+
+  ['pagehide', 'unload'].forEach(ev => {
+    window.addEventListener(ev, () => recalcDebounced.cancel());
+  });
 
   window.WaterCost = { recalc: () => calculate() };
 })();
