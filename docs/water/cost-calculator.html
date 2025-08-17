@@ -29,71 +29,76 @@
     </style>
   </head>
   <body class="bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8">
+ codex/add-navigation-links-between-hub-and-dashboards
     <main class="max-w-7xl mx-auto" id="main">
       <a href="./hub.html" class="text-blue-600 hover:underline">بازگشت به انتخاب داشبورد</a>
+
+    <main id="main">
+ main
       <header class="text-center mb-10">
         <h1 class="text-3xl md:text-4xl font-bold text-blue-600 mb-2">ماشین‌حساب پیشرفته قیمت تمام‌شده آب</h1>
         <p class="text-lg text-slate-600">تأثیر هر متغیر را بر هزینه واقعی و قیمت نهایی آب شرب تحلیل کنید.</p>
       </header>
-      <div id="water-cost-app">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div class="input-group">
-            <label for="c_production" class="block mb-1">هزینه تولید هر مترمکعب (تومان)</label>
-            <input type="range" id="c_production" min="0" max="50000" step="500" value="10000" class="w-full">
-            <div class="text-sm text-slate-600"><span id="c_production_val">10,000</span> تومان</div>
+      <div id="water-cost-app" class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section id="outputs" class="order-1 lg:order-1 space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="output-card">
+              <h2 class="font-semibold mb-2">هزینه واقعی هر مترمکعب</h2>
+              <p id="real_cost" class="text-2xl font-bold">۰</p>
+            </div>
+            <div class="output-card">
+              <h2 class="font-semibold mb-2">قیمت نهایی پیشنهادی</h2>
+              <p id="final_price" class="text-2xl font-bold text-blue-600">۰</p>
+            </div>
           </div>
-          <div class="input-group">
-            <label for="c_maintenance" class="block mb-1">هزینه نگهداری و تعمیرات (تومان)</label>
-            <input type="range" id="c_maintenance" min="0" max="20000" step="500" value="5000" class="w-full">
-            <div class="text-sm text-slate-600"><span id="c_maintenance_val">5,000</span> تومان</div>
+          <div>
+            <h3 class="font-semibold mb-2">سهم هر بخش از هزینه</h3>
+            <table id="breakdown_table" class="min-w-full text-sm tabular-nums"></table>
           </div>
-          <div class="input-group">
-            <label for="p_loss" class="block mb-1">درصد تلفات شبکه</label>
-            <input type="range" id="p_loss" min="0" max="50" step="1" value="20" class="w-full">
-            <div class="text-sm text-slate-600"><span id="p_loss_val">۲۰٪</span></div>
+          <div class="chart-container">
+            <canvas id="costChart"></canvas>
           </div>
-          <div class="input-group">
-            <label for="c_energy" class="block mb-1">هزینه انرژی (تومان)</label>
-            <input type="range" id="c_energy" min="0" max="30000" step="500" value="7000" class="w-full">
-            <div class="text-sm text-slate-600"><span id="c_energy_val">7,000</span> تومان</div>
+          <div>
+            <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
+            <table id="sensitivity_table" class="min-w-full text-sm tabular-nums"></table>
+            <div class="chart-container mt-4">
+              <canvas id="sensitivityChart"></canvas>
+            </div>
           </div>
-          <div class="input-group md:col-span-2">
-            <label for="p_power_outage" class="block mb-1">درصد تأثیر قطعی برق</label>
-            <input type="range" id="p_power_outage" min="0" max="20" step="1" value="5" class="w-full">
-            <div class="text-sm text-slate-600"><span id="p_power_outage_val">۵٪</span></div>
+          <p id="summary" class="text-sm text-slate-600"></p>
+        </section>
+        <section id="inputs" class="order-0 lg:order-2 space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="input-group">
+              <label for="c_production" class="block mb-1">هزینه تولید هر مترمکعب (تومان)</label>
+              <input type="range" id="c_production" min="0" max="50000" step="500" value="10000" class="w-full">
+              <div class="text-sm text-slate-600"><span id="c_production_val">10,000</span> تومان</div>
+            </div>
+            <div class="input-group">
+              <label for="c_maintenance" class="block mb-1">هزینه نگهداری و تعمیرات (تومان)</label>
+              <input type="range" id="c_maintenance" min="0" max="20000" step="500" value="5000" class="w-full">
+              <div class="text-sm text-slate-600"><span id="c_maintenance_val">5,000</span> تومان</div>
+            </div>
+            <div class="input-group">
+              <label for="p_loss" class="block mb-1">درصد تلفات شبکه</label>
+              <input type="range" id="p_loss" min="0" max="50" step="1" value="20" class="w-full">
+              <div class="text-sm text-slate-600"><span id="p_loss_val">۲۰٪</span></div>
+            </div>
+            <div class="input-group">
+              <label for="c_energy" class="block mb-1">هزینه انرژی (تومان)</label>
+              <input type="range" id="c_energy" min="0" max="30000" step="500" value="7000" class="w-full">
+              <div class="text-sm text-slate-600"><span id="c_energy_val">7,000</span> تومان</div>
+            </div>
+            <div class="input-group md:col-span-2">
+              <label for="p_power_outage" class="block mb-1">درصد تأثیر قطعی برق</label>
+              <input type="range" id="p_power_outage" min="0" max="20" step="1" value="5" class="w-full">
+              <div class="text-sm text-slate-600"><span id="p_power_outage_val">۵٪</span></div>
+            </div>
           </div>
-        </div>
-
-        <div class="text-center mb-8">
-          <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div class="output-card">
-            <h2 class="font-semibold mb-2">هزینه واقعی هر مترمکعب</h2>
-            <p id="real_cost" class="text-2xl font-bold">۰</p>
+          <div class="text-center">
+            <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
           </div>
-          <div class="output-card">
-            <h2 class="font-semibold mb-2">قیمت نهایی پیشنهادی</h2>
-            <p id="final_price" class="text-2xl font-bold text-blue-600">۰</p>
-          </div>
-        </div>
-
-        <div class="mb-8">
-          <h3 class="font-semibold mb-2">سهم هر بخش از هزینه</h3>
-          <table id="breakdown_table" class="min-w-full text-sm"></table>
-        </div>
-        <div class="chart-container mb-8">
-          <canvas id="costChart"></canvas>
-        </div>
-        <div class="mb-8">
-          <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
-          <table id="sensitivity_table" class="min-w-full text-sm"></table>
-          <div class="chart-container mt-4">
-            <canvas id="sensitivityChart"></canvas>
-          </div>
-        </div>
-        <p id="summary" class="text-sm text-slate-600"></p>
+        </section>
       </div>
     </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
