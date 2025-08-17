@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const _e = document.getElementById('fc-js-status'); if (_e) _e.textContent = 'OK';
+
   // --- MOCK DATA ---
   const lastMonthData = { province: { gas: 75, diesel: 13, mazut: 12, other: 0 }, national: { gas: 85, diesel: 8, mazut: 7, other: 0 } };
   const carbonIntensityHistory = [
