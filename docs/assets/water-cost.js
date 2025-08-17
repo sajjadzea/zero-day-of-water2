@@ -5,7 +5,10 @@
   if (!app) return;
 
   const tomanFmt = v => new Intl.NumberFormat('fa-IR').format(Math.round(v));
-  const pctFmt = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1 });
+  const pctFmt = new Intl.NumberFormat('fa-IR', {
+    style: 'percent',
+    maximumFractionDigits: 1
+  });
 
   const c_production = document.getElementById('c_production');
   const c_production_val = document.getElementById('c_production_val');
@@ -49,8 +52,8 @@
     c_production_val.textContent = tomanFmt(c_production.value);
     c_maintenance_val.textContent = tomanFmt(c_maintenance.value);
     c_energy_val.textContent = tomanFmt(c_energy.value);
-    p_loss_val.textContent = p_loss.value;
-    p_power_outage_val.textContent = p_power_outage.value;
+    p_loss_val.textContent = pctFmt.format(p_loss.value / 100);
+    p_power_outage_val.textContent = pctFmt.format(p_power_outage.value / 100);
   }
 
   function calcCosts(vals) {
@@ -64,7 +67,7 @@
     let html = '<thead><tr><th class="p-2">آیتم</th><th class="p-2">هزینه (تومان)</th><th class="p-2">درصد</th></tr></thead><tbody>';
     data.forEach(item => {
       const percentage = (item.value / realCost) * 100;
-      html += `<tr><td class="p-2">${item.label}</td><td class="p-2">${tomanFmt(item.value)}</td><td class="p-2">${pctFmt.format(percentage)}%</td></tr>`;
+      html += `<tr><td class="p-2">${item.label}</td><td class="p-2">${tomanFmt(item.value)}</td><td class="p-2">${pctFmt.format(percentage / 100)}</td></tr>`;
     });
     html += '</tbody>';
     breakdownTable.innerHTML = html;
@@ -119,9 +122,9 @@
 
     let html = '<thead><tr><th class="p-2">سناریو</th><th class="p-2">قیمت نهایی</th><th class="p-2">تغییر</th></tr></thead><tbody>';
     results.forEach(r => {
-      const sign = r.change >= 0 ? '+' : '-';
+      const arrow = r.change >= 0 ? '▲' : '▼';
       const colorClass = r.change >= 0 ? 'text-red-600' : 'text-green-600';
-      html += `<tr><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${sign} ${pctFmt.format(Math.abs(r.percentageChange))}% (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
+      html += `<tr><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmt.format(Math.abs(r.percentageChange) / 100)} (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
     });
     html += '</tbody>';
     sensitivityTable.innerHTML = html;
