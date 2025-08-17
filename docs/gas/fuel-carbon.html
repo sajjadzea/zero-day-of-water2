@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>داشبورد سوخت و کربن برق - خراسان رضوی</title>
+
+  <!-- Tailwind CSS -->
+  <link rel="stylesheet" href="../assets/tailwind.css" />
+  <link rel="stylesheet" href="../assets/styles.css" />
+
+  <!-- Chart.js and Adapter -->
+  <script src="../assets/libs/chart.umd.min.js"></script>
+  <script src="../assets/libs/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #f8fafc; /* gray-50 */
+    }
+    .card {
+      background-color: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+    }
+    .tooltip { position: relative; display: inline-block; cursor: pointer; }
+    .tooltip .tooltiptext {
+      visibility: hidden; width: 280px; background-color: #334155; color: #fff; text-align: center; border-radius: 6px; padding: 8px;
+      position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -140px; opacity: 0; transition: opacity 0.3s;
+      font-size: 0.875rem; line-height: 1.5;
+    }
+    .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+    .mazut-warning { border: 2px solid #f97316; } /* orange-500 */
+    .mazut-danger { border: 2px solid #ef4444; }  /* red-500 */
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div class="container mx-auto p-4 md:p-8">
+    <!-- Header -->
+    <header class="text-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-slate-900">برق استان از چه سوختی می‌آید؟</h1>
+      <p class="text-lg text-slate-600 mt-2">درصد هر سوخت را ببینید و شدت کربن برق استان را با کشور مقایسه کنید.</p>
+      <div class="mt-4 inline-flex items-center bg-sky-100 text-sky-800 text-sm font-medium px-3 py-1 rounded-full">
+        <!-- shield icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        عمومی • تأخیر: ۳۰+ روز • استان/ملی • بدون نام نیروگاه
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div id="gas-share-card" class="card text-center">
+        <h3 class="text-slate-500 font-semibold">سهم گاز (ماه گذشته)</h3>
+        <p class="text-4xl font-bold text-teal-600 mt-2">۷۵٪</p>
+        <p class="text-sm text-slate-400 mt-1">سوخت اصلی نیروگاه‌ها</p>
+      </div>
+      <div id="mazut-share-card" class="card text-center">
+        <h3 class="text-slate-500 font-semibold">سهم مازوت (ماه گذشته)</h3>
+        <p class="text-4xl font-bold text-orange-600 mt-2">۱۲٪</p>
+        <p class="text-sm text-orange-500 mt-1">هشدار: بالاتر از آستانه ۱۰٪</p>
+      </div>
+      <div id="carbon-intensity-card" class="card text-center">
+        <h3 class="text-slate-500 font-semibold">شدت کربن استان</h3>
+        <p class="text-4xl font-bold text-slate-700 mt-2">۰.۴۸</p>
+        <p class="text-sm text-slate-400 mt-1">kgCO₂e/kWh (ماه گذشته)</p>
+      </div>
+      <div id="yoy-change-card" class="card text-center">
+        <h3 class="text-slate-500 font-semibold">تغییر سالانه شدت کربن</h3>
+        <p class="text-4xl font-bold text-red-500 mt-2">+۵٪</p>
+        <p class="text-sm text-slate-400 mt-1">نسبت به ماه مشابه پارسال</p>
+      </div>
+      <div id="mazut-free-days-card" class="card text-center">
+        <h3 class="text-slate-500 font-semibold">روزهای بدون مازوت</h3>
+        <p class="text-4xl font-bold text-blue-600 mt-2">۸</p>
+        <p class="text-sm text-slate-400 mt-1">روز در ماه گذشته</p>
+      </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+      <div class="lg:col-span-2 card">
+        <h2 class="text-xl font-bold mb-4 text-center">ترکیب سوخت تولید برق (ماه گذشته)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h3 class="text-center font-semibold text-slate-700 mb-2">استان خراسان رضوی</h3>
+            <div class="relative h-64"><canvas id="provinceFuelMixChart"></canvas></div>
+          </div>
+          <div>
+            <h3 class="text-center font-semibold text-slate-700 mb-2">میانگین ملی</h3>
+            <div class="relative h-64"><canvas id="nationalFuelMixChart"></canvas></div>
+          </div>
+        </div>
+        <p class="text-center text-sm text-slate-500 mt-4">بیشترین سهم این ماه: <strong>گاز طبیعی</strong>. افزایش سهم گاز معمولاً شدت کربن را کاهش می‌دهد.</p>
+      </div>
+      <div class="lg:col-span-3 card">
+        <h2 class="text-xl font-bold mb-4">روند شدت کربن (۲۴ ماه اخیر)</h2>
+        <p class="text-sm text-slate-500 mb-4">شدت کربن = کیلوگرم دی‌اکسید کربن معادل (kgCO₂e) به ازای هر کیلووات‌ساعت (kWh) برق تولیدی. هرچه کمتر، بهتر.</p>
+        <div class="relative h-80 md:h-96"><canvas id="carbonIntensityTrendChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Your Impact Section -->
+    <section class="card bg-gradient-to-br from-blue-50 to-indigo-100 mb-8">
+      <h2 class="text-2xl font-bold mb-4 text-center text-slate-800">اثر شما: چگونه مصرف ما تفاوت ایجاد می‌کند؟</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="bg-white/60 p-6 rounded-lg">
+          <h3 class="font-semibold text-lg mb-3 text-slate-700">ردپای کربن وسایل برقی شما</h3>
+          <p class="text-sm text-slate-600 mb-4">یک وسیله را انتخاب کنید تا ببینید یک ساعت استفاده از آن چقدر کربن تولید کرده است.</p>
+          <select id="appliance-selector" class="w-full p-2 border border-slate-300 rounded-md bg-white">
+            <option value="0">-- انتخاب کنید --</option>
+            <option value="1.5">کولر گازی (۱۸۰۰۰)</option>
+            <option value="0.2">تلویزیون LED</option>
+            <option value="1.0">ماشین لباسشویی (با آب گرم)</option>
+            <option value="2.0">جاروبرقی</option>
+            <option value="0.1">یک لامپ ۱۰۰ وات رشته‌ای</option>
+          </select>
+          <div id="impact-result" class="mt-4 text-center bg-slate-100 p-4 rounded-lg hidden">
+            <p class="text-slate-600">یک ساعت استفاده تولید می‌کند:</p>
+            <p class="text-3xl font-bold text-indigo-600 mt-1"><span id="co2-grams">...</span> گرم CO₂</p>
+          </div>
+        </div>
+        <div class="bg-white/60 p-6 rounded-lg flex flex-col items-center justify-center text-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500 mb-3"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"></path></svg>
+          <h3 class="font-semibold text-lg mb-2 text-slate-700">جادوی جابه‌جایی مصرف!</h3>
+          <p class="text-sm text-slate-600">در ساعات اوج مصرف (معمولاً ۲۰ تا ۲۳)، نیروگاه‌ها برای تأمین برق مجبور به استفاده از سوخت‌های گران‌تر و آلاینده‌تر مانند مازوت می‌شوند. با انتقال استفاده از وسایل پرمصرف به ساعات دیگر، به کاهش مصرف مازوت و بهبود کیفیت هوا کمک می‌کنید.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Water-Energy Nexus Section -->
+    <section class="card bg-gradient-to-br from-cyan-50 to-sky-100 mb-8">
+      <h2 class="text-2xl font-bold mb-4 text-center text-slate-800">پیوند آب و انرژی: ردپای پنهان برق در بحران آب استان</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+        <div class="md:col-span-1 flex flex-col items-center text-center bg-white/60 p-6 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mb-3"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path><path d="M12 12.5V18.5"></path><path d="M15 15.5L9 15.5"></path></svg>
+          <p class="text-slate-600">مصرف آب (برآوردی) برای هر کیلووات‌ساعت برق حرارتی:</p>
+          <p class="text-4xl font-bold text-sky-700 my-2">~ ۲.۵ لیتر</p>
+          <p class="text-sm font-semibold text-slate-700 bg-blue-100 px-3 py-1 rounded-full">معادل آب آشامیدنی روزانه یک نفر</p>
+        </div>
+        <div class="md:col-span-2">
+          <h3 class="font-semibold text-lg mb-2 text-slate-700">چرا صرفه‌جویی در برق، صرفه‌جویی در آب است؟</h3>
+          <p class="text-slate-600 text-justify">بخش بزرگی از برق استان در نیروگاه‌های حرارتی تولید می‌شود که برای خنک‌کاری به حجم عظیمی از آب نیاز دارند. در استانی که با <strong>خشکسالی شدید</strong> و <strong>کسری مخازن آب</strong> روبروست، این مصرف آب فشار مضاعفی بر منابع حیاتی ما وارد می‌کند.</p>
+          <p class="text-slate-600 mt-3 text-justify">هر لامپ اضافی که خاموش می‌کنیم و هر وسیله برقی که در ساعات غیر اوج مصرف استفاده می‌کنیم، نه تنها به کاهش مصرف سوخت‌های فسیلی و آلودگی هوا کمک می‌کند، بلکه به طور مستقیم به <strong>حفظ منابع آبی ارزشمند</strong> برای کشاورزی، شرب و محیط زیست استان یاری می‌رساند.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simulator and Educational Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="card">
+        <h2 class="text-xl font-bold mb-4">شبیه‌ساز «اگر... آنگاه...»</h2>
+        <p class="text-slate-600 mb-4">ببینید اگر سهم گاز بیشتر بود، شدت کربن چقدر می‌توانست کاهش یابد.</p>
+        <div class="mb-4">
+          <label for="gas-slider" class="block font-medium text-slate-700">افزایش سهم گاز</label>
+          <input id="gas-slider" type="range" min="0" max="20" value="0" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+          <div class="flex justify-between text-sm text-slate-500 mt-1">
+            <span>۰٪</span>
+            <span>+<span id="slider-value">0</span>٪</span>
+            <span>+۲۰٪</span>
+          </div>
+        </div>
+        <div class="bg-slate-100 p-4 rounded-lg text-center">
+          <p class="text-slate-600">شدت کربن فرضی جدید:</p>
+          <p class="text-3xl font-bold text-green-600 mt-1"><span id="simulated-intensity">۰.۴۸</span> kgCO₂e/kWh</p>
+          <p class="text-green-700 font-semibold mt-1">کاهش <span id="simulated-reduction">۰</span>٪</p>
+        </div>
+        <div class="text-xs text-slate-400 mt-4 text-center tooltip">
+          💡 روش محاسبه
+          <span class="tooltiptext text-right">
+            شدت کربن تقریبی: Σ (درصد سهم سوخت × ضریب انتشار سوخت)<br />
+            <strong>ضرایب (kgCO₂e/kWh):</strong> گاز:~۰.۳۵، گازوئیل:~۰.۶۵، مازوت:~۰.۷۵
+          </span>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="text-xl font-bold mb-4">دانستنی‌های انرژی و محیط زیست</h2>
+        <div class="space-y-4 text-slate-700">
+          <div><h3 class="font-semibold">چرا گاز کربن کمتری دارد؟</h3><p class="text-sm">گاز طبیعی به ازای هر واحد انرژی، هیدروژن بیشتر و کربن کمتری نسبت به مازوت و گازوئیل دارد، لذا CO₂ کمتری تولید می‌کند.</p></div>
+          <div><h3 class="font-semibold">چرا مازوت نگران‌کننده است؟</h3><p class="text-sm">مازوت علاوه بر CO₂ بیشتر، آلاینده‌های محلی خطرناکی مانند SO₂ و ذرات معلق تولید می‌کند.</p></div>
+          <div><h3 class="font-semibold">نقش ما چیست؟</h3><p class="text-sm">کاهش مصرف برق در ساعات اوج، نیاز به استفاده از نیروگاه‌هایی با سوخت‌های سنگین و آلاینده را کاهش می‌دهد.</p></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- اسکریپت اختصاصی این صفحه (JS جداگانه) -->
+  <script src="../assets/js/gas-fuel-carbon.js" defer></script>
+</body>
+</html>
