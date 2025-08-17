@@ -18,7 +18,8 @@
   const c_energy_range = document.getElementById('c_energy_range');
   const p_power_outage = document.getElementById('p_power_outage');
   const p_power_outage_range = document.getElementById('p_power_outage_range');
-  const defaultsBtn = document.getElementById('btn_defaults');
+  const resetBtn = document.getElementById('btn_reset');
+  const calcBtn = document.getElementById('btn_calculate');
 
   const realCostEl = document.getElementById('real_cost');
   const finalPriceEl = document.getElementById('final_price');
@@ -256,8 +257,8 @@
     });
   });
 
-  if (defaultsBtn) {
-    defaultsBtn.addEventListener('click', () => {
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
       pairs.forEach(({ input, range }) => {
         input.value = input.defaultValue;
         sanitizeInput(input);
@@ -266,6 +267,10 @@
       });
       calculate();
     });
+  }
+
+  if (calcBtn) {
+    calcBtn.addEventListener('click', () => calculate());
   }
 
   pairs.forEach(({ input, range }) => {
