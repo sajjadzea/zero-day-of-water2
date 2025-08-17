@@ -17,6 +17,7 @@
       }
       .chart-container {
         position: relative;
+        min-height: 250px;
         height: 300px;
       }
     </style>
@@ -76,7 +77,9 @@
           </div>
           <div>
             <h3 class="font-semibold mb-2">جدول سهم هر متغیر</h3>
-            <table id="breakdown_table" class="min-w-full text-sm"></table>
+            <div class="max-h-64 overflow-y-auto">
+              <table id="breakdown_table" class="min-w-full text-sm text-right border-collapse tabular-nums"></table>
+            </div>
           </div>
           <div>
             <h3 class="font-semibold mb-2">نمودار دونات سهم عوامل</h3>
@@ -86,7 +89,9 @@
           </div>
           <div>
             <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
-            <table id="sensitivity_table" class="min-w-full text-sm"></table>
+            <div class="max-h-64 overflow-y-auto">
+              <table id="sensitivity_table" class="min-w-full text-sm text-right border-collapse tabular-nums"></table>
+            </div>
             <div class="chart-container mt-4">
               <canvas id="sensitivityChart"></canvas>
             </div>
