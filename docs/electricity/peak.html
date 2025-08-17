@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد مدیریت مصرف برق - خراسان رضوی</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for charts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <!-- Tailwind CSS -->
+      <script src="https://cdn.tailwindcss.com" defer></script>
+      <!-- Chart.js for charts -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js" defer></script>
     <!-- Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,62 +117,6 @@
             </div>
         </main>
     </div>
-    <script>
-        Chart.defaults.font.family = "'Vazirmatn', sans-serif";
-        Chart.defaults.plugins.tooltip.rtl = true;
-        Chart.defaults.plugins.legend.rtl = true;
-        Chart.defaults.plugins.legend.labels.usePointStyle = true;
-
-        const demandCtx = document.getElementById('demandConsumptionChart').getContext('2d');
-        const demandConsumptionChart = new Chart(demandCtx, {
-            type: 'line',
-            data: {
-                labels: ['۰۰:۰۰','۰۴:۰۰','۰۸:۰۰','۱۲:۰۰','۱۶:۰۰','۲۰:۰۰','۲۳:۵۹'],
-                datasets: [
-                  {label:'تقاضا',data:[2800,2650,3100,4200,4512,4100,3500],borderColor:'rgb(59,130,246)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgb(59,130,246)'},
-                  {label:'مصرف',data:[2750,2600,3050,4150,4480,4050,3450],borderColor:'rgb(16,185,129)',backgroundColor:'rgba(16,185,129,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgb(16,185,129)'}
-                ]
-            },
-            options:{
-              responsive:true,maintainAspectRatio:false,
-              scales:{y:{beginAtZero:false,title:{display:true,text:'مگاوات (MW)'},
-              ticks:{callback:v=>new Intl.NumberFormat('fa-IR').format(v)}}},
-              plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>`${c.dataset.label||''}: ${new Intl.NumberFormat('fa-IR').format(c.parsed.y)} مگاوات`}}},
-              interaction:{intersect:false,mode:'index'}
-            }
-        });
-
-        const cityCtx = document.getElementById('cityConsumptionChart').getContext('2d');
-        const cityConsumptionChart = new Chart(cityCtx, {
-          type:'bar',
-          data:{labels:['مشهد','نیشابور','سبزوار','تربت حیدریه','قوچان','کاشمر','گناباد'],
-          datasets:[{label:'مصرف خانگی (مگاوات‌ساعت)',data:[1850,480,410,280,210,190,150],backgroundColor:'rgba(34,211,238,.6)',borderColor:'rgb(8,145,178)',borderWidth:1,borderRadius:8}]},
-          options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-          scales:{x:{title:{display:true,text:'مصرف (MWh)'},ticks:{callback:v=>new Intl.NumberFormat('fa-IR').format(v)}}},
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label||''}: ${new Intl.NumberFormat('fa-IR').format(c.parsed.x)} مگاوات‌ساعت`}}}}
-        });
-
-        const breakdownCtx = document.getElementById('householdBreakdownChart').getContext('2d');
-        const householdBreakdownChart = new Chart(breakdownCtx,{
-          type:'doughnut',
-          data:{labels:['سرمایش و گرمایش','روشنایی','لوازم خانگی','سایر موارد'],
-          datasets:[{label:'تفکیک مصرف',data:[45,25,20,10],backgroundColor:['rgb(251,146,60)','rgb(250,204,21)','rgb(132,204,22)','rgb(163,163,163)'],hoverOffset:4}]},
-          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',align:'center',labels:{padding:15}}}}
-        });
-
-        function updateConsumptionGuide(){
-          const now=new Date(); const h=now.getHours();
-          const box=document.getElementById('currentStatusContainer');
-          const txt=document.getElementById('currentStatusText');
-          const tipEl=document.getElementById('dynamicTip');
-          let status='',tip='',bg='',fg='';
-          if((h>=13&&h<17)||(h>=19&&h<23)){status='اکنون در ساعات اوج بار هستیم';tip='لطفاً از استفاده همزمان وسایل برقی پرمصرف مانند اتو، جاروبرقی و ماشین لباسشویی خودداری کنید.';bg='bg-red-100';fg='text-red-800';}
-          else if(h>=17&&h<19){status='اکنون در ساعات بار عادی هستیم';tip='مصرف خود را مدیریت کنید. تا دقایقی دیگر وارد ساعات اوج بار خواهیم شد.';bg='bg-yellow-100';fg='text-yellow-800';}
-          else {status='اکنون در ساعات کم‌باری هستیم';tip='بهترین زمان برای استفاده از وسایل پرمصرف مانند ماشین لباسشویی و ظرفشویی است.';bg='bg-green-100';fg='text-green-800';}
-          box.className=`mb-5 p-3 rounded-lg text-center transition-colors duration-500 ${bg}`;
-          txt.className=`font-bold ${fg}`; txt.innerText=status; tipEl.innerHTML=tip;
-        }
-        document.addEventListener('DOMContentLoaded',()=>{updateConsumptionGuide(); setInterval(updateConsumptionGuide,60000);});
-    </script>
+      <script src="../assets/electricity-management.js" defer></script>
 </body>
 </html>

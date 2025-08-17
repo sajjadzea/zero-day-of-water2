@@ -20,70 +20,50 @@
   [headers.values]
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = """
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      img-src 'self' data: blob:;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      script-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self';
-      frame-src 'self' https://app.netlify.com;
-      frame-ancestors 'self' https://app.netlify.com;
-      form-action 'self'
-    """
+      Content-Security-Policy = """
+        default-src 'self';
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: https:;
+        connect-src 'self';
+      """
 
 # Production: فریم‌گذاری بسته و CSP سفت
 [[context.production.headers]]
   for = "/*"
   [context.production.headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      img-src 'self' data: blob:;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      script-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self';
-      frame-src 'self' https://app.netlify.com;
-      frame-ancestors 'self' https://app.netlify.com;
-      form-action 'self'
-    """
+      Content-Security-Policy = """
+        default-src 'self';
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: https:;
+        connect-src 'self';
+      """
 
 # Branch Deploy: همان CSP مشابه برای یکپارچگی با production
 [[context.branch-deploy.headers]]
   for = "/*"
   [context.branch-deploy.headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      img-src 'self' data: blob:;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      script-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self';
-      frame-src 'self' https://app.netlify.com;
-      frame-ancestors 'self' https://app.netlify.com;
-      form-action 'self'
-    """
+      Content-Security-Policy = """
+        default-src 'self';
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: https:;
+        connect-src 'self';
+      """
 
 # Deploy Preview: اجازه‌ی embed شدن در Netlify برای حذف ارورهای کنسول
 [[context.deploy-preview.headers]]
   for = "/*"
   [context.deploy-preview.headers.values]
-    Content-Security-Policy = """
-      default-src 'self';
-      base-uri 'self';
-      object-src 'none';
-      img-src 'self' data: blob:;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
-      font-src 'self' https://fonts.gstatic.com;
-      script-src 'self' https://cdnjs.cloudflare.com;
-      connect-src 'self';
-      frame-src 'self' https://app.netlify.com;
-      frame-ancestors 'self' https://app.netlify.com;
-      form-action 'self'
-    """
+      Content-Security-Policy = """
+        default-src 'self';
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: https:;
+        connect-src 'self';
+      """
