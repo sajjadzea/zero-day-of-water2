@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد کیفیت توزیع برق</title>
+
+    <!-- Tailwind CSS (هم‌نسخه با سایر صفحات برق) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js: ابتدا تلاش برای ../vendor/chart.umd.min.js؛ در غیر این‌صورت همان نسخهٔ رایج پروژه -->
+    <script src="../vendor/chart.umd.min.js"></script>
+
+    <!-- حذف Google Fonts؛ به‌جای آن از fonts.css محلی استفاده می‌کنیم -->
+    <link rel="stylesheet" href="../assets/fonts.css">
+
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .chart-tooltip { direction: rtl; text-align: right; }
+        .gradient-text {
+            background: linear-gradient(to right, #4ade80, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2 gradient-text">کیفیت خدمت توزیع برق</h1>
+            <h2 class="text-lg md:text-xl text-gray-400">گزارش شفاف برای شهروندان خراسان رضوی</h2>
+            <p class="mt-2 text-gray-500">چند بار و چند دقیقه؟ اینجا به زبان ساده ببینید و روندها را دنبال کنید.</p>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="space-y-8">
+            <!-- Section 1: Overview & Trends -->
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                <h3 class="text-xl font-semibold mb-6 text-cyan-400">نمای کلی استان (ماه جاری)</h3>
+
+                <!-- Overview Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div id="saifi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
+                        <h4 class="text-gray-400 text-sm font-medium">میانگین تعداد قطعی (SAIFI)</h4>
+                        <p id="saifi-value" class="text-3xl font-bold my-2">--</p>
+                        <div id="saifi-change" class="flex items-center text-sm"></div>
+                        <p class="text-xs text-gray-500 mt-1">بار/مشترک</p>
+                    </div>
+                    <div id="saidi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10">
+                        <h4 class="text-gray-400 text-sm font-medium">میانگین مدت قطعی (SAIDI)</h4>
+                        <p id="saidi-value" class="text-3xl font-bold my-2">--</p>
+                        <div id="saidi-change" class="flex items-center text-sm"></div>
+                        <p class="text-xs text-gray-500 mt-1">دقیقه/مشترک</p>
+                    </div>
+                    <div id="caidi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-500/10">
+                        <h4 class="text-gray-400 text-sm font-medium">میانگین زمان رفع قطعی (CAIDI)</h4>
+                        <p id="caidi-value" class="text-3xl font-bold my-2">--</p>
+                        <p class="text-xs text-gray-500 mt-1">هر خاموشی چقدر طول می‌کشد؟</p>
+                    </div>
+                    <div class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10">
+                        <h4 class="text-gray-400 text-sm font-medium">سهم قطعی‌های برنامه‌ریزی‌شده</h4>
+                        <p id="planned-share-value" class="text-3xl font-bold my-2">--</p>
+                        <p class="text-xs text-gray-500 mt-1">از کل قطعی‌های این ماه</p>
+                    </div>
+                </div>
+
+                <!-- Trend Chart -->
+                <div>
+                    <h4 class="text-lg font-semibold mb-4 text-gray-300">روند ۱۲ ماهه SAIDI و SAIFI</h4>
+                    <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 h-96">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Cities Ranking -->
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                    <h3 class="text-xl font-semibold text-green-400">وضعیت شهرها</h3>
+                    <div class="flex items-center gap-4">
+                        <label for="outage-type-filter" class="text-sm">نوع قطعی:</label>
+                        <select id="outage-type-filter" class="bg-gray-700 border border-gray-600 rounded-md px-3 py-1 text-sm focus:ring-green-500 focus:border-green-500">
+                            <option value="all">همه</option>
+                            <option value="planned">برنامه‌ریزی‌شده</option>
+                            <option value="unplanned">غیر برنامه‌ای</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right">
+                        <thead class="border-b border-gray-600 text-sm text-gray-400">
+                            <tr>
+                                <th class="p-3">رتبه</th>
+                                <th class="p-3">شهر</th>
+                                <th class="p-3">SAIDI (دقیقه)</th>
+                                <th class="p-3">SAIFI (بار)</th>
+                                <th class="p-3">وضعیت</th>
+                                <th class="p-3">توضیحات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cities-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section 3: Causes & Patterns -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-6 text-yellow-400">علت‌ها و الگوها (استان)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="text-center">
+                            <h4 class="font-medium mb-2">تفکیک نوع قطعی</h4>
+                            <div class="relative h-64 w-64 mx-auto"><canvas id="causesDonutChart"></canvas></div>
+                        </div>
+                        <div class="text-center">
+                            <h4 class="font-medium mb-2">علت‌های متداول (غیربرنامه‌ای)</h4>
+                            <div class="relative h-64"><canvas id="commonCausesBarChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 flex flex-col justify-center items-center text-center">
+                     <h3 class="text-xl font-semibold mb-4 text-yellow-400">زمان‌های پرتکرار قطعی</h3>
+                     <div class="text-5xl mb-2">🌙</div>
+                     <p class="text-lg font-bold">عصر و شب</p>
+                     <p class="text-gray-400 text-sm">(ساعات ۱۸ تا ۲۳)</p>
+                     <p class="text-xs text-gray-500 mt-4">بر اساس الگوی آماری، نه زنده</p>
+                </div>
+            </section>
+
+            <!-- Section 4: Story & Rights -->
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-400">داستان ماه</h3>
+                    <div id="story-box" class="text-gray-300 leading-relaxed space-y-3"></div>
+                </div>
+                <div class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-400">حقوق مشترک و راهنما</h3>
+                    <ul class="space-y-4 text-sm">
+                        <li><a href="#" class="flex items-center gap-3 text-cyan-400 hover:text-cyan-300 transition-colors">چطور قطع برنامه‌ریزی‌شده را قبلش ببینم؟</a></li>
+                        <li><a href="#" class="flex items-center gap-3 text-cyan-400 hover:text-cyan-300 transition-colors">راهنمای ثبت درخواست/شکایت در مورد قبض</a></li>
+                        <li><a href="#" class="flex items-center gap-3 text-cyan-400 hover:text-cyan-300 transition-colors">چطور گزارش مردمی بدهم؟</a></li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 5: Citizen's Guide -->
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                <h3 class="text-xl font-semibold mb-6 text-yellow-300">راهنمای شهروندی: ایمنی و صرفه‌جویی</h3>
+                <!-- نکات ایمنی و صرفه‌جویی طبق نسخه ارسالی -->
+            </section>
+
+            <!-- Section 6: Environment & Economy -->
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                <!-- ماشین‌حساب ردپای آب + کارت‌های توضیحی طبق نسخه ارسالی -->
+            </section>
+        </main>
+
+        <footer class="text-center mt-12 text-xs text-gray-600">
+            <p>شاخص‌ها با داده‌های تجمیعی و با تأخیر ۷۲ ساعته منتشر می‌شوند. سطح نمایش: استان/شهر.</p>
+            <p>هیچ اطلاعات فردی نمایش داده نمی‌شود.</p>
+        </footer>
+    </div>
+
+    <!-- بعد از انتقال: فقط اسکریپت خارجی -->
+    <script src="../assets/electricity-quality.js"></script>
+</body>
+</html>
