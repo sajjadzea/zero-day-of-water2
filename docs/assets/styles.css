@@ -15,6 +15,21 @@ body {
   font-weight: 400;
 }
 
+.site-footer {
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  padding: 12px 8px;
+}
+
+.site-footer .iran-flag {
+  height: 16px;
+  width: auto;
+  vertical-align: middle;
+  margin-left: 6px;
+  display: inline-block;
+}
+
 h1, h2, h3, .result-number {
   font-weight: 900;
 }
