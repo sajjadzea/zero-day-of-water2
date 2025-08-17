@@ -1,4 +1,5 @@
 
+      const hasChart = !!window.Chart;
       document.addEventListener('DOMContentLoaded', () => {
         // همه ایموجی‌ها را به SVG توییتر تبدیل کن (از جمله 🇮🇷)
         if (window.twemoji) {
