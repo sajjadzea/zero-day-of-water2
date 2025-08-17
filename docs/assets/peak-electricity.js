@@ -17,7 +17,7 @@
   const alertMessage = document.getElementById('alertMessage');
   const dailyPeakTbody = document.getElementById('daily-peak-tbody');
 
-  const hasChart = typeof window !== 'undefined' && !!window.Chart;
+  const hasChart = () => typeof window !== 'undefined' && !!window.Chart;
 
   const faTime = new Intl.DateTimeFormat('fa-IR', {
     hour: '2-digit',
@@ -34,7 +34,7 @@
   function registerPlugins() {
     try {
       const Annotation = window.ChartAnnotation || window['chartjs-plugin-annotation'];
-      if (Annotation && hasChart) {
+      if (Annotation && hasChart()) {
         Chart.register(Annotation);
       }
     } catch (e) {
@@ -43,7 +43,7 @@
   }
 
   function initCharts() {
-    if (!hasChart) return;
+    if (!hasChart()) return;
     registerPlugins();
 
     // Realtime chart
@@ -247,7 +247,7 @@
   // Initial KPI render
   updateData();
 
-  if (!hasChart) {
+  if (!hasChart()) {
     console.warn('Chart.js not loaded; charts will be skipped.');
     document.querySelectorAll('canvas').forEach(c => {
       const wrap = c.parentElement;
@@ -262,7 +262,7 @@
   // Lazy init charts
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting && hasChart) {
+      if (entry.isIntersecting && hasChart()) {
         initCharts();
         observer.disconnect();
       }
