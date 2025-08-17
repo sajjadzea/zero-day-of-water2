@@ -25,3 +25,7 @@ If Content Security Policy headers are enabled, whitelist:
 - Migrate remaining pages from Google Fonts to local `docs/fonts/vazirmatn/` to reduce CSP and performance risks.
 - Consolidate global loading of Chart.js, its date adapter, and Tailwind if multiple pages load them separately.
 - Replace mock data with real API integration for KPIs and charts.
+
+## Fix log
+- Dashboard only showed static text because required scripts were blocked by CSP and browser caching.
+- Added local `vendor` copies of Chart.js and its date-fns adapter, updated script paths with `?v=1` cache-busting, and inserted a hidden JS boot status span.
