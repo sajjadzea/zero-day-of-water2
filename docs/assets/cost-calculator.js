@@ -48,10 +48,11 @@
   });
 
 
-  const hasChart = !!window.Chart;
-  if (hasChart) {
-    Chart.defaults.font.family = "'Vazirmatn', sans-serif";
+  if (!window.Chart) {
+    console.error('Chart.js not loaded');
+    return;
   }
+  Chart.defaults.font.family = "'Vazirmatn', sans-serif";
   let chart;
   let sensitivityChart;
 
@@ -76,7 +77,6 @@
   }
 
   function renderChart(data) {
-    if (!hasChart) return;
     const labels = data.map(i => i.label);
     const values = data.map(i => i.value);
     const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
@@ -147,7 +147,7 @@
     });
     sensitivityList.innerHTML = html;
 
-    if (hasChart && sensitivityChartEl) {
+    if (sensitivityChartEl) {
       const labels = results.map(r => `+۱۰٪ ${r.label}`);
       const data = results.map(r => r.percentageChange);
       if (!sensitivityChart) {
