@@ -29,3 +29,7 @@ If Content Security Policy headers are enabled, whitelist:
 ## Fix log
 - Dashboard only showed static text because required scripts were blocked by CSP and browser caching.
 - Added local `vendor` copies of Chart.js and its date-fns adapter, updated script paths with `?v=1` cache-busting, and inserted a hidden JS boot status span.
+
+## Routing Fix
+- Updated landing page card to link to `/gas/` instead of the old `/gas/energy.html`.
+- Added Netlify redirect: `/gas/energy    /gas/   301` to forward legacy requests.
