@@ -22,7 +22,7 @@
     X-Content-Type-Options = "nosniff"
       Content-Security-Policy = """
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://speedcf.cloudflareaccess.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com data:;
         img-src 'self' data: https:;
@@ -35,7 +35,7 @@
   [context.production.headers.values]
       Content-Security-Policy = """
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://speedcf.cloudflareaccess.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com data:;
         img-src 'self' data: https:;
@@ -48,7 +48,7 @@
   [context.branch-deploy.headers.values]
       Content-Security-Policy = """
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://speedcf.cloudflareaccess.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com data:;
         img-src 'self' data: https:;
@@ -61,7 +61,7 @@
   [context.deploy-preview.headers.values]
       Content-Security-Policy = """
         default-src 'self';
-        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net;
+        script-src 'self' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://speedcf.cloudflareaccess.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com data:;
         img-src 'self' data: https:;
