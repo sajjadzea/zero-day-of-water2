@@ -114,9 +114,10 @@ function analyzeConsumption() {
 
 async function loadPdfLibs() {
   try {
-    const html2canvas = (await import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')).default;
-    const jsPDF = (await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')).jsPDF;
-    return { html2canvas, jsPDF };
+    const hMod = await import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    const jMod = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    if (!hMod?.default || !jMod?.jsPDF) throw new Error('dynamic import failed');
+    return { html2canvas: hMod.default, jsPDF: jMod.jsPDF };
   } catch (e) {
     return new Promise(resolve => {
       const h = document.createElement('script');
@@ -135,7 +136,7 @@ async function loadPdfLibs() {
 async function downloadBillAsPDF() {
   const libs = await loadPdfLibs();
   const element = document.getElementById('etf-bill-to-print');
-  const canvas = await libs.html2canvas(element);
+  const canvas = await libs.html2canvas(element, { useCORS: true, scale: 2 });
   const img = canvas.toDataURL('image/png');
   const pdf = new libs.jsPDF('p', 'mm', 'a4');
   const width = pdf.internal.pageSize.getWidth();
