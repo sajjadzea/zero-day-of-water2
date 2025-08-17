@@ -1,87 +1,178 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>داشبورد پیک مصرف برق</title>
-  <link rel="stylesheet" href="../assets/tailwind.css" />
-  <link rel="stylesheet" href="../assets/styles.css" />
-  <!-- Fonts (Vazirmatn) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Vazirmatn', sans-serif; }
-    .kpi-card { background-color: #fff; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .alert-active { border: 2px solid #f87171; }
-    .alert-pulse { animation: alertPulse 1s infinite; }
-    @keyframes alertPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-    .chart-container { position: relative; height: 300px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داشبورد مدیریت مصرف برق - خراسان رضوی</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            background-color: #f1f5f9;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .chart-container { position: relative; height: 350px; width: 100%; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
-  <main id="main" class="container mx-auto p-4 space-y-8">
-    <a href="./" class="text-sm text-blue-600 hover:underline">بازگشت به صفحه برق</a>
-    <h1 class="text-2xl mb-4">داشبورد پیک مصرف برق</h1>
-    <section id="peak-load-dashboard" class="space-y-8">
-      <!-- KPI Cards -->
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="kpi-card">
-          <h3 class="text-sm">بار لحظه‌ای</h3>
-          <p id="currentLoadVal" class="text-2xl font-bold"></p>
-        </div>
-        <div class="kpi-card">
-          <h3 class="text-sm">پیک امروز</h3>
-          <p id="todayPeakVal" class="text-2xl font-bold"></p>
-          <p id="todayPeakTime" class="text-xs text-slate-600"></p>
-        </div>
-        <div class="kpi-card">
-          <h3 class="text-sm">پیک دیروز</h3>
-          <p id="yesterdayPeakVal" class="text-2xl font-bold"></p>
-          <p id="yesterdayPeakTime" class="text-xs text-slate-600"></p>
-        </div>
-        <div class="kpi-card" id="alertCard">
-          <h3 class="text-sm">هشدار</h3>
-          <p id="alertMessage" class="text-2xl font-bold alert-pulse"></p>
-        </div>
-      </div>
+<body class="bg-slate-100 text-slate-800">
+    <div class="container mx-auto p-4 md:p-6 lg:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">داشبورد مدیریت مصرف برق</h1>
+            <p class="text-lg text-slate-600 mt-1">استان خراسان رضوی</p>
+        </header>
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <section id="total-consumption" class="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-3 border-slate-200">تقاضا و مصرف کل</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+                            <h3 class="text-sm font-medium text-blue-600">پیک تقاضا (لحظه‌ای)</h3>
+                            <p class="text-2xl font-bold text-blue-900 mt-1">۴٬۵۱۲ <span class="text-base font-normal">مگاوات</span></p>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 p-4 rounded-xl">
+                            <h3 class="text-sm font-medium text-green-600">مصرف کل (امروز)</h3>
+                            <p class="text-2xl font-bold text-green-900 mt-1">۷۲٫۵ <span class="text-base font-normal">گیگاوات‌ساعت</span></p>
+                        </div>
+                        <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
+                            <h3 class="text-sm font-medium text-yellow-600">ضریب بار شبکه</h3>
+                            <p class="text-2xl font-bold text-yellow-900 mt-1">۷۸٪</p>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="demandConsumptionChart"></canvas>
+                    </div>
+                </section>
+                <section id="household-consumption" class="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h2 class="text-xl font-semibold mb-4 border-b pb-3 border-slate-200">مصرف خانگی</h2>
+                    <div class="chart-container">
+                        <canvas id="cityConsumptionChart"></canvas>
+                    </div>
+                </section>
+            </div>
+            <div class="lg:col-span-1 space-y-6">
+                <aside class="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h3 class="text-lg font-semibold mb-4">وضعیت شبکه</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-600">وضعیت کلی:</span>
+                            <span class="px-3 py-1 text-sm font-semibold text-green-800 bg-green-200 rounded-full">پایدار</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-600">فرکانس شبکه:</span>
+                            <span class="font-mono font-semibold">49.98 Hz</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-600">تولید نیروگاهی:</span>
+                            <span class="font-mono font-semibold">۴٬۸۵۰ مگاوات</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-600">تبادل با شبکه سراسری:</span>
+                            <span class="font-mono font-semibold text-red-600">-۳۳۸ مگاوات</span>
+                        </div>
+                    </div>
+                </aside>
+                <aside class="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h3 class="text-lg font-semibold mb-4">تفکیک مصرف خانگی</h3>
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="householdBreakdownChart"></canvas>
+                    </div>
+                </aside>
+                <aside class="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+                    <h3 class="text-lg font-semibold mb-4">راهنمای مصرف بهینه</h3>
+                    <div id="currentStatusContainer" class="mb-5 p-3 rounded-lg text-center transition-colors duration-500">
+                        <p id="currentStatusText" class="font-bold"></p>
+                    </div>
+                    <div class="mb-5">
+                        <p class="text-sm text-slate-600 mb-3">ساعات شبانه‌روز بر اساس بار مصرفی:</p>
+                        <div class="w-full bg-slate-200 rounded-full h-8 flex overflow-hidden text-xs text-white font-bold text-center">
+                            <div class="flex items-center justify-center h-full bg-green-500" style="width: 54.17%"><span>کم‌باری</span></div>
+                            <div class="flex items-center justify-center h-full bg-red-500" style="width: 16.67%"><span>اوج</span></div>
+                            <div class="flex items-center justify-center h-full bg-yellow-500" style="width: 8.33%"><span class="hidden sm:inline">عادی</span></div>
+                            <div class="flex items-center justify-center h-full bg-red-500" style="width: 16.67%"><span>اوج</span></div>
+                            <div class="flex items-center justify-center h-full bg-green-500" style="width: 4.16%"></div>
+                        </div>
+                        <div class="w-full flex text-xs text-slate-500 mt-1 px-1">
+                            <span class="flex-1 text-right">۰۰</span>
+                            <span class="flex-1 text-center">۰۶</span>
+                            <span class="flex-1 text-center">۱۲</span>
+                            <span class="flex-1 text-center">۱۸</span>
+                            <span class="flex-1 text-left">۲۴</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-800 mb-2">توصیه لحظه‌ای</h4>
+                        <p id="dynamicTip" class="text-sm text-slate-600 leading-relaxed"></p>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+    <script>
+        Chart.defaults.font.family = "'Vazirmatn', sans-serif";
+        Chart.defaults.plugins.tooltip.rtl = true;
+        Chart.defaults.plugins.legend.rtl = true;
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
 
-      <!-- Realtime Chart -->
-      <div class="chart-container bg-white rounded p-4">
-        <canvas id="realtime-chart" aria-label="نمودار بار لحظه‌ای"></canvas>
-      </div>
+        const demandCtx = document.getElementById('demandConsumptionChart').getContext('2d');
+        const demandConsumptionChart = new Chart(demandCtx, {
+            type: 'line',
+            data: {
+                labels: ['۰۰:۰۰','۰۴:۰۰','۰۸:۰۰','۱۲:۰۰','۱۶:۰۰','۲۰:۰۰','۲۳:۵۹'],
+                datasets: [
+                  {label:'تقاضا',data:[2800,2650,3100,4200,4512,4100,3500],borderColor:'rgb(59,130,246)',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgb(59,130,246)'},
+                  {label:'مصرف',data:[2750,2600,3050,4150,4480,4050,3450],borderColor:'rgb(16,185,129)',backgroundColor:'rgba(16,185,129,.1)',fill:true,tension:.4,pointRadius:4,pointBackgroundColor:'rgb(16,185,129)'}
+                ]
+            },
+            options:{
+              responsive:true,maintainAspectRatio:false,
+              scales:{y:{beginAtZero:false,title:{display:true,text:'مگاوات (MW)'},
+              ticks:{callback:v=>new Intl.NumberFormat('fa-IR').format(v)}}},
+              plugins:{legend:{position:'top',align:'end'},tooltip:{callbacks:{label:c=>`${c.dataset.label||''}: ${new Intl.NumberFormat('fa-IR').format(c.parsed.y)} مگاوات`}}},
+              interaction:{intersect:false,mode:'index'}
+            }
+        });
 
-      <!-- Hourly Peak Chart -->
-      <div class="chart-container bg-white rounded p-4">
-        <canvas id="hourly-peak-chart" aria-label="نمودار پیک ساعتی"></canvas>
-      </div>
+        const cityCtx = document.getElementById('cityConsumptionChart').getContext('2d');
+        const cityConsumptionChart = new Chart(cityCtx, {
+          type:'bar',
+          data:{labels:['مشهد','نیشابور','سبزوار','تربت حیدریه','قوچان','کاشمر','گناباد'],
+          datasets:[{label:'مصرف خانگی (مگاوات‌ساعت)',data:[1850,480,410,280,210,190,150],backgroundColor:'rgba(34,211,238,.6)',borderColor:'rgb(8,145,178)',borderWidth:1,borderRadius:8}]},
+          options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+          scales:{x:{title:{display:true,text:'مصرف (MWh)'},ticks:{callback:v=>new Intl.NumberFormat('fa-IR').format(v)}}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label||''}: ${new Intl.NumberFormat('fa-IR').format(c.parsed.x)} مگاوات‌ساعت`}}}}
+        });
 
-      <!-- Daily Peak Table -->
-      <div class="overflow-x-auto">
-        <table id="daily-peak-table" class="min-w-full divide-y divide-gray-200 bg-white">
-          <thead>
-            <tr>
-              <th class="px-4 py-2">روز</th>
-              <th class="px-4 py-2">پیک (مگاوات)</th>
-            </tr>
-          </thead>
-          <tbody id="daily-peak-tbody" class="divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
+        const breakdownCtx = document.getElementById('householdBreakdownChart').getContext('2d');
+        const householdBreakdownChart = new Chart(breakdownCtx,{
+          type:'doughnut',
+          data:{labels:['سرمایش و گرمایش','روشنایی','لوازم خانگی','سایر موارد'],
+          datasets:[{label:'تفکیک مصرف',data:[45,25,20,10],backgroundColor:['rgb(251,146,60)','rgb(250,204,21)','rgb(132,204,22)','rgb(163,163,163)'],hoverOffset:4}]},
+          options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',align:'center',labels:{padding:15}}}}
+        });
 
-      <!-- Forecast Chart -->
-      <div class="chart-container bg-white rounded p-4">
-        <canvas id="forecast-chart" aria-label="نمودار پیش‌بینی"></canvas>
-      </div>
-    </section>
-  </main>
-  <!-- Chart.js core -->
-  <script defer src="../assets/libs/chart.umd.min.js"></script>
-  <!-- date-fns adapter for time scale (bundled) -->
-  <script defer src="../assets/libs/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <!-- Annotation plugin (v3 for Chart.js v4) -->
-  <script defer src="../assets/libs/chartjs-plugin-annotation.min.js"></script>
-  <!-- App script -->
-  <script defer src="../assets/peak-electricity.js"></script>
+        function updateConsumptionGuide(){
+          const now=new Date(); const h=now.getHours();
+          const box=document.getElementById('currentStatusContainer');
+          const txt=document.getElementById('currentStatusText');
+          const tipEl=document.getElementById('dynamicTip');
+          let status='',tip='',bg='',fg='';
+          if((h>=13&&h<17)||(h>=19&&h<23)){status='اکنون در ساعات اوج بار هستیم';tip='لطفاً از استفاده همزمان وسایل برقی پرمصرف مانند اتو، جاروبرقی و ماشین لباسشویی خودداری کنید.';bg='bg-red-100';fg='text-red-800';}
+          else if(h>=17&&h<19){status='اکنون در ساعات بار عادی هستیم';tip='مصرف خود را مدیریت کنید. تا دقایقی دیگر وارد ساعات اوج بار خواهیم شد.';bg='bg-yellow-100';fg='text-yellow-800';}
+          else {status='اکنون در ساعات کم‌باری هستیم';tip='بهترین زمان برای استفاده از وسایل پرمصرف مانند ماشین لباسشویی و ظرفشویی است.';bg='bg-green-100';fg='text-green-800';}
+          box.className=`mb-5 p-3 rounded-lg text-center transition-colors duration-500 ${bg}`;
+          txt.className=`font-bold ${fg}`; txt.innerText=status; tipEl.innerHTML=tip;
+        }
+        document.addEventListener('DOMContentLoaded',()=>{updateConsumptionGuide(); setInterval(updateConsumptionGuide,60000);});
+    </script>
 </body>
 </html>
