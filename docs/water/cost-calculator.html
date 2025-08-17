@@ -26,6 +26,10 @@
       </header>
       <div id="water-cost-app" class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section id="inputs" class="order-2 md:order-1 space-y-6">
+          <div class="flex gap-4">
+            <button id="btn_reset" type="button" class="px-4 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-2 focus:ring-gray-400">بازنشانی به پیش‌فرض</button>
+            <button id="btn_calculate" type="button" class="px-4 py-2 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-400">محاسبه</button>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Technical & Infrastructure -->
             <div class="bg-white rounded-2xl shadow p-4 space-y-4">
@@ -91,9 +95,6 @@
                 </div>
               </div>
             </div>
-          </div>
-          <div class="text-center">
-            <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
           </div>
         </section>
         <section id="outputs" class="order-1 md:order-2 space-y-8">
