@@ -1,0 +1,12 @@
+:root {
+  --gas-green: #16a34a; /* green-600 */
+  --gas-blue: #0284c7;  /* sky-600 */
+  --oil-black: #0f172a; /* slate-900 */
+  --oil-gray: #4b5563;  /* gray-600 */
+  --oil-orange: #ea580c; /* orange-600 */
+}
+
+body {
+  background: linear-gradient(to bottom, #f0fdf4, #e2e8f0);
+  font-family: 'Vazirmatn', sans-serif;
+}
