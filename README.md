@@ -2,6 +2,26 @@
 
 This repository hosts a simple dashboard served from the `/docs` directory and a proxy for Gemini API requests.
 
+## Dash application
+
+The interactive dashboards live in `/dash` and are organized by resource type:
+
+```
+/dash
+  /components       # shared UI pieces
+  /pages
+    /water
+      /water-crisis/water-crisis.js
+      /dam-monitoring/dam-monitoring.js
+      /bills-tariffs/bills-tariffs.js
+      /future-prediction/future-prediction.js
+    /electricity/electricity.js
+    /gas/gas.js
+    /oil/oil.js
+```
+
+`/dash/components` contains reusable pieces such as `Card`, `Header`, and `Footer` to avoid code duplication.  Routing is file based; paths mirror their folder names (e.g. `/water/water-crisis`).  New dashboards can be added by creating a folder and descriptive file under `/dash/pages`.
+
 ## GitHub Pages
 
 GitHub Pages is configured to deploy the `docs` directory. To use a custom subdomain:
