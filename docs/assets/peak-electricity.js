@@ -17,6 +17,8 @@
   const alertMessage = document.getElementById('alertMessage');
   const dailyPeakTbody = document.getElementById('daily-peak-tbody');
 
+  const hasChart = typeof window !== 'undefined' && !!window.Chart;
+
   const faTime = new Intl.DateTimeFormat('fa-IR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -30,18 +32,22 @@
   let realtimeChart, hourlyChart, forecastChart;
 
   function registerPlugins() {
-    if (window['ChartAnnotation']) {
-      Chart.register(window['ChartAnnotation']);
-    } else if (window['chartjs-plugin-annotation']) {
-      Chart.register(window['chartjs-plugin-annotation']);
+    try {
+      const Annotation = window.ChartAnnotation || window['chartjs-plugin-annotation'];
+      if (Annotation && hasChart) {
+        Chart.register(Annotation);
+      }
+    } catch (e) {
+      console.warn('Annotation plugin registration failed', e);
     }
   }
 
   function initCharts() {
+    if (!hasChart) return;
     registerPlugins();
 
     // Realtime chart
-    const rtCtx = document.getElementById('realtime-chart').getContext('2d');
+    const rtCtx = document.getElementById('realtime-chart')?.getContext?.('2d');
     realtimeChart = new Chart(rtCtx, {
       type: 'line',
       data: {
@@ -105,7 +111,7 @@
     });
 
     // Forecast chart
-    const fcCtx = document.getElementById('forecast-chart').getContext('2d');
+    const fcCtx = document.getElementById('forecast-chart')?.getContext?.('2d');
     forecastChart = new Chart(fcCtx, {
       type: 'line',
       data: {
@@ -137,8 +143,6 @@
         }
       }
     });
-
-    startUpdates();
   }
 
   function startUpdates() {
@@ -161,10 +165,12 @@
     currentLoadValEl.textContent = load.toLocaleString('fa-IR');
 
     // Update realtime chart
-    const ds = realtimeChart.data.datasets[0].data;
-    ds.push({ x: now, y: load });
-    if (ds.length > MAX_POINTS) ds.shift();
-    realtimeChart.update();
+    if (realtimeChart && realtimeChart.data && realtimeChart.data.datasets?.[0]) {
+      const ds = realtimeChart.data.datasets[0].data;
+      ds.push({ x: now, y: load });
+      if (ds.length > MAX_POINTS) ds.shift();
+      realtimeChart.update();
+    }
 
     // Update today peak
     if (load > todayPeak.value) {
@@ -181,7 +187,7 @@
     yesterdayPeakTimeEl.textContent = faTime.format(yesterdayTime);
 
     // Hourly data init
-    if (!hourlyChart.data.labels.length) {
+    if (hourlyChart && hourlyChart.data && hourlyChart.data.datasets?.[0] && !hourlyChart.data.labels.length) {
       for (let h = 0; h < 24; h++) {
         hourlyChart.data.labels.push(String(h).padStart(2, '0'));
         hourlyChart.data.datasets[0].data.push(40000 + Math.round(Math.random() * 10000));
@@ -190,7 +196,7 @@
     }
 
     // Forecast data init
-    if (!forecastChart.data.datasets[0].data.length) {
+    if (forecastChart && forecastChart.data && forecastChart.data.datasets?.[0] && !forecastChart.data.datasets[0].data.length) {
       for (let i = 1; i <= 24; i++) {
         const t = new Date(now.getTime() + i * 60 * 60 * 1000);
         forecastChart.data.datasets[0].data.push({ x: t, y: 45000 + Math.round(Math.random() * 5000) });
@@ -238,14 +244,31 @@
     stopUpdates();
   });
 
+  // Initial KPI render
+  updateData();
+
+  if (!hasChart) {
+    console.warn('Chart.js not loaded; charts will be skipped.');
+    document.querySelectorAll('canvas').forEach(c => {
+      const wrap = c.parentElement;
+      if (wrap) {
+        wrap.innerHTML = '<div class="text-center text-slate-400 p-6">نمودار در دسترس نیست (Chart.js بارگذاری نشد)</div>';
+      }
+    });
+    startUpdates();
+    return;
+  }
+
   // Lazy init charts
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
+      if (entry.isIntersecting && hasChart) {
         initCharts();
         observer.disconnect();
       }
     });
   });
   observer.observe(dashboardEl);
+
+  startUpdates();
 })();
