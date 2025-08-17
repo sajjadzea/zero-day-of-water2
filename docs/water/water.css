@@ -3,11 +3,16 @@ body { background-color: #f0f4f8; }
 
 .main-title { font-weight: 800; color: #1e3a8a; }
 
-.card-row {
-  display: flex;
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
 }
 
 .card {
@@ -15,10 +20,7 @@ body { background-color: #f0f4f8; }
   border-radius: 18px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
   padding: 1.5rem;
-  flex: 1;
-  min-width: 0;
-  width: 320px;
-  max-width: 100%;
+  width: 100%;
 }
 
 .footprint-card {
@@ -146,13 +148,13 @@ input[type=range]::-moz-range-thumb {
 
 /* ===== Mobile overrides ===== */
 @media (max-width: 768px) {
-  .card-row {
-    flex-direction: column;
-    align-items: center;
+  .cards {
+    grid-template-columns: 1fr;
+    max-width: 100%;
   }
 
   .card {
-    width: 90%;
+    width: 100%;
   }
 
   .site-logo {
