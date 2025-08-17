@@ -24,6 +24,8 @@
 
   const realCostEl = document.getElementById('real_cost');
   const finalPriceEl = document.getElementById('final_price');
+  document.getElementById('real_cost')?.setAttribute('aria-live', 'polite');
+  document.getElementById('final_price')?.setAttribute('aria-live', 'polite');
   const breakdownTable = document.getElementById('breakdown_table');
   const costChartEl = document.getElementById('costChart');
   const sensitivityTable = document.getElementById('sensitivity_table');
@@ -38,8 +40,6 @@
     inp.insertAdjacentElement('afterend', hint);
   });
 
-  realCostEl.setAttribute('aria-live', 'polite');
-  finalPriceEl.setAttribute('aria-live', 'polite');
 
   const hasChart = !!window.Chart;
   if (hasChart) {
