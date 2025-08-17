@@ -1,11 +1,12 @@
 .landing-option { transition: transform .2s, box-shadow .2s; }
 .landing-option:hover { transform: translateY(-4px); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
 
+/* ===== Base (desktop) styles ===== */
 .landing-logo {
   position: relative;
   margin: 10px auto;
-  width: 100%;
-  max-width: 60%;
+  width: 40vw;
+  max-width: 400px;
   height: auto;
   object-fit: contain;
   display: block;
@@ -16,4 +17,16 @@
   font-weight: 700;
   color: #333;
   text-align: center;
+}
+
+/* ===== Mobile overrides ===== */
+@media (max-width: 768px) {
+  .landing-logo {
+    width: 60vw;
+    max-width: 60%;
+  }
+
+  .welcome-text {
+    font-size: 20px;
+  }
 }
