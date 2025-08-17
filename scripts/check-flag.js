@@ -6,7 +6,7 @@ const path = require('path');
   const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], ignoreHTTPSErrors: true });
   const page = await browser.newPage();
 
-  await page.goto('https://wesh360.ir/water/', { waitUntil: 'networkidle2' });
+  await page.goto('https://wesh360.ir/water/hub', { waitUntil: 'networkidle2' });
 
   // Scroll to bottom to trigger lazy content
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
