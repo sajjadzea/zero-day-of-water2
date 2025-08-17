@@ -56,13 +56,20 @@
             }
         }
         .waffle{ --size:10; --gap:6px; --cell:12px; display:grid;
-          grid-template-columns:repeat(var(--size), var(--cell)); gap:var(--gap); place-content:center}
-        .waffle span{ width:var(--cell); height:var(--cell); border-radius:3px; background:#e5e7eb }
-        .waffle span.f{ background:#1d4ed8 }
+          grid-template-columns:repeat(var(--size), var(--cell)); gap:var(--gap); place-content:center }
+        .waffle span{ width:var(--cell); height:var(--cell); border-radius:3px; background:#e5e7eb; transition:transform .2s }
+        .waffle span.f{ background:#1d4ed8; opacity:0; transform:scale(.7) }
+        .waffle.play span.f{ animation:fill .35s ease-out forwards }
+        @keyframes fill{ to{ opacity:1; transform:scale(1) } }
         .waffle[data-state="warn"] span.f{ background:#f59e0b }
         .waffle[data-state="alert"] span.f{ background:#ef4444 }
-        @media (max-width:640px){ .waffle{ --cell:10px; --gap:4px } }
+        .waffle:hover span.f{ transform:scale(.9) }
+        .waffle span.f:hover{ transform:scale(1.1) }
         .dark .waffle span{ background:#374151 }
+        @media (prefers-reduced-motion: reduce){
+          .waffle span.f{ opacity:1; transform:none; animation:none; transition:none }
+        }
+        @media (max-width:640px){ .waffle{ --cell:10px; --gap:4px } }
         .days-left-card { background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; }
         .rain-bar { background-color: #93c5fd; border-radius: .5rem; position: relative; }
         .rain-bar-fill { background-color: #1d4ed8; border-radius: .5rem; transition: height 1s ease-out; }
@@ -141,10 +148,31 @@
         <section class="mb-12">
             <h2 class="text-3xl font-bold text-slate-800 text-center mb-8">پایش لحظه‌ای سدها</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3><div class="waffle mb-4" data-name="سد دوستی" data-pct="5" aria-label="پرشدگی سد دوستی 5 درصد"></div><p class="text-5xl font-extrabold text-blue-600">5%</p><p class="text-slate-500 mt-2">حجم: حدود ۶۵ میلیون متر مکعب</p><div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><i class="fas fa-exclamation-triangle mr-2"></i>نیمی از این حجم متعلق به ترکمنستان است.</div></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3><div class="waffle mb-4" data-name="سد طرق" data-pct="7" aria-label="پرشدگی سد طرق 7 درصد"></div><p class="text-5xl font-extrabold text-blue-600">7%</p><p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3><div class="waffle mb-4" data-name="سد کارده" data-pct="0" aria-label="پرشدگی سد کارده 0 درصد"></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p></div>
-                <div class="card text-center" data-fa-digits><h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3><div class="waffle mb-4" data-name="سد ارداک" data-pct="0" aria-label="پرشدگی سد ارداک 0 درصد"></div><p class="text-5xl font-extrabold text-blue-600">—</p><p class="text-slate-500 mt-2">حجم: حدود ۴ میلیون متر مکعب</p></div>
+                <div class="card text-center" data-fa-digits>
+                    <h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3>
+                    <div class="waffle mb-4" data-name="سد دوستی" data-pct="5"></div>
+                    <div class="value text-5xl font-extrabold text-blue-600">۵٪</div>
+                    <p class="text-slate-500 mt-2">حجم: حدود ۶۵ میلیون متر مکعب</p>
+                    <div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><i class="fas fa-exclamation-triangle mr-2"></i>نیمی از این حجم متعلق به ترکمنستان است.</div>
+                </div>
+                <div class="card text-center" data-fa-digits>
+                    <h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3>
+                    <div class="waffle mb-4" data-name="سد طرق" data-pct="7"></div>
+                    <div class="value text-5xl font-extrabold text-blue-600">۷٪</div>
+                    <p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p>
+                </div>
+                <div class="card text-center" data-fa-digits>
+                    <h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3>
+                    <div class="waffle mb-4" data-name="سد کارده" data-pct="0"></div>
+                    <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
+                    <p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p>
+                </div>
+                <div class="card text-center" data-fa-digits>
+                    <h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3>
+                    <div class="waffle mb-4" data-name="سد ارداک" data-pct="0"></div>
+                    <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
+                    <p class="text-slate-500 mt-2">حجم: حدود ۴ میلیون متر مکعب</p>
+                </div>
             </div>
         </section>
         <section class="mb-12">
@@ -285,22 +313,75 @@
     <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4"><div class="bg-white p-6 rounded-lg shadow-lg max-w-sm mx-auto text-center"><div class="text-red-500 mb-4"><i class="fas fa-exclamation-circle fa-3x" aria-hidden="true"></i></div><h3 class="text-lg font-bold text-red-600 mb-2">خطا در ارتباط با سرور</h3><p id="error-message" class="text-slate-700">متاسفانه مشکلی در دریافت اطلاعات پیش آمد. لطفا دوباره تلاش کنید.</p><button id="close-modal-btn" type="button" class="mt-6 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition">بستن</button></div></div>
     <script>
 (function(){
+  // تبدیل ارقام فارسی/عربی، حذف ٪ و ممیز فارسی
+  function normalizeDigits(s){
+    const fa = '۰۱۲۳۴۵۶۷۸۹', ar = '٠١٢٣٤٥٦٧٨٩';
+    return String(s)
+      .replace(/[۰-۹]/g, d => fa.indexOf(d))
+      .replace(/[٠-٩]/g, d => ar.indexOf(d))
+      .replace(/[٪%]/g,'')
+      .replace(/[،٫]/g,'.')
+      .trim();
+  }
+  function parsePct(raw){
+    const s = normalizeDigits(raw ?? '');
+    const v = parseFloat(s);
+    if (!isFinite(v)) return NaN;
+    // اگر ورودی در مقیاس 0..1 بود، تبدیل به درصد
+    const pct = (v <= 1 ? v * 100 : v);
+    return Math.max(0, Math.min(100, pct));
+  }
+
   function renderWaffle(el){
-    const pct = Math.max(0, Math.min(100, Number(el.dataset.pct)||0));
-    const filled = Math.round(pct);
+    // اولویت استخراج درصد: data-pct → aria-valuenow → متن .value
+    let pct = parsePct(el.dataset.pct
+                ?? el.getAttribute('aria-valuenow')
+                ?? (el.parentElement?.querySelector('.value')?.textContent || '0'));
+    if (isNaN(pct)) pct = 0;
+
+    // حداقل یک خانه برای مقادیر کوچک > 0
+    let filled = Math.round(pct);
+    if (filled === 0 && pct > 0) filled = 1;
+
     const frag = document.createDocumentFragment();
-    for(let i=0;i<100;i++){
-      const s=document.createElement('span');
-      if(i<filled) s.className='f';
+    for (let i=0; i<100; i++){
+      const s = document.createElement('span');
+      if (i < filled){
+        s.className = 'f';
+        s.style.animationDelay = (i * 12) + 'ms'; // حس تعاملی
+      }
       frag.appendChild(s);
     }
     el.replaceChildren(frag);
-    if(pct < 15) el.dataset.state = 'alert';
-    else if(pct < 40) el.dataset.state = 'warn';
+
+    // رنگ آستانه‌ها
+    el.dataset.state = (pct < 15) ? 'alert' : (pct < 40) ? 'warn' : 'ok';
+
+    // دسترس‌پذیری و تولتیپ
     const name = el.dataset.name || 'سد';
-    el.setAttribute('aria-label', `پرشدگی ${name} ${pct} درصد`);
+    el.setAttribute('aria-label', `پرشدگی ${name} ${Math.round(pct)} درصد`);
+    el.title = `${Math.round(pct)}٪`;
+
+    // شمارشگر درصد روی متن کارت (در صورت وجود .value)
+    const counter = el.parentElement?.querySelector('.value');
+    if (counter){
+      let t0 = null, dur = 800;
+      function tick(ts){ if(!t0) t0 = ts;
+        const p = Math.min(1, (ts - t0) / dur);
+        counter.textContent = Math.round(p*p * pct) + '٪';
+        if (p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // انیمیشن را بدون IO فعال کن
+    requestAnimationFrame(() => el.classList.add('play'));
   }
-  document.querySelectorAll('.waffle').forEach(renderWaffle);
+
+  // رندر قطعی پس از DOM آماده
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.waffle').forEach(renderWaffle);
+  });
 })();
     </script>
     <script>
