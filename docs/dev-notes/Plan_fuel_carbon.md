@@ -18,8 +18,6 @@
 If Content Security Policy headers are enabled, whitelist:
 - `https://cdn.jsdelivr.net`
 - `https://cdn.tailwindcss.com`
-- `https://fonts.googleapis.com`
-- `https://fonts.gstatic.com`
 
 ## Known Follow-ups
 - Migrate remaining pages from Google Fonts to local `docs/fonts/vazirmatn/` to reduce CSP and performance risks.
