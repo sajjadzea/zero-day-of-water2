@@ -26,7 +26,7 @@
   document.getElementById('final_price')?.setAttribute('aria-live', 'polite');
   const breakdownTable = document.getElementById('breakdown_table');
   const costChartEl = document.getElementById('costChart');
-  const sensitivityTable = document.getElementById('sensitivity_table');
+  const sensitivityList = document.getElementById('sensitivity_list');
   const sensitivityChartEl = document.getElementById('sensitivityChart');
   const summaryEl = document.getElementById('summary');
 
@@ -136,16 +136,14 @@
 
     results.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
-    let html =
-      '<thead class="sticky top-0 bg-slate-100"><tr><th class="p-2">سناریو</th><th class="p-2 text-right">قیمت نهایی</th><th class="p-2 text-right">تغییر</th></tr></thead><tbody>';
+    let html = '';
     results.forEach(r => {
-      const arrow = r.change >= 0 ? '▲' : '▼';
-      const finalClass = r.final >= 0 ? 'text-emerald-600' : 'text-red-600';
-      const colorClass = r.change >= 0 ? 'text-emerald-600' : 'text-red-600';
-      html += `<tr class="odd:bg-white even:bg-slate-50"><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2 ${finalClass}">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmtTable(Math.abs(r.percentageChange))} (${tomanFmt(Math.abs(r.change))})</td></tr>`;
+      const positiveEffect = r.change < 0;
+      const arrow = positiveEffect ? '▼' : '▲';
+      const colorClass = positiveEffect ? 'text-emerald-600' : 'text-red-600';
+      html += `<li class="flex items-center gap-4"><span class="flex-1">+۱۰٪ ${r.label}</span><span class="flex items-center gap-1 w-24 justify-center ${colorClass}"><span>${arrow}</span><span>${pctFmtTable(Math.abs(r.percentageChange))}</span></span><span class="w-32 text-left">${tomanFmt(Math.abs(r.change))}</span></li>`;
     });
-    html += '</tbody>';
-    sensitivityTable.innerHTML = html;
+    sensitivityList.innerHTML = html;
 
     if (hasChart && sensitivityChartEl) {
       const labels = results.map(r => `+۱۰٪ ${r.label}`);
