@@ -15,13 +15,6 @@
         border-radius: 0.5rem;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
       }
-      .output-card {
-        background: #fff;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        text-align: center;
-      }
       .chart-container {
         position: relative;
         height: 300px;
@@ -29,44 +22,13 @@
     </style>
   </head>
   <body class="bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8">
- codex/add-navigation-links-between-hub-and-dashboards
     <main class="max-w-7xl mx-auto" id="main">
       <a href="./hub.html" class="text-blue-600 hover:underline">بازگشت به انتخاب داشبورد</a>
-
-    <main id="main">
- main
       <header class="text-center mb-10">
         <h1 class="text-3xl md:text-4xl font-bold text-blue-600 mb-2">ماشین‌حساب پیشرفته قیمت تمام‌شده آب</h1>
         <p class="text-lg text-slate-600">تأثیر هر متغیر را بر هزینه واقعی و قیمت نهایی آب شرب تحلیل کنید.</p>
       </header>
       <div id="water-cost-app" class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section id="outputs" class="order-1 lg:order-1 space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="output-card">
-              <h2 class="font-semibold mb-2">هزینه واقعی هر مترمکعب</h2>
-              <p id="real_cost" class="text-2xl font-bold">۰</p>
-            </div>
-            <div class="output-card">
-              <h2 class="font-semibold mb-2">قیمت نهایی پیشنهادی</h2>
-              <p id="final_price" class="text-2xl font-bold text-blue-600">۰</p>
-            </div>
-          </div>
-          <div>
-            <h3 class="font-semibold mb-2">سهم هر بخش از هزینه</h3>
-            <table id="breakdown_table" class="min-w-full text-sm tabular-nums"></table>
-          </div>
-          <div class="chart-container">
-            <canvas id="costChart"></canvas>
-          </div>
-          <div>
-            <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
-            <table id="sensitivity_table" class="min-w-full text-sm tabular-nums"></table>
-            <div class="chart-container mt-4">
-              <canvas id="sensitivityChart"></canvas>
-            </div>
-          </div>
-          <p id="summary" class="text-sm text-slate-600"></p>
-        </section>
         <section id="inputs" class="order-0 lg:order-2 space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="input-group">
@@ -95,14 +57,11 @@
               <div class="text-sm text-slate-600"><span id="p_power_outage_val">۵٪</span></div>
             </div>
           </div>
- codex/promote-and-style-price-cards-in-outputs
-        </div>
-
-        <div class="text-center mb-8">
-          <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
-        </div>
-
-        <section id="outputs" class="space-y-8">
+          <div class="text-center">
+            <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
+          </div>
+        </section>
+        <section id="outputs" class="order-1 lg:order-1 space-y-8">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="rounded-xl p-5 bg-rose-50 border border-rose-100 shadow-sm">
               <h3 class="text-base md:text-lg font-semibold text-rose-800">قیمت تمام‌شده واقعی</h3>
@@ -115,19 +74,16 @@
               <p class="text-sm text-slate-500 mt-1">تومان بر مترمکعب</p>
             </div>
           </div>
-
           <div>
             <h3 class="font-semibold mb-2">جدول سهم هر متغیر</h3>
             <table id="breakdown_table" class="min-w-full text-sm"></table>
           </div>
-
           <div>
             <h3 class="font-semibold mb-2">نمودار دونات سهم عوامل</h3>
             <div class="chart-container">
               <canvas id="costChart"></canvas>
             </div>
           </div>
-
           <div>
             <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
             <table id="sensitivity_table" class="min-w-full text-sm"></table>
@@ -135,21 +91,15 @@
               <canvas id="sensitivityChart"></canvas>
             </div>
           </div>
-
           <div>
             <h3 class="font-semibold mb-2">جمع‌بندی تحلیلی</h3>
             <p id="summary" class="text-sm text-slate-600"></p>
           </div>
-
-          <div class="text-center">
-            <button id="btn_defaults" type="button" class="px-4 py-2 bg-slate-200 rounded hover:bg-slate-300">مقادیر پیش‌فرض</button>
-          </div>
- main
         </section>
       </div>
     </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>localStorage.setItem('sector','water');</script>
+    <script defer src="../assets/water-init.js"></script>
     <script defer src="../assets/water-cost.js"></script>
   </body>
 </html>
