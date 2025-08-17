@@ -9,6 +9,8 @@
     style: 'percent',
     maximumFractionDigits: 1
   });
+  const pctFmtTable = v =>
+    new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1, useGrouping: false }).format(v) + '%';
 
   const c_production = document.getElementById('c_production');
   const c_production_val = document.getElementById('c_production_val');
@@ -64,10 +66,13 @@
   }
 
   function renderBreakdown(realCost, data) {
-    let html = '<thead><tr><th class="p-2">آیتم</th><th class="p-2">هزینه (تومان)</th><th class="p-2">درصد</th></tr></thead><tbody>';
+    let html =
+      '<thead class="sticky top-0 bg-slate-100"><tr><th class="p-2">آیتم</th><th class="p-2 text-right">هزینه (تومان)</th><th class="p-2 text-right">درصد</th></tr></thead><tbody>';
     data.forEach(item => {
       const percentage = (item.value / realCost) * 100;
-      html += `<tr><td class="p-2">${item.label}</td><td class="p-2">${tomanFmt(item.value)}</td><td class="p-2">${pctFmt.format(percentage / 100)}</td></tr>`;
+      const valClass = item.value >= 0 ? 'text-emerald-600' : 'text-red-600';
+      const pctClass = percentage >= 0 ? 'text-emerald-600' : 'text-red-600';
+      html += `<tr class="odd:bg-white even:bg-slate-50"><td class="p-2">${item.label}</td><td class="p-2 ${valClass}">${tomanFmt(item.value)}</td><td class="p-2 ${pctClass}">${pctFmtTable(percentage)}</td></tr>`;
     });
     html += '</tbody>';
     breakdownTable.innerHTML = html;
@@ -78,24 +83,40 @@
     const labels = data.map(i => i.label);
     const values = data.map(i => i.value);
     const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
+    const options = {
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+              const perc = (ctx.parsed / total) * 100;
+              return `${ctx.label}: ${pctFmtTable(perc)}`;
+            }
+          }
+        }
+      },
+      cutout: '50%'
+    };
     if (!chart) {
       chart = new Chart(costChartEl.getContext('2d'), {
-        type: 'pie',
+        type: 'doughnut',
         data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
-        options: { plugins: { legend: { position: 'bottom' } } }
+        options
       });
     } else {
       const diff = Math.abs(chart.data.labels.length - labels.length);
       if (diff > 2) {
         chart.destroy();
         chart = new Chart(costChartEl.getContext('2d'), {
-          type: 'pie',
+          type: 'doughnut',
           data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
-          options: { plugins: { legend: { position: 'bottom' } } }
+          options
         });
       } else {
         chart.data.labels = labels;
         chart.data.datasets[0].data = values;
+        chart.options = options;
         chart.update();
       }
     }
@@ -120,11 +141,13 @@
 
     results.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
-    let html = '<thead><tr><th class="p-2">سناریو</th><th class="p-2">قیمت نهایی</th><th class="p-2">تغییر</th></tr></thead><tbody>';
+    let html =
+      '<thead class="sticky top-0 bg-slate-100"><tr><th class="p-2">سناریو</th><th class="p-2 text-right">قیمت نهایی</th><th class="p-2 text-right">تغییر</th></tr></thead><tbody>';
     results.forEach(r => {
       const arrow = r.change >= 0 ? '▲' : '▼';
-      const colorClass = r.change >= 0 ? 'text-red-600' : 'text-green-600';
-      html += `<tr><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmt.format(Math.abs(r.percentageChange) / 100)} (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
+      const finalClass = r.final >= 0 ? 'text-emerald-600' : 'text-red-600';
+      const colorClass = r.change >= 0 ? 'text-emerald-600' : 'text-red-600';
+      html += `<tr class="odd:bg-white even:bg-slate-50"><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2 ${finalClass}">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmtTable(Math.abs(r.percentageChange))} (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
     });
     html += '</tbody>';
     sensitivityTable.innerHTML = html;
