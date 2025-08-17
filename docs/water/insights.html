@@ -59,26 +59,26 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3>
-                    <div class="waffle mb-4" data-name="سد دوستی" data-pct="5"></div>
+                    <div class="waffle mb-4" id="waffle-doosti"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۵٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۶۳ میلیون متر مکعب</p>
                     <div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><span class="mr-2" aria-hidden="true">⚠️</span>بخشی از این حجم متعلق به ترکمنستان است.</div>
                 </div>
                 <div class="card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3>
-                    <div class="waffle mb-4" data-name="سد طرق" data-pct="6"></div>
+                    <div class="waffle mb-4" id="waffle-torogh"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۶٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p>
                 </div>
                 <div class="card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3>
-                    <div class="waffle mb-4" data-name="سد کارده" data-pct="0"></div>
+                    <div class="waffle mb-4" id="waffle-kardeh"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p>
                 </div>
                 <div class="card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3>
-                    <div class="waffle mb-4" data-name="سد ارداک" data-pct="0"></div>
+                    <div class="waffle mb-4" id="waffle-erak"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۴ میلیون متر مکعب</p>
                 </div>
@@ -226,13 +226,14 @@
     
     
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script defer src="../assets/water-init.js"></script>
-    <script defer src="../assets/twemoji.min.js"></script>
-    <script defer src="../assets/ai.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <script type="module" src="../assets/ai.js"></script>
     <script defer src="../assets/app.js"></script>
     <script defer src="../assets/water-insights.js"></script>
     <script defer src="../assets/emoji-flag.js"></script>
     <script defer src="../assets/numfmt.js"></script>
+    <script type="module" src="../assets/js/insights-waffle.js"></script>
 </body>
 </html>

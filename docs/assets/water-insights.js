@@ -1,4 +1,3 @@
-
       const hasChart = !!window.Chart;
       document.addEventListener('DOMContentLoaded', () => {
         // همه ایموجی‌ها را به SVG توییتر تبدیل کن (از جمله 🇮🇷)
@@ -6,81 +5,7 @@
           twemoji.parse(document.body, { folder: 'svg', ext: '.svg' });
         }
       });
-    
 
-
-(function(){
-  // تبدیل ارقام فارسی/عربی، حذف ٪ و ممیز فارسی
-  function normalizeDigits(s){
-    const fa = '۰۱۲۳۴۵۶۷۸۹', ar = '٠١٢٣٤٥٦٧٨٩';
-    return String(s)
-      .replace(/[۰-۹]/g, d => fa.indexOf(d))
-      .replace(/[٠-٩]/g, d => ar.indexOf(d))
-      .replace(/[٪%]/g,'')
-      .replace(/[،٫]/g,'.')
-      .trim();
-  }
-  function parsePct(raw){
-    const s = normalizeDigits(raw ?? '');
-    const v = parseFloat(s);
-    if (!isFinite(v)) return NaN;
-    // اگر ورودی در مقیاس 0..1 بود، تبدیل به درصد
-    const pct = (v <= 1 ? v * 100 : v);
-    return Math.max(0, Math.min(100, pct));
-  }
-
-  function renderWaffle(el){
-    // اولویت استخراج درصد: data-pct → aria-valuenow → متن .value
-    let pct = parsePct(el.dataset.pct
-                ?? el.getAttribute('aria-valuenow')
-                ?? (el.parentElement?.querySelector('.value')?.textContent || '0'));
-    if (isNaN(pct)) pct = 0;
-
-    // حداقل یک خانه برای مقادیر کوچک > 0
-    let filled = Math.round(pct);
-    if (filled === 0 && pct > 0) filled = 1;
-
-    const frag = document.createDocumentFragment();
-    for (let i=0; i<100; i++){
-      const s = document.createElement('span');
-      if (i < filled){
-        s.className = 'f';
-        s.style.animationDelay = (i * 12) + 'ms'; // حس تعاملی
-      }
-      frag.appendChild(s);
-    }
-    el.replaceChildren(frag);
-
-    // رنگ آستانه‌ها
-    el.dataset.state = (pct < 15) ? 'alert' : (pct < 40) ? 'warn' : 'ok';
-
-    // دسترس‌پذیری و تولتیپ
-    const name = el.dataset.name || 'سد';
-    el.setAttribute('aria-label', `پرشدگی ${name} ${Math.round(pct)} درصد`);
-    el.title = `${Math.round(pct)}٪`;
-
-    // شمارشگر درصد روی متن کارت (در صورت وجود .value)
-    const counter = el.parentElement?.querySelector('.value');
-    if (counter){
-      let t0 = null, dur = 800;
-      function tick(ts){ if(!t0) t0 = ts;
-        const p = Math.min(1, (ts - t0) / dur);
-        counter.textContent = Math.round(p*p * pct) + '٪';
-        if (p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    }
-
-    // انیمیشن را بدون IO فعال کن
-    requestAnimationFrame(() => el.classList.add('play'));
-  }
-
-  // رندر قطعی پس از DOM آماده
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.waffle').forEach(renderWaffle);
-  });
-})();
-    
 
 
 (function(){
