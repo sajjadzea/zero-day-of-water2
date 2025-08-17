@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Language" content="fa-IR" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta property="og:image" content="https://wesh360.ir/page/landing/logo2.jfif" />
+  <meta property="og:image:secure_url" content="https://wesh360.ir/page/landing/logo2.jfif" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:alt" content="wesh360 – تصویر شاخص صفحه" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://wesh360.ir/page/landing/logo2.jfif" />
+  <title>wesh360</title>
+    <link rel="stylesheet" href="assets/tailwind.css" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="stylesheet" href="page/landing/landing.css" /></head>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+  <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
+  <picture>
+    <source srcset="page/landing/logo2.avif" type="image/avif">
+    <source srcset="page/landing/logo2.webp" type="image/webp">
+    <img src="page/landing/logo2.jfif" alt="لوگوی سایت" class="landing-logo max-w-full h-auto object-contain block" loading="lazy">
+  </picture>
+  <main id="main" class="w-full text-center space-y-12">
+    <h1 class="welcome-text">به wesh360 خوش آمدید</h1>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+        <a href="/water/hub" data-sector="water" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">💧</span>
+          آب
+        </a>
+        <a href="electricity/" data-sector="electricity" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">⚡</span>
+          برق
+        </a>
+        <a href="gas/energy.html" data-sector="gas" class="landing-option bg-white rounded-xl p-8 flex flex-col items-center text-lg font-bold text-slate-700">
+          <span class="text-5xl mb-4">🛢</span>
+          گاز و فرآورده‌های نفتی
+        </a>
+      </div>
+      <a id="quick-entry" href="#" class="hidden landing-option bg-blue-600 text-white rounded-xl py-4 px-8 inline-block font-bold"></a>
+  </main>
+  <div id="curtain" class="curtain hidden"><div class="curtain-half left"></div><div class="curtain-half right"></div></div>
+  <script defer src="index.js"></script>
+  <script defer src="assets/numfmt.js"></script>
+</body>
+</html>
