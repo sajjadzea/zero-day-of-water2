@@ -4,13 +4,9 @@
   const app = document.getElementById('water-cost-app');
   if (!app) return;
 
-  const tomanFmt = v => new Intl.NumberFormat('fa-IR').format(Math.round(v));
-  const pctFmt = new Intl.NumberFormat('fa-IR', {
-    style: 'percent',
-    maximumFractionDigits: 1
-  });
+  const tomanFmt = v => new Intl.NumberFormat('fa-IR').format(Math.round(v)) + ' تومان';
   const pctFmtTable = v =>
-    new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 1, useGrouping: false }).format(v) + '%';
+    new Intl.NumberFormat('fa-IR', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false }).format(v) + '٪';
 
   const c_production = document.getElementById('c_production');
   const c_production_range = document.getElementById('c_production_range');
@@ -66,7 +62,7 @@
 
   function renderBreakdown(realCost, data) {
     let html =
-      '<thead class="sticky top-0 bg-slate-100"><tr><th class="p-2">آیتم</th><th class="p-2 text-right">هزینه (تومان)</th><th class="p-2 text-right">درصد</th></tr></thead><tbody>';
+      '<thead class="sticky top-0 bg-slate-100"><tr><th class="p-2">آیتم</th><th class="p-2 text-right">هزینه</th><th class="p-2 text-right">درصد</th></tr></thead><tbody>';
     data.forEach(item => {
       const percentage = (item.value / realCost) * 100;
       const valClass = item.value >= 0 ? 'text-emerald-600' : 'text-red-600';
@@ -146,7 +142,7 @@
       const arrow = r.change >= 0 ? '▲' : '▼';
       const finalClass = r.final >= 0 ? 'text-emerald-600' : 'text-red-600';
       const colorClass = r.change >= 0 ? 'text-emerald-600' : 'text-red-600';
-      html += `<tr class="odd:bg-white even:bg-slate-50"><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2 ${finalClass}">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmtTable(Math.abs(r.percentageChange))} (${tomanFmt(Math.abs(r.change))} تومان)</td></tr>`;
+      html += `<tr class="odd:bg-white even:bg-slate-50"><td class="p-2">+۱۰٪ ${r.label}</td><td class="p-2 ${finalClass}">${tomanFmt(r.final)}</td><td class="p-2 font-semibold ${colorClass}">${arrow} ${pctFmtTable(Math.abs(r.percentageChange))} (${tomanFmt(Math.abs(r.change))})</td></tr>`;
     });
     html += '</tbody>';
     sensitivityTable.innerHTML = html;
@@ -172,7 +168,7 @@
   }
 
   function renderSummary(realCost, finalPrice) {
-    summaryEl.textContent = `هزینه واقعی هر مترمکعب ${tomanFmt(realCost)} تومان و قیمت نهایی پیشنهادی ${tomanFmt(finalPrice)} تومان است.`;
+    summaryEl.textContent = `هزینه واقعی هر مترمکعب ${tomanFmt(realCost)} و قیمت نهایی پیشنهادی ${tomanFmt(finalPrice)} است.`;
   }
 
   function showHint(inp, msg) {
@@ -192,7 +188,8 @@
   }
 
   function sanitizeInput(inp) {
-    let v = inp.valueAsNumber;
+    let raw = digits.toEn(inp.value).replace(/[,٬\s]/g, '');
+    let v = Number(raw);
     if (Number.isNaN(v)) {
       showHint(inp, 'عدد نامعتبر');
       return NaN;
@@ -203,7 +200,7 @@
     } else {
       v = Math.max(0, v);
     }
-    inp.value = v;
+    inp.value = digits.toFa(String(v));
     return v;
   }
 
@@ -250,13 +247,13 @@
   const recalcDebounced = debounce(calculate, 200);
   pairs.forEach(({ input, range }) => {
     range.addEventListener('input', () => {
-      input.value = range.value;
+      input.value = digits.toFa(range.value);
       sanitizeInput(input);
       recalcDebounced();
     });
     input.addEventListener('input', () => {
       sanitizeInput(input);
-      range.value = input.value;
+      range.value = digits.toEn(input.value);
       recalcDebounced();
     });
   });
@@ -265,14 +262,18 @@
     defaultsBtn.addEventListener('click', () => {
       pairs.forEach(({ input, range }) => {
         input.value = input.defaultValue;
-        range.value = input.defaultValue;
+        sanitizeInput(input);
+        range.value = digits.toEn(input.defaultValue);
         hideHint(input);
       });
       calculate();
     });
   }
 
-  pairs.forEach(({ input, range }) => (range.value = input.value));
+  pairs.forEach(({ input, range }) => {
+    sanitizeInput(input);
+    range.value = digits.toEn(input.value);
+  });
   calculate();
 
   ['pagehide', 'unload'].forEach(ev => {

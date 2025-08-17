@@ -16,11 +16,11 @@
       }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8">
+  <body class="bg-slate-50 text-slate-800 p-4 sm:p-6 md:p-8 tabular-nums">
     <main class="max-w-7xl mx-auto" id="main">
       <a href="./hub.html" class="text-blue-600 hover:underline">بازگشت به انتخاب داشبورد</a>
       <header class="text-center mb-10">
-        <h1 class="text-3xl md:text-4xl font-bold text-blue-600 mb-2">ماشین‌حساب پیشرفته قیمت تمام‌شده آب</h1>
+        <h1 class="text-4xl md:text-5xl font-bold text-blue-600 mb-2">ماشین‌حساب پیشرفته قیمت تمام‌شده آب</h1>
         <p class="text-lg text-slate-600">تأثیر هر متغیر را بر هزینه واقعی و قیمت نهایی آب شرب تحلیل کنید.</p>
       </header>
       <div id="water-cost-app" class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -28,13 +28,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Technical & Infrastructure -->
             <div class="bg-white rounded-2xl shadow p-4 space-y-4">
-              <h2 class="text-lg font-semibold">فنی و زیربنایی</h2>
+              <h2 class="text-xl font-bold">فنی و زیربنایی</h2>
               <div class="space-y-2">
                 <label for="c_production_range" class="block">هزینه تولید هر مترمکعب</label>
                 <div class="flex items-center gap-2">
                   <input type="range" id="c_production_range" min="0" max="50000" step="500" value="10000" class="w-full">
                   <div class="flex items-center gap-1">
-                    <input type="number" id="c_production" min="0" max="50000" step="500" value="10000" class="w-24 p-1 border rounded" dir="ltr">
+                    <input type="text" inputmode="numeric" id="c_production" min="0" max="50000" step="500" value="۱۰۰۰۰" class="w-24 p-1 border rounded" dir="ltr">
                     <span class="text-sm text-slate-600">تومان</span>
                   </div>
                 </div>
@@ -44,7 +44,7 @@
                 <div class="flex items-center gap-2">
                   <input type="range" id="c_energy_range" min="0" max="30000" step="500" value="7000" class="w-full">
                   <div class="flex items-center gap-1">
-                    <input type="number" id="c_energy" min="0" max="30000" step="500" value="7000" class="w-24 p-1 border rounded" dir="ltr">
+                    <input type="text" inputmode="numeric" id="c_energy" min="0" max="30000" step="500" value="۷۰۰۰" class="w-24 p-1 border rounded" dir="ltr">
                     <span class="text-sm text-slate-600">تومان</span>
                   </div>
                 </div>
@@ -53,13 +53,13 @@
 
             <!-- Economic & Managerial -->
             <div class="bg-white rounded-2xl shadow p-4 space-y-4">
-              <h2 class="text-lg font-semibold">اقتصادی و مدیریتی</h2>
+              <h2 class="text-xl font-bold">اقتصادی و مدیریتی</h2>
               <div class="space-y-2">
                 <label for="c_maintenance_range" class="block">هزینه نگهداری و تعمیرات</label>
                 <div class="flex items-center gap-2">
                   <input type="range" id="c_maintenance_range" min="0" max="20000" step="500" value="5000" class="w-full">
                   <div class="flex items-center gap-1">
-                    <input type="number" id="c_maintenance" min="0" max="20000" step="500" value="5000" class="w-24 p-1 border rounded" dir="ltr">
+                    <input type="text" inputmode="numeric" id="c_maintenance" min="0" max="20000" step="500" value="۵۰۰۰" class="w-24 p-1 border rounded" dir="ltr">
                     <span class="text-sm text-slate-600">تومان</span>
                   </div>
                 </div>
@@ -69,7 +69,7 @@
                 <div class="flex items-center gap-2">
                   <input type="range" id="p_loss_range" min="0" max="50" step="1" value="20" class="w-full">
                   <div class="flex items-center gap-1">
-                    <input type="number" id="p_loss" min="0" max="50" step="1" value="20" class="w-20 p-1 border rounded" dir="ltr">
+                    <input type="text" inputmode="numeric" id="p_loss" min="0" max="50" step="1" value="۲۰" class="w-20 p-1 border rounded" dir="ltr">
                     <span class="text-sm text-slate-600">٪</span>
                   </div>
                 </div>
@@ -78,13 +78,13 @@
 
             <!-- Environmental & Social -->
             <div class="bg-white rounded-2xl shadow p-4 space-y-4">
-              <h2 class="text-lg font-semibold">محیطی و اجتماعی</h2>
+              <h2 class="text-xl font-bold">محیطی و اجتماعی</h2>
               <div class="space-y-2">
                 <label for="p_power_outage_range" class="block">درصد تأثیر قطعی برق</label>
                 <div class="flex items-center gap-2">
                   <input type="range" id="p_power_outage_range" min="0" max="20" step="1" value="5" class="w-full">
                   <div class="flex items-center gap-1">
-                    <input type="number" id="p_power_outage" min="0" max="20" step="1" value="5" class="w-20 p-1 border rounded" dir="ltr">
+                    <input type="text" inputmode="numeric" id="p_power_outage" min="0" max="20" step="1" value="۵" class="w-20 p-1 border rounded" dir="ltr">
                     <span class="text-sm text-slate-600">٪</span>
                   </div>
                 </div>
@@ -98,14 +98,14 @@
         <section id="outputs" class="order-1 lg:order-1 space-y-8">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="rounded-xl p-5 bg-rose-50 border border-rose-100 shadow-sm">
-              <h3 class="text-base md:text-lg font-semibold text-rose-800">قیمت تمام‌شده واقعی</h3>
-              <p id="real_cost" class="mt-1 text-4xl md:text-5xl font-extrabold text-rose-600 tabular-nums">0</p>
-              <p class="text-sm text-slate-500 mt-1">تومان بر مترمکعب</p>
+              <h2 class="text-xl font-semibold text-rose-800">قیمت تمام‌شده واقعی</h2>
+              <p id="real_cost" class="mt-1 text-4xl md:text-5xl font-extrabold text-rose-600">0</p>
+              <p class="text-sm text-slate-500 mt-1">بر مترمکعب</p>
             </div>
             <div class="rounded-xl p-5 bg-emerald-50 border border-emerald-100 shadow-sm">
-              <h3 class="text-base md:text-lg font-semibold text-emerald-800">قیمت نهایی برای مصرف‌کننده</h3>
-              <p id="final_price" class="mt-1 text-4xl md:text-5xl font-extrabold text-emerald-600 tabular-nums">0</p>
-              <p class="text-sm text-slate-500 mt-1">تومان بر مترمکعب</p>
+              <h2 class="text-xl font-semibold text-emerald-800">قیمت نهایی برای مصرف‌کننده</h2>
+              <p id="final_price" class="mt-1 text-4xl md:text-5xl font-extrabold text-emerald-600">0</p>
+              <p class="text-sm text-slate-500 mt-1">بر مترمکعب</p>
             </div>
           </div>
           <div>
@@ -137,6 +137,7 @@
       </div>
     </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script defer src="../assets/numfmt.js"></script>
     <script defer src="../assets/water-init.js"></script>
     <script defer src="../assets/water-cost.js"></script>
   </body>
