@@ -47,16 +47,8 @@ const footprintResultDiv = document.getElementById('water-result');
 
 // شبیه‌ساز ---------------------------------------------------------------
 async function handleSimulation() {
-  const consumptionSlider = document.getElementById('cut-slider');
-  const rainfallSlider = document.getElementById('rain-slider');
-  const simulateBtn = document.getElementById('simulate-btn');
-  const simulationLoader = document.getElementById('simulate-thinking');
-  const simulationResultDiv = document.getElementById('simulate-result');
-  const simulationResultContainer = simulationResultDiv;
-
-  const baseDays = 32;
-  const consumptionReduction = Number(consumptionSlider.value);
-  const futureRainfall = Number(rainfallSlider.value);
+  const consumptionReduction = consumptionSlider.value;
+  const futureRainfall = rainfallSlider.value;
 
   simulationResultContainer.classList.remove('hidden');
   simulationLoader.classList.remove('hidden');
@@ -64,50 +56,76 @@ async function handleSimulation() {
   simulateBtn.disabled = true;
   simulateBtn.classList.add('opacity-50');
 
-  const newDaily = 0.953 * (1 - consumptionReduction / 100);
-  const added = futureRainfall * 0.5;
-  const newTotal = 30.5 + added;
-  const newDayZero = Math.round(newTotal / newDaily);
-  const delta = newDayZero - baseDays;
+  const prompt = `
+You are a water crisis analyst for the city of Mashhad. Your task is to simulate the effect of citizen actions and rainfall on the city's "Day Zero" (the day water runs out).
+Current status:
+- Days until Day Zero: 32 days.
+- Total usable water in dams: 30.5 Million Cubic Meters (MCM).
+- Current daily consumption: 0.953 MCM (30.5 / 32).
 
-  const deltaColor = delta >= 0 ? 'text-green-600' : 'text-red-600';
-  const deltaSign = delta >= 0 ? '+' : '';
-  const localParagraph = (dz, d, rain, cut) =>
-    `با کاهش ${cut}% مصرف و بارش ${rain} میلی‌متر، روز صفر از ${(dz - d).toLocaleString('fa-IR')} به ${dz.toLocaleString('fa-IR')} رسید (${deltaSign}${Math.abs(d).toLocaleString('fa-IR')} روز). این یعنی با همکاری شهروندان و اندکی بارش، می‌توانیم بحران را عقب بیندازیم.`;
+User's simulation inputs:
+- Assumed city-wide consumption reduction: ${consumptionReduction}%.
+- Assumed rainfall in the next 30 days: ${futureRainfall} mm.
 
-  simulationResultDiv.innerHTML = `
-    <div class="simulate-result rounded-xl bg-green-50 border border-green-200 p-6">
-      <div class="result-line flex items-baseline justify-center flex-wrap gap-2">
-        <span class="result-number main text-blue-600 font-extrabold text-6xl sm:text-7xl">${newDayZero.toLocaleString('fa-IR')}</span>
-        <span class="result-unit font-bold text-2xl">روز</span>
-        <span class="result-number delta ${deltaColor} font-extrabold text-4xl sm:text-5xl">(${deltaSign}${Math.abs(delta).toLocaleString('fa-IR')} روز)</span>
-      </div>
-      <p id="sim-paragraph" class="result-paragraph mt-3 text-slate-700 text-lg">${localParagraph(newDayZero, delta, futureRainfall, consumptionReduction)}</p>
-    </div>
-  `;
-  simulationLoader.classList.add('hidden');
+Calculation model:
+1) NewDaily = 0.953 * (1 - ${consumptionReduction} / 100)
+2) AddedFromRain = ${futureRainfall} * 0.5  (1mm rain adds 0.5 MCM)
+3) NewTotal = 30.5 + AddedFromRain
+4) NewDayZero = round( NewTotal / NewDaily )
+
+Return ONLY valid JSON (no markdown) with this exact shape:
+{
+  "new_day_zero": <number>,
+  "explanation": "<short Persian paragraph for non-expert users>"
+}
+`.trim();
+
+  // Helper واحد برای فراخوانی AI
+  const callAI = typeof askAI === 'function'
+    ? (p) => askAI(p, { json: true })
+    : (p) => callGeminiAPI(p, true);
 
   try {
-    const prompt = `
-      You are a water crisis analyst for Mashhad. Return JSON:
-      {
-        "new_day_zero": ${newDayZero},
-        "explanation": "<FA simple encouraging paragraph>"
-      }
-      Write explanation in Persian, single paragraph, plain text, no markdown.
+    const raw = await callAI(prompt);
+
+    // پاکسازی احتمالی backticks و parse امن
+    const cleaned = String(raw).trim().replace(/^```json\s*|\s*```$/g, '');
+    const result = JSON.parse(cleaned);
+
+    if (typeof result?.new_day_zero !== 'number' || typeof result?.explanation !== 'string') {
+      throw new Error('AI response missing required fields');
+    }
+
+    const baseDays = 32;
+    const diff = result.new_day_zero - baseDays;
+
+    let diffHTML = '';
+    if (diff > 0) {
+      diffHTML = `<span class="text-green-600 font-bold">(+${diff.toLocaleString('fa-IR')} روز)</span>`;
+    } else if (diff < 0) {
+      diffHTML = `<span class="text-red-600 font-bold">(${diff.toLocaleString('fa-IR')} روز)</span>`;
+    }
+
+    simulationResultDiv.innerHTML = `
+      <p class="text-slate-600 mb-2">روز صفر جدید:</p>
+      <p class="text-6xl font-extrabold text-blue-600 mb-3">
+        ${Number(result.new_day_zero).toLocaleString('fa-IR')}
+        <span class="text-2xl">روز</span>
+        ${diffHTML}
+      </p>
+      <p class="text-slate-700 text-lg">${result.explanation}</p>
     `;
-    const text = await askAI(prompt, { json: true });
-    let ai;
-    try { ai = typeof text === 'string' ? JSON.parse(text) : text; } catch {}
-    const expl = ai?.explanation || text || '';
-    if (expl) document.getElementById('sim-paragraph').textContent = expl;
-  } catch (err) {
-    console.warn('AI fallback used:', err.message);
+  } catch (error) {
+    console.error('Gemini API Error (Simulator):', error);
+    showErrorModal('پاسخ هوش مصنوعی قابل استفاده نبود. لطفاً دوباره تلاش کنید.');
+    simulationResultContainer.classList.add('hidden');
   } finally {
+    simulationLoader.classList.add('hidden');
     simulateBtn.disabled = false;
     simulateBtn.classList.remove('opacity-50');
   }
 }
+
 
 // راهکارها --------------------------------------------------------------
 // فالبک محلیِ بسیار ساده وقتی AI خطا می‌دهد
