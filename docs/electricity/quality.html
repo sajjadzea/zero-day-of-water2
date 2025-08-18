@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>داشبورد کیفیت توزیع برق</title>
+    <meta name="section" content="electricity" />
 
     <!-- Tailwind CSS (نسخهٔ محلی همسان با سایر صفحات برق) -->
     <link rel="stylesheet" href="../assets/tailwind.css">
@@ -55,24 +56,24 @@
 
                 <!-- Overview Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div id="saifi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
+                    <div id="saifi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین تعداد قطعی (SAIFI)</h4>
                         <p id="saifi-value" class="text-3xl font-bold my-2">--</p>
                         <div id="saifi-change" class="flex items-center text-sm"></div>
                         <p class="text-xs text-gray-500 mt-1">بار/مشترک</p>
                     </div>
-                    <div id="saidi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10">
+                    <div id="saidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین مدت قطعی (SAIDI)</h4>
                         <p id="saidi-value" class="text-3xl font-bold my-2">--</p>
                         <div id="saidi-change" class="flex items-center text-sm"></div>
                         <p class="text-xs text-gray-500 mt-1">دقیقه/مشترک</p>
                     </div>
-                    <div id="caidi-card" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-500/10">
+                    <div id="caidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-500/10">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین زمان رفع قطعی (CAIDI)</h4>
                         <p id="caidi-value" class="text-3xl font-bold my-2">--</p>
                         <p class="text-xs text-gray-500 mt-1">هر خاموشی چقدر طول می‌کشد؟</p>
                     </div>
-                    <div class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10">
+                    <div data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10">
                         <h4 class="text-gray-400 text-sm font-medium">سهم قطعی‌های برنامه‌ریزی‌شده</h4>
                         <p id="planned-share-value" class="text-3xl font-bold my-2">--</p>
                         <p class="text-xs text-gray-500 mt-1">از کل قطعی‌های این ماه</p>
@@ -178,6 +179,7 @@
 
     <!-- بعد از انتقال: فقط اسکریپت خارجی -->
     <script src="../assets/electricity-quality.js"></script>
+    <script defer src="../assets/badge-updated.js"></script>
     <script defer src="/assets/footer.js"></script>
 </body>
 </html>
