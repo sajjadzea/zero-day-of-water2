@@ -45,52 +45,56 @@ const footprintLoader = document.getElementById('ai-thinking');
 const footprintResultContainer = document.getElementById('water-result');
 const footprintResultDiv = document.getElementById('water-result');
 
-// شبیه‌ساز ---------------------------------------------------------------
+// Helper انتخابی برای فراخوانی AI (واحد بماند)
+const _aiCall = (p, asJson) =>
+  (typeof askAI === 'function') ? askAI(p, { json: !!asJson }) : callGeminiAPI(p, !!asJson);
+
+// --- شبیه‌ساز: فقط لودر تا پاسخ، سپس رندر نتیجه ---
 async function handleSimulation() {
   const consumptionReduction = consumptionSlider.value;
   const futureRainfall = rainfallSlider.value;
 
+  // آماده‌سازی UI: فقط لودر را نشان بده، هیچ متن پیش‌فرضی نگذار
   simulationResultContainer.classList.remove('hidden');
   simulationLoader.classList.remove('hidden');
   simulationResultDiv.innerHTML = '';
+
   simulateBtn.disabled = true;
   simulateBtn.classList.add('opacity-50');
+  simulateBtn.setAttribute('aria-busy', 'true');
 
+  // --- بخش اول: پرامپت دقیق انگلیسی (همان که کاربر خواسته) ---
   const prompt = `
-You are a water crisis analyst for the city of Mashhad. Your task is to simulate the effect of citizen actions and rainfall on the city's "Day Zero" (the day water runs out).
-Current status:
-- Days until Day Zero: 32 days.
-- Total usable water in dams: 30.5 Million Cubic Meters (MCM).
-- Current daily consumption: 0.953 MCM (30.5 / 32).
+    You are a water crisis analyst for the city of Mashhad. Your task is to simulate the effect of citizen actions and rainfall on the city's "Day Zero" (the day water runs out).
 
-User's simulation inputs:
-- Assumed city-wide consumption reduction: ${consumptionReduction}%.
-- Assumed rainfall in the next 30 days: ${futureRainfall} mm.
+    Current status:
+    - Days until Day Zero: 32 days.
+    - Total usable water in dams: 30.5 Million Cubic Meters (MCM).
+    - Current daily consumption: 0.953 MCM (30.5 / 32).
 
-Calculation model:
-1) NewDaily = 0.953 * (1 - ${consumptionReduction} / 100)
-2) AddedFromRain = ${futureRainfall} * 0.5  (1mm rain adds 0.5 MCM)
-3) NewTotal = 30.5 + AddedFromRain
-4) NewDayZero = round( NewTotal / NewDaily )
+    User's simulation inputs:
+    - Assumed city-wide consumption reduction: ${consumptionReduction}%.
+    - Assumed rainfall in the next 30 days: ${futureRainfall} mm.
 
-Return ONLY valid JSON (no markdown) with this exact shape:
-{
-  "new_day_zero": <number>,
-  "explanation": "<short Persian paragraph for non-expert users>"
-}
-`.trim();
+    Calculation model:
+    1. New Daily Consumption = 0.953 * (1 - ${consumptionReduction} / 100).
+    2. Water Added from Rain = ${futureRainfall} * 0.5 (Assume 1mm rain adds 0.5 MCM to dams).
+    3. New Total Water Volume = 30.5 + Water Added from Rain.
+    4. New Day Zero = New Total Water Volume / New Daily Consumption. Round to the nearest whole number.
 
-  // Helper واحد برای فراخوانی AI
-  const callAI = typeof askAI === 'function'
-    ? (p) => askAI(p, { json: true })
-    : (p) => callGeminiAPI(p, true);
+    Your output MUST be a JSON object with two keys: "new_day_zero" (the calculated number) and "explanation" (a short, encouraging, and simple paragraph in Persian explaining the result to a non-expert. Explain how their actions and the rainfall changed the future).
+  `.trim();
+
+  // کمک‌تابع برای parse امن JSON (حذف backticks احتمالی)
+  const safeParseJSON = (s) => {
+    const cleaned = String(s).trim().replace(/^```json\s*|\s*```$/g, '');
+    return JSON.parse(cleaned);
+  };
 
   try {
-    const raw = await callAI(prompt);
-
-    // پاکسازی احتمالی backticks و parse امن
-    const cleaned = String(raw).trim().replace(/^```json\s*|\s*```$/g, '');
-    const result = JSON.parse(cleaned);
+    // اجبار JSON-mode
+    const raw = await _aiCall(prompt, true);
+    const result = safeParseJSON(raw);
 
     if (typeof result?.new_day_zero !== 'number' || typeof result?.explanation !== 'string') {
       throw new Error('AI response missing required fields');
@@ -98,14 +102,12 @@ Return ONLY valid JSON (no markdown) with this exact shape:
 
     const baseDays = 32;
     const diff = result.new_day_zero - baseDays;
-
     let diffHTML = '';
-    if (diff > 0) {
-      diffHTML = `<span class="text-green-600 font-bold">(+${diff.toLocaleString('fa-IR')} روز)</span>`;
-    } else if (diff < 0) {
-      diffHTML = `<span class="text-red-600 font-bold">(${diff.toLocaleString('fa-IR')} روز)</span>`;
-    }
+    if (diff > 0) diffHTML = `<span class="text-green-600 font-bold">(+${diff.toLocaleString('fa-IR')} روز)</span>`;
+    else if (diff < 0) diffHTML = `<span class="text-red-600 font-bold">(${diff.toLocaleString('fa-IR')} روز)</span>`;
 
+    // لودر مخفی، نتیجه جایگزین
+    simulationLoader.classList.add('hidden');
     simulationResultDiv.innerHTML = `
       <p class="text-slate-600 mb-2">روز صفر جدید:</p>
       <p class="text-6xl font-extrabold text-blue-600 mb-3">
@@ -115,14 +117,16 @@ Return ONLY valid JSON (no markdown) with this exact shape:
       </p>
       <p class="text-slate-700 text-lg">${result.explanation}</p>
     `;
-  } catch (error) {
-    console.error('Gemini API Error (Simulator):', error);
-    showErrorModal('پاسخ هوش مصنوعی قابل استفاده نبود. لطفاً دوباره تلاش کنید.');
+  } catch (err) {
+    console.error('Simulator AI error:', err);
+    simulationLoader.classList.add('hidden');
+    simulationResultDiv.innerHTML = '';
+    showErrorModal('پاسخ هوش مصنوعی قابل استفاده نبود. لطفاً با مقادیر دیگری دوباره تلاش کنید.');
     simulationResultContainer.classList.add('hidden');
   } finally {
-    simulationLoader.classList.add('hidden');
     simulateBtn.disabled = false;
     simulateBtn.classList.remove('opacity-50');
+    simulateBtn.removeAttribute('aria-busy');
   }
 }
 
