@@ -45,43 +45,48 @@ const footprintLoader = document.getElementById('ai-thinking');
 const footprintResultContainer = document.getElementById('water-result');
 const footprintResultDiv = document.getElementById('water-result');
 
+// عناصر مربوط به شبیه‌ساز
+const consumptionSlider = document.getElementById('cut-slider');
+const rainfallSlider = document.getElementById('rain-slider');
+const simulateBtn = document.getElementById('simulate-btn');
+const simulationResultContainer = document.getElementById('simulation-result-container');
+const simulationLoader = document.getElementById('simulation-loader');
+const simulationResultDiv = document.getElementById('simulation-result');
+
 // شبیه‌ساز ---------------------------------------------------------------
 async function handleSimulation() {
   const consumptionReduction = consumptionSlider.value;
   const futureRainfall = rainfallSlider.value;
 
+  // فقط لودر را نشان بده؛ هیچ متن پیش‌فرضی رندر نکن
   simulationResultContainer.classList.remove('hidden');
   simulationLoader.classList.remove('hidden');
   simulationResultDiv.innerHTML = '';
+
   simulateBtn.disabled = true;
   simulateBtn.classList.add('opacity-50');
+  simulateBtn.setAttribute('aria-busy', 'true');
 
   const prompt = `
-You are a water crisis analyst for the city of Mashhad. Your task is to simulate the effect of citizen actions and rainfall on the city's "Day Zero" (the day water runs out).
+You are a water crisis analyst for the city of Mashhad. Simulate the effect of citizen actions and rainfall on "Day Zero".
 Current status:
 - Days until Day Zero: 32 days.
-- Total usable water in dams: 30.5 Million Cubic Meters (MCM).
+- Total usable water in dams: 30.5 MCM.
 - Current daily consumption: 0.953 MCM (30.5 / 32).
-
-User's simulation inputs:
-- Assumed city-wide consumption reduction: ${consumptionReduction}%.
-- Assumed rainfall in the next 30 days: ${futureRainfall} mm.
-
-Calculation model:
+User inputs:
+- Reduction: ${consumptionReduction}%.
+- Next 30 days rainfall: ${futureRainfall} mm.
+Model:
 1) NewDaily = 0.953 * (1 - ${consumptionReduction} / 100)
-2) AddedFromRain = ${futureRainfall} * 0.5  (1mm rain adds 0.5 MCM)
+2) AddedFromRain = ${futureRainfall} * 0.5
 3) NewTotal = 30.5 + AddedFromRain
-4) NewDayZero = round( NewTotal / NewDaily )
-
-Return ONLY valid JSON (no markdown) with this exact shape:
-{
-  "new_day_zero": <number>,
-  "explanation": "<short Persian paragraph for non-expert users>"
-}
+4) NewDayZero = round(NewTotal / NewDaily)
+Return ONLY valid JSON (no markdown):
+{ "new_day_zero": <number>, "explanation": "<Persian short paragraph>" }
 `.trim();
 
-  // Helper واحد برای فراخوانی AI
-  const callAI = typeof askAI === 'function'
+  // Helper واحد: askAI یا callGeminiAPI
+  const callAI = (typeof askAI === 'function')
     ? (p) => askAI(p, { json: true })
     : (p) => callGeminiAPI(p, true);
 
@@ -98,14 +103,12 @@ Return ONLY valid JSON (no markdown) with this exact shape:
 
     const baseDays = 32;
     const diff = result.new_day_zero - baseDays;
-
     let diffHTML = '';
-    if (diff > 0) {
-      diffHTML = `<span class="text-green-600 font-bold">(+${diff.toLocaleString('fa-IR')} روز)</span>`;
-    } else if (diff < 0) {
-      diffHTML = `<span class="text-red-600 font-bold">(${diff.toLocaleString('fa-IR')} روز)</span>`;
-    }
+    if (diff > 0) diffHTML = `<span class="text-green-600 font-bold">(+${diff.toLocaleString('fa-IR')} روز)</span>`;
+    if (diff < 0) diffHTML = `<span class="text-red-600 font-bold">(${diff.toLocaleString('fa-IR')} روز)</span>`;
 
+    // نتیجه نهایی: لودر مخفی، نتیجه جایگزین
+    simulationLoader.classList.add('hidden');
     simulationResultDiv.innerHTML = `
       <p class="text-slate-600 mb-2">روز صفر جدید:</p>
       <p class="text-6xl font-extrabold text-blue-600 mb-3">
@@ -115,14 +118,16 @@ Return ONLY valid JSON (no markdown) with this exact shape:
       </p>
       <p class="text-slate-700 text-lg">${result.explanation}</p>
     `;
-  } catch (error) {
-    console.error('Gemini API Error (Simulator):', error);
-    showErrorModal('پاسخ هوش مصنوعی قابل استفاده نبود. لطفاً دوباره تلاش کنید.');
-    simulationResultContainer.classList.add('hidden');
-  } finally {
+  } catch (err) {
+    console.warn('Simulator AI error:', err);
     simulationLoader.classList.add('hidden');
+    simulationResultDiv.innerHTML = ''; // خروجی را خالی نگه‌دار
+    showErrorModal('نتوانستیم آینده را تحلیل کنیم. لطفاً دوباره تلاش کنید.');
+    simulationResultContainer.classList.add('hidden'); // پنهان‌سازی با خطا
+  } finally {
     simulateBtn.disabled = false;
     simulateBtn.classList.remove('opacity-50');
+    simulateBtn.removeAttribute('aria-busy');
   }
 }
 
@@ -347,6 +352,6 @@ async function handleCalculateFootprint() {
   }
 }
 
-document.getElementById('simulate-btn')?.addEventListener('click', handleSimulation);
+simulateBtn?.addEventListener('click', handleSimulation);
 document.getElementById('solution-btn')?.addEventListener('click', handleGenerateTips);
 document.getElementById('calc-water-btn')?.addEventListener('click', handleCalculateFootprint);

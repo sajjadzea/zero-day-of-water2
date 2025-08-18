@@ -121,19 +121,13 @@
                         <div><label for="rain-slider" class="font-semibold text-slate-700 block mb-2">بارش باران در ماه آینده:</label><input type="range" id="rain-slider" min="0" max="50" value="5" class="w-full" aria-describedby="rain-value"><div class="text-center font-bold text-xl text-blue-600 mt-2"><span id="rain-value" data-fa-digits>5</span> میلی‌متر</div></div>
                     </div>
                     <div class="text-center"><button id="simulate-btn" type="button" class="text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg bg-indigo-600 hover:bg-indigo-700"><span class="ml-2" aria-hidden="true">📈</span>آینده را شبیه‌سازی کن</button></div>
-                    <div id="simulate-thinking" class="mt-4 hidden">
-                      <div class="flex items-center gap-2 text-gray-700">
-                        <span class="text-xl">✨</span>
-                        <span class="text-sm">در حال محاسبه با هوش مصنوعی…</span>
-                        <span class="flex items-center gap-1">
-                          <span class="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce"></span>
-                          <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce [animation-delay:120ms]"></span>
-                          <span class="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:240ms]"></span>
-                        </span>
+                    <div id="simulation-result-container" class="mt-8 hidden">
+                      <div id="simulation-loader" class="text-center">
+                        <i class="fas fa-spinner fa-spin fa-3x text-green-500"></i>
+                        <p class="mt-2 text-slate-600">در حال تحلیل آینده با هوش مصنوعی...</p>
                       </div>
-                      <div class="mt-3 h-8 w-20 rounded-full border-2 border-dashed border-purple-400 animate-spin mx-auto"></div>
+                      <div id="simulation-result" class="p-6 bg-white rounded-lg shadow-inner text-center" data-fa-digits></div>
                     </div>
-                    <div id="simulate-result" data-fa-digits class="mt-4" aria-live="polite" tabindex="-1"></div>
                     <div id="simulate-share" class="mt-2"></div>
                 </div>
             </div>

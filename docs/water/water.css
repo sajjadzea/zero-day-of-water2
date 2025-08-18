@@ -128,7 +128,7 @@ input[type=range]::-moz-range-thumb {
 
 #out-footprint,
 #water-result,
-#simulate-result,
+#simulation-result,
 #solution-result {
   margin-top: .75rem;
   line-height: 1.9;
