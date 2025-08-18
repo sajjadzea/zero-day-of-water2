@@ -12,11 +12,24 @@
   <link rel="stylesheet" href="assets/tailwind.css" />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
-<body class="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-sky-50/70 to-white">
-  <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
-  <header class="p-4 flex justify-center">
-    <img src="page/landing/logo2.webp" alt="لوگوی خانه هم‌افزایی انرژی و آب" loading="lazy" decoding="async" class="w-24 md:w-28 h-auto" />
-  </header>
+  <body class="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-sky-50/70 to-white">
+    <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
+    <header class="relative p-4 flex justify-center items-center">
+      <img src="page/landing/logo2.webp" alt="لوگوی خانه هم‌افزایی انرژی و آب" loading="lazy" decoding="async" class="w-24 md:w-28 h-auto" />
+      <div class="absolute top-4 right-4 flex items-center gap-2">
+        <button id="policyBtn" type="button" class="hidden md:inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500" aria-haspopup="dialog" aria-controls="policySheet" title="سیاست امنیت و حکمرانی داده">
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg>
+          <span>سیاست امنیت و حکمرانی داده</span>
+        </button>
+        <button id="securityBtn" type="button" class="hidden md:inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white/80 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500" aria-haspopup="dialog" aria-controls="securitySheet" title="گزارش مسئولانهٔ آسیب‌پذیری">
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 2 1.88 1.88" /><path d="M14.12 3.88 16 2" /><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /><path d="M12 20v-9" /><path d="M6.53 9C4.6 8.8 3 7.1 3 5" /><path d="M6 13H2" /><path d="M3 21c0-2.1 1.7-3.9 3.8-4" /><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /><path d="M22 13h-4" /><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></svg>
+          <span>گزارش مسئولانهٔ آسیب‌پذیری</span>
+        </button>
+        <button id="mobileActionsBtn" type="button" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-300 bg-white/80 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500" aria-haspopup="dialog" aria-controls="mobileActionsSheet" title="منوی سیاست و امنیت">
+          <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+        </button>
+      </div>
+    </header>
   <main id="main" class="flex-grow space-y-14">
     <section class="text-center max-w-6xl mx-auto px-4 py-10 md:py-14">
       <h1 class="text-2xl md:text-4xl font-extrabold text-slate-900">پلتفرم داده و مدیریت انرژی و آب خراسان رضوی</h1>
@@ -64,6 +77,145 @@
       </div>
     </section>
   </main>
+  <!-- Policy Sheet -->
+  <div id="policySheet" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="policyTitle">
+    <div class="absolute inset-0 bg-black/60" data-close></div>
+    <div class="fixed inset-y-0 right-0 w-full md:inset-0 md:flex md:items-center md:justify-center">
+      <div class="w-full md:max-w-screen-md h-full md:h-auto md:max-h-[90vh] bg-white overflow-y-auto p-6 shadow-lg">
+        <div class="flex items-start justify-between mb-4">
+          <h2 id="policyTitle" class="text-lg font-bold" tabindex="-1">سیاست امنیت و حکمرانی داده</h2>
+          <button class="text-slate-500 hover:text-slate-700" data-close aria-label="بستن">×</button>
+        </div>
+        <p class="mb-4 text-sm leading-7 text-slate-700">شفافیت داده و خط قرمز امنیت در WESH360<br/>ما صرفاً داده‌های عملکرد زنجیرهٔ تأمین انرژی و آب را به‌صورت تجمیعی و با تاخیر ایمن ۴۸–۷۲ ساعت مصورسازی می‌کنیم. امنیت سایبری و امنیت داده، خط قرمز ماست. روندهای استانی/شهری، شاخص‌های آموزشی و ابزارهای تعاملی برای آگاهی‌بخشی و هم‌افزایی ارائه می‌شود؛ در نسخهٔ عمومی از انتشار جزئیات حساس (مختصات شبکه، نام تأسیسات، موجودی دقیق، دادهٔ بلادرنگ) خودداری می‌گردد.</p>
+        <div class="prose prose-slate rtl max-w-none text-sm leading-7">
+          <h3>بیانیهٔ شفافیت، امنیت و حکمرانی داده در WESH360</h3>
+          <p><strong>هدف ما:</strong> مصورسازی داده‌های <strong>عملکرد زنجیرهٔ تأمین انرژی و آب</strong> برای <strong>آگاهی‌بخشی، هم‌افزایی و اطلاع‌رسانی عمومی</strong>—به‌زبان ساده، دقیق و قابل‌اتکا.<br><strong>خط قرمز ما:</strong> <strong>امنیت سایبری و امنیت داده</strong>.</p>
+          <hr />
+          <h2>۱) دامنهٔ داده و فلسفهٔ انتشار</h2>
+          <ul>
+            <li>تنها <strong>داده‌های عمومی و عملیاتیِ غیرشخصی</strong> مرتبط با آب، برق، گاز و فرآورده‌های نفتی را در سطح <strong>استان/شهر</strong> نمایش می‌دهیم.</li>
+            <li>هدف از انتشار، <strong>تصویر کلان و آموزشی</strong> از وضعیت است؛ نه نمایش جزئیات حساس یا قابلیت سوء‌استفادهٔ عملیاتی.</li>
+          </ul>
+          <h2>۲) چه نمایش می‌دهیم / چه نمایش نمی‌دهیم</h2>
+          <p><strong>نمایش می‌دهیم:</strong></p>
+          <ul>
+            <li>روندها و شاخص‌های تجمیعی (مصرف/تقاضا، پیک روز گذشته، تلفات کلان، ترکیب سوخت و شدت کربن، شاخص‌های کیفیت خدمت در سطح استان/شهر، شبیه‌سازهای آموزشی مانند قبض).</li>
+            <li>متادادهٔ هر نمودار: <strong>زمان آخرین به‌روزرسانی</strong>، <strong>منبع داده</strong> (در صورت وجود)، و <strong>برچسب سطح انتشار</strong>.</li>
+          </ul>
+          <p><strong>نمایش نمی‌دهیم:</strong></p>
+          <ul>
+            <li><strong>مختصات دقیق شبکه</strong>، <strong>نقشه‌های تک‌لاین</strong>، <strong>نام و نشانی ریزدانهٔ تأسیسات/مخازن/خطوط</strong>، <strong>موجودی دقیق ذخایر</strong>، و <strong>اعداد بلادرنگ</strong> که حساسیت عملیاتی ایجاد می‌کنند.</li>
+            <li>هرگونه جزئیات قابل انتساب که به <strong>واحد مشخص</strong> (مثلاً یک نیروگاه/بلوک خاص) اشارهٔ مستقیم کند.</li>
+          </ul>
+          <h2>۳) اصول امنیت و محرمانگی</h2>
+          <ul>
+            <li><strong>تجمیع و تاخیر ایمن:</strong> انتشار عمومی با <strong>تاخیر حداقل ۴۸–۷۲ ساعت</strong> برای شاخص‌های حساس؛ مقادیر در نسخهٔ عمومی <strong>گرد</strong> می‌شوند.</li>
+            <li><strong>حداقل‌گرایی اطلاعاتی:</strong> تنها آنچه برای فهم عمومی لازم است نمایش می‌دهیم (اصل Minimum Necessary).</li>
+            <li><strong>سطح‌بندی دسترسی (RBAC):</strong> داده و داشبوردها با برچسب‌های <strong>Public / Internal / Restricted</strong> مدیریت می‌شوند.</li>
+            <li><strong>حذف ریزدانه‌گی مکانی/عملیاتی:</strong> از انتشار هر داده‌ای که امکان <strong>بازشناسایی تأسیسات</strong> یا <strong>بازسازی وضعیت لحظه‌ای شبکه</strong> بدهد، خودداری می‌کنیم.</li>
+            <li><strong>پایداری و تاب‌آوری:</strong> کنترل‌های امنیت سایبری، لاگ‌برداری دسترسی، و نسخه‌پشتیبان متناسب با ریسک.</li>
+          </ul>
+          <h2>۴) سیاست برچسب‌گذاری محتوا</h2>
+          <ul>
+            <li><strong>Public:</strong> دادهٔ تجمیعی استان/شهر با تاخیر ایمن و گردکردن؛ بدون نام/مختصات تأسیسات.</li>
+            <li><strong>Internal:</strong> جزئیات بیشتر در سطح شهر/بخش با تاخیر کوتاه‌تر؛ همچنان بدون نقشهٔ حساس یا موجودی دقیق.</li>
+            <li><strong>Restricted:</strong> مواردی مانند برنامه/حادثهٔ تعمیرات، قیود شبکه، یا تحلیل‌های حساس که صرفاً نزد متولیان باقی می‌ماند.</li>
+          </ul>
+          <blockquote>کنار هر کاشی، یک <strong>Badge</strong> شامل سطح انتشار + زمان آخرین به‌روزرسانی درج می‌شود.</blockquote>
+          <h2>۵) حکمرانی داده‌مبنا (Data Governance)</h2>
+          <ul>
+            <li><strong>نقش‌ها و مالکیت (RACI):</strong> برای هر جریان داده، مالک کسب‌وکاری و فنی مشخص است.</li>
+            <li><strong>کاتالوگ و شناسنامهٔ داده:</strong> تعریف یکنواخت میدان‌ها، واحدها و منابع برای جلوگیری از تفسیر سلیقه‌ای.</li>
+            <li><strong>کیفیت داده (DQ):</strong> کنترل کامل‌بودن، سازگاری زمانی/واحدی، و ثبت «نسخهٔ داده» روی هر انتشار.</li>
+            <li><strong>تبار داده (Lineage):</strong> مسیر تولید شاخص‌ها از منبع تا نمودار قابل ردیابی است.</li>
+            <li><strong>نسخه‌بندی و بایگانی:</strong> نگهداشت خروجی‌ها با شماره نسخه و تاریخ انتشار.</li>
+          </ul>
+          <h2>۶) انطباق با مادهٔ ۱۰۷ «برنامهٔ هفتم توسعه»</h2>
+          <p>WESH360 خود را با روح و مفاد مادهٔ ۱۰۷—در حوزهٔ دولت هوشمند و حکمرانی داده—هماهنگ می‌کند:</p>
+          <ul>
+            <li><strong>الف) یکپارچگی زیرساختی:</strong> استفاده از <strong>درگاه‌ها و APIهای رسمی</strong> دستگاه‌ها؛ پرهیز از ایجاد انباره‌های موازی.</li>
+            <li><strong>ب) پشتیبانی از نوآوری و امنیت:</strong> ارائهٔ داشبوردهای پایش کیفیت/پیشرفت برای معاونت‌های «نوآوری، هوشمندسازی و امنیت» دستگاه‌های همکار.</li>
+            <li><strong>پ) استقرار حکمرانی داده در چرخهٔ هوشمندسازی:</strong> الگوهای اجرایی (Policy JSON، کاتالوگ داده، چک‌لیست کیفیت) برای تسهیل تدوین برنامه و <strong>پایش‌پذیری</strong> آن.</li>
+            <li><strong>ت) حذف موازی‌کاری سامانه‌ها:</strong> هر توسعهٔ فرابخشی مشروط به مجوز مرجع ذی‌صلاح و هم‌راستا با سامانه‌های مشترک است.</li>
+            <li><strong>ث) ارتقای شاخص‌های دولت هوشمند:</strong> رصد دوره‌ای شاخص‌هایی مانند یکپارچگی تبادل داده، درصد خدمات دیجیتال و کیفیت تجربهٔ کاربر.</li>
+            <li><strong>ج) اتصال برخط امن و پنجرهٔ ملی:</strong> نمایش مسیرهای کاربر و پیوند به «پنجرهٔ ملی خدمات دولت هوشمند» برای خدمت‌رسانی یکپارچه.</li>
+            <li><strong>چ) تبادل بین‌دستگاهی و پایگاه‌های پایه:</strong> به‌محض تکمیل پایگاه‌های پایه، تبادل <strong>برخط و قانونی</strong> و ثبت تبار داده در انتشار شاخص‌ها.</li>
+            <li><strong>ح) حذف دریافت دستی مدارک پایه:</strong> تکیه بر <strong>استعلام‌های برخط</strong> و عدم مطالبهٔ مدارک تکراری از مخاطبان.</li>
+            <li><strong>خ) پایش طرح‌های پیشران تحول دیجیتال:</strong> داشبوردهای مدیریتی برای رصد اجرا، تامین مالی و ریسک‌های طرح‌ها.</li>
+          </ul>
+          <h2>۷) روش‌شناسی و شفافیت محاسبات</h2>
+          <ul>
+            <li>هر نمودار/کارت با <strong>Tooltip روش محاسبه</strong> (فرمول، واحد، دامنهٔ زمانی) و در صورت لزوم <strong>بازهٔ ضرایب</strong> همراه است.</li>
+            <li>در نبود دادهٔ رسمیِ باز، از <strong>نمونه‌سازی آموزشی</strong> با برچسب صریح «آموزشی/تقریبی» استفاده می‌شود تا مخاطب دچار خطا نشود.</li>
+          </ul>
+          <h2>۸) مشارکت و هم‌افزایی</h2>
+          <ul>
+            <li>ما از <strong>بازخورد تخصصی</strong> و <strong>گزارش‌های مردمی</strong> برای بهبود کیفیت و پوشش شاخص‌ها استقبال می‌کنیم.</li>
+            <li>پیشنهادهای شما برای توسعهٔ داشبوردها، باعث <strong>ارتقای فهم مشترک</strong> بین شهروندان، رسانه و تصمیم‌گیران می‌شود.</li>
+          </ul>
+          <h2>۹) گزارش مسئولانهٔ آسیب‌پذیری</h2>
+          <ul>
+            <li>اگر نکته‌ای امنیتی مشاهده کردید، لطفاً در صفحهٔ <strong>/security</strong> اطلاع دهید یا ایمیل بزنید به: <strong>security@wesh360.ir</strong> (در صورت تغییر، در سایت به‌روزرسانی می‌شود).</li>
+            <li>ما گزارش‌های با حسن نیت را ارج می‌نهیم و پس از رفع، نتیجه را به‌صورت شفاف اعلام می‌کنیم.</li>
+          </ul>
+          <h2>۱۰) نسخه‌بندی و به‌روزرسانی</h2>
+          <ul>
+            <li>این بیانیه به‌صورت دوره‌ای بازبینی می‌شود. <strong>نسخه:</strong> 1.0 • <strong>تاریخ به‌روزرسانی:</strong> ۱۴۰۴/۰۵/۲۷</li>
+          </ul>
+        </div>
+        <p class="mt-6 text-xs text-slate-500">آخرین به‌روزرسانی: <span data-last-updated></span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security Sheet -->
+  <div id="securitySheet" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="securityTitle">
+    <div class="absolute inset-0 bg-black/60" data-close></div>
+    <div class="fixed inset-y-0 right-0 w-full md:inset-0 md:flex md:items-center md:justify-center">
+      <div class="w-full md:max-w-screen-md h-full md:h-auto md:max-h-[90vh] bg-white overflow-y-auto p-6 shadow-lg">
+        <div class="flex items-start justify-between mb-4">
+          <h2 id="securityTitle" class="text-lg font-bold" tabindex="-1">گزارش مسئولانهٔ آسیب‌پذیری</h2>
+          <button class="text-slate-500 hover:text-slate-700" data-close aria-label="بستن">×</button>
+        </div>
+        <div class="prose prose-slate rtl max-w-none text-sm leading-7">
+          <h2>گزارش مسئولانهٔ آسیب‌پذیری</h2>
+          <p>ما قدردان گزارش‌های با حسن نیت هستیم. امنیت سایبری و امنیت داده، خط قرمز ماست.<br>لطفاً پیش از انتشار عمومی، موضوع را به‌صورت محرمانه برای ما ارسال کنید تا بررسی و برطرف شود.</p>
+          <h3>چگونه گزارش بدهم؟</h3>
+          <ol>
+            <li>شرح مختصر مسئله، گام‌های بازتولید، دامنه/URL‌های درگیر</li>
+            <li>اسکرین‌شات یا PoC غیر مخرب (در حد امکان)</li>
+            <li>راه ارتباطی شما برای پیگیری</li>
+          </ol>
+          <h3>کانال‌های گزارش</h3>
+          <ul>
+            <li>صفحه اختصاصی: /security</li>
+            <li>ایمیل: security@wesh360.ir</li>
+          </ul>
+          <blockquote>پس از دریافت، ظرف مدت معقول پاسخ می‌دهیم و در صورت تایید، پس از رفع، نتیجه را به‌طور شفاف اعلام خواهیم کرد.</blockquote>
+        </div>
+        <div class="mt-6">
+          <a href="mailto:security@wesh360.ir?subject=WESH360%20Vulnerability%20Report" class="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400">ارسال گزارش</a>
+        </div>
+        <p class="mt-6 text-xs text-slate-500">آخرین به‌روزرسانی: <span data-last-updated></span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile actions sheet -->
+  <div id="mobileActionsSheet" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="mobileActionsTitle">
+    <div class="absolute inset-0 bg-black/60" data-close></div>
+    <div class="fixed inset-y-0 right-0 w-64 bg-white p-6 shadow-lg overflow-y-auto flex flex-col gap-3">
+      <h2 id="mobileActionsTitle" class="text-base font-semibold mb-2" tabindex="-1">سیاست و امنیت</h2>
+      <button id="mobilePolicyBtn" class="flex items-center gap-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-100" aria-controls="policySheet">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg>
+        <span>سیاست امنیت و حکمرانی داده</span>
+      </button>
+      <button id="mobileSecurityBtn" class="flex items-center gap-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg px-3 py-2 hover:bg-slate-100" aria-controls="securitySheet">
+        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 2 1.88 1.88" /><path d="M14.12 3.88 16 2" /><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /><path d="M12 20v-9" /><path d="M6.53 9C4.6 8.8 3 7.1 3 5" /><path d="M6 13H2" /><path d="M3 21c0-2.1 1.7-3.9 3.8-4" /><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /><path d="M22 13h-4" /><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></svg>
+        <span>گزارش مسئولانهٔ آسیب‌پذیری</span>
+      </button>
+    </div>
+  </div>
   <script defer src="index.js?v=1"></script>
   <script defer src="assets/numfmt.js?v=1"></script>
   <script defer src="/assets/footer.js"></script>
