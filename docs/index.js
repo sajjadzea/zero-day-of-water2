@@ -113,3 +113,57 @@
   }
   console.log('Max transition time (ms):', parseMaxTransitionMs(halves));
 })();
+
+(function () {
+  const LAST_UPDATED = '۱۴۰۴/۰۵/۲۷';
+  document.querySelectorAll('[data-last-updated]').forEach(el => {
+    el.textContent = LAST_UPDATED;
+  });
+
+  function openSheet(sheet) {
+    if (!sheet) return;
+    sheet.classList.remove('hidden');
+    const title = sheet.querySelector('[tabindex="-1"]');
+    if (title) title.focus();
+    document.body.classList.add('overflow-hidden');
+  }
+
+  function closeSheet(sheet) {
+    if (!sheet) return;
+    sheet.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  const policySheet = document.getElementById('policySheet');
+  const securitySheet = document.getElementById('securitySheet');
+  const mobileSheet = document.getElementById('mobileActionsSheet');
+
+  function bindTrigger(btn, targetSheet, closeSheetEl) {
+    if (!btn || !targetSheet) return;
+    btn.addEventListener('click', () => {
+      if (closeSheetEl) closeSheet(closeSheetEl);
+      openSheet(targetSheet);
+      if (targetSheet === policySheet) console.log('policy_open');
+      else if (targetSheet === securitySheet) console.log('security_open');
+    });
+  }
+
+  bindTrigger(document.getElementById('policyBtn'), policySheet);
+  bindTrigger(document.getElementById('securityBtn'), securitySheet);
+  bindTrigger(document.getElementById('mobileActionsBtn'), mobileSheet);
+  bindTrigger(document.getElementById('mobilePolicyBtn'), policySheet, mobileSheet);
+  bindTrigger(document.getElementById('mobileSecurityBtn'), securitySheet, mobileSheet);
+
+  document.querySelectorAll('[data-close]').forEach(el => {
+    el.addEventListener('click', e => {
+      const sheet = e.target.closest('#policySheet, #securitySheet, #mobileActionsSheet');
+      closeSheet(sheet);
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      [policySheet, securitySheet, mobileSheet].forEach(closeSheet);
+    }
+  });
+})();
