@@ -31,6 +31,14 @@ function hideThinkingUI(){}
 
 function showErrorModal(msg){ alert(msg); }
 
+// عناصر مربوط به راهکارهای هوشمند
+const familySizeInput = document.getElementById('family-input');
+const showerTimeInput = document.getElementById('shower-input');
+const generateTipsBtn = document.getElementById('solution-btn');
+const tipsLoader = document.getElementById('solution-thinking');
+const tipsResultDiv = document.getElementById('solution-result');
+const tipsResultContainer = tipsResultDiv;
+
 const foodInput = document.getElementById('food-input');
 const calculateFootprintBtn = document.getElementById('calc-water-btn');
 const footprintLoader = document.getElementById('ai-thinking');
@@ -102,51 +110,90 @@ async function handleSimulation() {
 }
 
 // راهکارها --------------------------------------------------------------
-async function handleSolutions(){
-  showThinkingUI();
-  const btn = document.getElementById('solution-btn');
-  const thinking = document.getElementById('solution-thinking');
-  const out = document.getElementById('solution-result');
-  thinking?.classList.remove('hidden');
-  btn?.setAttribute('disabled','true');
-  out.innerHTML = skeleton();
+// فالبک محلیِ بسیار ساده وقتی AI خطا می‌دهد
+function localSmartTips(familySize, showerTime) {
+  const intro = `سلام به خانواده ${familySize} نفره‌ی عزیز! به عنوان یک متخصص دلسوز در بحران آب، سه راهکار فوری و کم‌هزینه برای شما دارم. هر دقیقه حمام کمتر می‌تواند تفاوت بزرگی بسازد؛ الان میانگین ${showerTime} دقیقه است.`;
+  const tips = [
+    { title:'دوشِ هوشمندانه!', body:'زمان دوش را ۲ تا ۳ دقیقه کوتاه‌تر کنید. همین کار ساده و هماهنگ در خانواده می‌تواند صدها لیتر در ماه صرفه‌جویی کند.' },
+    { title:'چک‌آپ نشتی‌ها', body:'نشتی فلاش‌تانک و شیرها را همین هفته برطرف کنید. یک نشتی کوچک، روزانه ده‌ها لیتر آب هدر می‌دهد.' },
+    { title:'آبِ سردِ ابتدایی', body:'آب سردِ ابتدای باز کردن شیر را در ظرف جمع کنید و برای آبیاری گلدان‌ها یا شست‌وشوی سطح استفاده کنید.' },
+  ];
+  const outro = 'با همین قدم‌های کوچک، هم هزینه‌ها کم می‌شود و هم به پایداری آب شهر کمک می‌کنید. شما قهرمان آب هستید!';
+  return { intro, tips, outro };
+}
+
+// رندر استاندارد و یکدست، مطابق طرح مطلوب
+function renderSmartTips({ intro, tips, outro }) {
+  const toFa = n => new Intl.NumberFormat('fa-IR').format(n);
+  const itemsHTML = tips.map(t => `
+    <div class="tips-item">
+      <div class="tips-title"># ${t.title}</div>
+      <div class="tips-body">${t.body}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="tips-card">
+      <div class="tips-prose">
+        <p>${intro}</p>
+        <hr class="tips-hr">
+        ${itemsHTML}
+        <hr class="tips-hr">
+        <p>${outro}</p>
+      </div>
+    </div>
+  `;
+}
+
+// --- جایگزین کن با این نسخه
+async function handleGenerateTips() {
+  const familySize = Number(familySizeInput.value || 4);
+  const showerTime = Number(showerTimeInput.value || 10);
+
+  tipsResultContainer.classList.remove('hidden');
+  tipsLoader.classList.remove('hidden');
+  tipsResultDiv.innerHTML = '';
+  generateTipsBtn.disabled = true;
+  generateTipsBtn.classList.add('opacity-50');
+
+  // 1) ابتدا فالبک محلی را رندر کن تا UI همیشه کامل دیده شود
+  const local = localSmartTips(familySize, showerTime);
+  tipsLoader.classList.add('hidden');
+  tipsResultDiv.innerHTML = renderSmartTips(local);
+
+  // 2) سپس AI را صدا بزن؛ فقط اگر موفق بود، همین قالب را با دادهٔ AI به‌روزرسانی کن
   try {
-    const family = toNum(document.getElementById('family-input')?.value);
-    const shower = toNum(document.getElementById('shower-input')?.value);
     const prompt = `
-      You are a personalized water-saving assistant.
-      Family members: ${family}
-      Average shower time: ${shower} minutes
-      Provide 5 short tips.
-      Return JSON with structure:
-      {
-        "tips": [ { "title": "<string>", "impact_liters": <number> } ]
-      }
-      All text must be in Persian. No markdown.
-    `;
-    const jsonString = await askAI(prompt, { json: true });
-    const result = JSON.parse(String(jsonString).trim());
-    const tips = Array.isArray(result.tips) ? result.tips : [];
+شما یک کارشناس دلسوز مدیریت مصرف آب در مشهد هستید. برای خانواده‌ای ${familySize} نفره که میانگین زمان حمام‌شان ${showerTime} دقیقه است،
+سه راهکار عملی، کم‌هزینه و فوری پیشنهاد دهید.
 
-    out.innerHTML = '';
-    const ul = Object.assign(document.createElement('ul'), { className:'list-disc pr-5 space-y-1' });
-    tips.forEach(t => {
-      const li = document.createElement('li');
-      li.textContent = `${t.title} — صرفه‌جویی: ${nf.format(toNum(t.impact_liters))} لیتر/روز`;
-      ul.append(li);
-    });
-    out.append(ul);
+خروجی را فقط به‌صورت JSON با این ساختار بده (بدون مارک‌داون/توضیح اضافی):
+{
+  "intro": "<یک پاراگراف کوتاه آغازین به فارسی، لحن دوستانه و تشویقی>",
+  "tips": [
+    { "title": "<عنوان کوتاه و جذاب>", "body": "<توضیح 1-3 جمله‌ای ساده و عملی>" },
+    { "title": "<...>", "body": "<...>" },
+    { "title": "<...>", "body": "<...>" }
+  ],
+  "outro": "<یک جمله انگیزشی جمع‌بندی به فارسی>"
+}
+    `.trim();
 
-    if (window.renderShareBar) renderShareBar(document.getElementById('solution-share'), {
-      feature:'solutions', state:{ family, shower }, result:{ tips }
-    });
-  } catch(e){
-    console.warn('[solutions]', e.message);
-    out.textContent = '⚠ خطا در تولید راهکار.';
+    const jsonText = await askAI(prompt, { json: true });
+
+    // پاکسازی احتمالی backticks
+    const cleaned = String(jsonText).trim().replace(/^```json\s*|\s*```$/g,'');
+    const data = JSON.parse(cleaned);
+
+    if (!data || !Array.isArray(data.tips) || data.tips.length === 0) throw new Error('BAD_AI_PAYLOAD');
+
+    tipsResultDiv.innerHTML = renderSmartTips(data);
+  } catch (err) {
+    console.warn('Tips: AI failed, fallback shown.', err);
+    // فالبک محلی همین حالا رندر شده است؛ کاری لازم نیست
   } finally {
-    thinking?.classList.add('hidden');
-    btn?.removeAttribute('disabled');
-    hideThinkingUI?.();
+    generateTipsBtn.disabled = false;
+    generateTipsBtn.classList.remove('opacity-50');
   }
 }
 
@@ -256,5 +303,5 @@ async function handleCalculateFootprint() {
 }
 
 document.getElementById('simulate-btn')?.addEventListener('click', handleSimulation);
-document.getElementById('solution-btn')?.addEventListener('click', handleSolutions);
+document.getElementById('solution-btn')?.addEventListener('click', handleGenerateTips);
 document.getElementById('calc-water-btn')?.addEventListener('click', handleCalculateFootprint);
