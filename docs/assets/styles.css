@@ -120,3 +120,64 @@ main .cta, main .hero-cta {
   margin: 0;
   padding: 0;
 }
+
+/* === Range (Slider) Reset & Theme === */
+.dir-rtl { direction: rtl; }
+
+.cost-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.cost-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 9999px;
+}
+.cost-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #3B82F6;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+  margin-top: -6px;
+}
+
+.cost-range::-moz-range-track {
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 9999px;
+}
+.cost-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: #3B82F6;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.cost-range:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(90px, 120px);
+  align-items: center;
+  gap: .75rem;
+}
+.range-row input[type="number"] {
+  height: 36px;
+  padding: 0 .5rem;
+  border: 1px solid #E5E7EB;
+  border-radius: .5rem;
+}
