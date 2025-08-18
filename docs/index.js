@@ -59,18 +59,7 @@
     if (debug) console.log('Curtain bound to', el);
   }
   document.querySelectorAll('[data-sector]').forEach(bind);
-  const sector = localStorage.getItem('sector');
-  if (sector) {
-    const names = { water: 'آب', electricity: 'برق', gas: 'گاز و فرآورده‌های نفتی' };
-    const quick = document.getElementById('quick-entry');
-    if (quick) {
-      quick.href = sector + '/';
-      quick.textContent = 'ورود سریع به ' + (names[sector] || sector);
-      quick.setAttribute('data-sector', sector);
-      quick.classList.remove('hidden');
-      bind(quick);
-    }
-  }
+  // quick-entry button removed
 })();
 (function () {
   const params = new URLSearchParams(location.search);

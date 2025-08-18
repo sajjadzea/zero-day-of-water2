@@ -111,3 +111,12 @@ main .hero, main .brand, main .hero-logo, main .banner {
   margin: 0;
   padding: 0;
 }
+
+/* Collapse leftover spacing after removing CTA */
+.cta-water, .quick-water, .home-cta, .cta-wave {
+  display: none;
+}
+main .cta, main .hero-cta {
+  margin: 0;
+  padding: 0;
+}
