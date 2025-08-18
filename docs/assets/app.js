@@ -49,12 +49,11 @@ const footprintResultDiv = document.getElementById('water-result');
 async function handleSimulation() {
   const consumptionReduction = consumptionSlider.value;
   const futureRainfall = rainfallSlider.value;
-
-  simulationResultContainer.classList.remove('hidden');
+  // Show a loading state and clear any previous result
+  setLoading(simulateBtn, true);
   simulationLoader.classList.remove('hidden');
-  simulationResultDiv.innerHTML = '';
-  simulateBtn.disabled = true;
-  simulateBtn.classList.add('opacity-50');
+  simulationResultDiv.textContent = '⏳';
+  simulationResultContainer.classList.remove('hidden');
 
   const prompt = `
 You are a water crisis analyst for the city of Mashhad. Your task is to simulate the effect of citizen actions and rainfall on the city's "Day Zero" (the day water runs out).
@@ -121,8 +120,7 @@ Return ONLY valid JSON (no markdown) with this exact shape:
     simulationResultContainer.classList.add('hidden');
   } finally {
     simulationLoader.classList.add('hidden');
-    simulateBtn.disabled = false;
-    simulateBtn.classList.remove('opacity-50');
+    setLoading(simulateBtn, false);
   }
 }
 
