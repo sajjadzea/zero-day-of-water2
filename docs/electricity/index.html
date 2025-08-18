@@ -16,42 +16,26 @@
   <link rel="stylesheet" href="../assets/styles.css">
   <link rel="stylesheet" href="../assets/electricity.css">
 </head>
-<body class="min-h-screen bg-gradient-to-b from-blue-900 to-blue-500 flex items-center justify-center p-4 sm:p-6">
+<body class="min-h-screen bg-gradient-to-b from-indigo-950 via-blue-900 to-slate-900 py-16">
   <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
-  <main id="main" class="w-full max-w-3xl space-y-8 text-center">
-    <h1 class="fade-in text-3xl sm:text-4xl font-extrabold text-white">صفحه برق</h1>
-    <div class="scale-in bg-[var(--elec-muted)] rounded-xl shadow-lg p-6 flex flex-col items-center gap-4 mx-auto w-full max-w-md">
-      <img src="../header2.webp" alt="نماد برق" class="w-32 h-32 object-contain">
-      <p class="text-slate-700 text-sm sm:text-base leading-loose">
-        مصرف برق در استان خراسان رضوی همواره رو به افزایش است و مدیریت هوشمند آن برای پایداری شبکه و جلوگیری از اوج بار اهمیت دارد.
-        این بخش با ارائه ابزارهای تحلیلی به شما کمک می‌کند تا مصرف خود را پایش و بهینه‌سازی کنید.
-      </p>
-    </div>
-    <!-- BEGIN: electricity single-row actions -->
-    <style>
-      :root {
-        --elec-primary:#1E90FF; --elec-accent:#FFD400; --elec-muted:#F5F7FB;
-      }
-    </style>
-    <div id="electricity-actions" class="w-full max-w-4xl mx-auto mt-6">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center">
-        <a href="./peak.html" class="flex-1 text-center rounded-xl px-5 py-3 bg-[var(--elec-primary)] text-white shadow hover:brightness-110 transition">
-          داشبورد مدیریت مصرف
-        </a>
-        <a href="./power-tariff.html" class="flex-1 text-center rounded-xl px-5 py-3 bg-white text-[color:var(--elec-primary)] border border-[color:var(--elec-accent)] shadow hover:bg-[var(--elec-accent)]/20 transition">
-          تحلیل شاخص برق
-        </a>
-        <a href="./quality.html" class="flex-1 text-center rounded-xl px-5 py-3 bg-[var(--elec-primary)] text-white shadow hover:brightness-110 transition">
-          کیفیت توزیع برق (داشبورد سوم)
-        </a>
-      </div>
-    </div>
-    <!-- END: electricity single-row actions -->
-    <div class="max-w-4xl mx-auto mt-10 mb-6">
-      <a href="/" class="block text-center rounded-xl px-5 py-3 bg-white text-slate-700 border border-slate-200 shadow hover:bg-slate-50 transition">
-        بازگشت به صفحه اصلی
+  <main id="main" class="max-w-5xl mx-auto px-4">
+    <h1 class="text-white text-3xl md:text-4xl font-extrabold text-center mb-10">صفحه برق</h1>
+    <!-- Buttons row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" dir="rtl">
+      <a href="./peak.html" class="inline-flex items-center justify-center h-12 rounded-xl px-6 font-semibold text-white border border-amber-400/40 bg-white/5 hover:bg-white/10 hover:border-amber-400/70 transition shadow-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+        داشبورد مدیریت مصرف
+      </a>
+      <a href="./power-tariff.html" class="inline-flex items-center justify-center h-12 rounded-xl px-6 font-semibold text-white border border-amber-400/40 bg-white/5 hover:bg-white/10 hover:border-amber-400/70 transition shadow-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+        داشبورد تحلیل شاخص برق
+      </a>
+      <a href="./quality.html" class="inline-flex items-center justify-center h-12 rounded-xl px-6 font-semibold text-white border border-amber-400/40 bg-white/5 hover:bg-white/10 hover:border-amber-400/70 transition shadow-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+        داشبورد کیفیت توزیع برق
       </a>
     </div>
+    <!-- Back to home -->
+    <a href="../" class="mt-8 w-full md:w-auto mx-auto block text-center rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white h-12 px-6">
+      بازگشت به صفحه اصلی
+    </a>
   </main>
   <script defer src="index.js"></script>
   <script defer src="../assets/numfmt.js"></script>
