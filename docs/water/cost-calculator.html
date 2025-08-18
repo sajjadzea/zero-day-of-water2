@@ -1,134 +1,101 @@
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <title>ماشین‌حساب پیشرفته قیمت تمام‌شده آب</title>
-    <!-- Tailwind CSS served locally to satisfy CSP -->
-    <link rel="stylesheet" href="../assets/tailwind.css">
-    <link rel="stylesheet" href="../assets/styles.css">
-    <link rel="stylesheet" href="/assets/footer.css">
-  </head>
-  <body class="bg-slate-50 text-slate-800 tabular-nums">
-    <section id="water-cost-app" class="container mx-auto max-w-7xl px-4 lg:px-6 py-6 dir-rtl">
-      <a href="./hub.html" class="text-blue-600 hover:underline">بازگشت به انتخاب داشبورد</a>
-      <header class="text-center mb-10">
-        <h1 class="text-3xl font-bold text-gray-800">ماشین‌حساب پیشرفته قیمت تمام‌شده آب</h1>
-        <p class="text-lg text-gray-600 mt-2">تأثیر هر متغیر را بر هزینه واقعی و قیمت نهایی آب شرب تحلیل کنید.</p>
-        <p class="italic text-gray-500">این مدل بر پایه زنجیره محاسبه: SDC → Loss → Env → Subsidy طراحی شده است.</p>
-      </header>
-      <div class="flex flex-wrap items-center gap-3 justify-start md:justify-end mb-4">
-        <button id="btn_reset" type="button" class="px-4 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-2 focus:ring-gray-400">بازنشانی به پیش‌فرض</button>
-        <button id="btn_calculate" type="button" class="px-4 py-2 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-400">محاسبه</button>
-      </div>
-      <p id="calc_status" class="text-sm text-gray-500 italic mb-4" aria-live="polite"></p>
-      <div class="grid grid-cols-12 gap-4 lg:gap-6">
-        <div class="col-span-12 md:col-span-6 lg:col-span-3 min-h-[140px] flex items-center justify-center text-center h-full rounded-xl p-5 bg-rose-50 border border-rose-100 shadow-sm">
-          <div>
-            <h2 class="text-xl font-semibold text-rose-800">قیمت تمام‌شده واقعی</h2>
-            <p id="real_cost" class="mt-1 text-4xl md:text-5xl font-extrabold text-rose-600">0</p>
-            <p class="text-sm text-slate-500 mt-1">بر مترمکعب</p>
-          </div>
+<head>
+  <meta charset="UTF-8" />
+  <title>ماشین‌حساب پیشرفته قیمت تمام‌شده آب در مشهد | WESH360</title>
+  <!-- Tailwind CSS served locally to satisfy CSP -->
+  <link rel="stylesheet" href="../assets/tailwind.css">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <link rel="stylesheet" href="../assets/fonts.css">
+  <link rel="stylesheet" href="/assets/footer.css">
+</head>
+<body class="bg-slate-50 text-slate-800 tabular-nums">
+  <section id="water-cost-app" class="container mx-auto max-w-7xl px-4 lg:px-6 py-6">
+    <a href="./hub.html" class="text-blue-600 hover:underline">بازگشت به انتخاب داشبورد</a>
+    <header class="text-center mb-8 mt-2">
+      <h1 class="text-3xl font-bold">ماشین‌حساب پیشرفته قیمت تمام‌شده آب در مشهد</h1>
+      <p class="text-lg text-gray-600 mt-2">تأثیر هر متغیر را بر هزینه واقعی و قیمت نهایی آب شرب تحلیل کنید.</p>
+    </header>
+    <p id="calc_status" class="text-sm text-red-600 mb-4" aria-live="polite"></p>
+    <div class="grid gap-6 lg:grid-cols-2">
+      <!-- Outputs -->
+      <div class="order-1 lg:order-2 flex flex-col gap-6">
+        <div class="rounded-xl border shadow p-6 bg-emerald-50 flex flex-col items-center text-center">
+          <h2 class="text-xl font-semibold text-emerald-800">قیمت نهایی برای مصرف‌کننده</h2>
+          <p data-output="consumer_price" class="mt-2 text-4xl lg:text-5xl font-extrabold text-emerald-600">0 تومان</p>
         </div>
-        <div class="col-span-12 md:col-span-6 lg:col-span-3 min-h-[140px] flex items-center justify-center text-center h-full rounded-xl p-5 bg-emerald-50 border border-emerald-100 shadow-sm">
-          <div>
-            <h2 class="text-xl font-semibold text-emerald-800">قیمت نهایی برای مصرف‌کننده</h2>
-            <p id="final_price" class="mt-1 text-4xl md:text-5xl font-extrabold text-emerald-600">0</p>
-            <p class="text-sm text-slate-500 mt-1">بر مترمکعب</p>
-          </div>
-        </div>
-        <!-- Technical & Infrastructure -->
-        <div class="col-span-12 md:col-span-6 lg:col-span-2 bg-white rounded-2xl shadow p-4 flex flex-col gap-4">
-          <h2 class="text-sm font-medium">فنی و زیربنایی</h2>
-          <div class="flex flex-col gap-2">
-            <label for="c_production_range" class="block">هزینه تولید هر مترمکعب</label>
-            <div class="range-row">
-              <input type="range" id="c_production_range" min="0" max="50000" step="500" value="10000" class="cost-range">
-              <div class="flex items-center gap-1">
-                <input type="number" id="c_production" min="0" max="50000" step="500" value="10000" class="w-full" dir="ltr">
-                <span class="text-sm text-slate-600">تومان</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col gap-2">
-            <label for="c_energy_range" class="block">هزینه انرژی</label>
-            <div class="range-row">
-              <input type="range" id="c_energy_range" min="0" max="30000" step="500" value="7000" class="cost-range">
-              <div class="flex items-center gap-1">
-                <input type="number" id="c_energy" min="0" max="30000" step="500" value="7000" class="w-full" dir="ltr">
-                <span class="text-sm text-slate-600">تومان</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Economic & Managerial -->
-        <div class="col-span-12 md:col-span-6 lg:col-span-2 bg-white rounded-2xl shadow p-4 flex flex-col gap-4">
-          <h2 class="text-sm font-medium">اقتصادی و مدیریتی</h2>
-          <div class="flex flex-col gap-2">
-            <label for="c_maintenance_range" class="block">هزینه نگهداری و تعمیرات</label>
-            <div class="range-row">
-              <input type="range" id="c_maintenance_range" min="0" max="20000" step="500" value="5000" class="cost-range">
-              <div class="flex items-center gap-1">
-                <input type="number" id="c_maintenance" min="0" max="20000" step="500" value="5000" class="w-full" dir="ltr">
-                <span class="text-sm text-slate-600">تومان</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex flex-col gap-2">
-            <label for="p_loss_range" class="block">درصد تلفات شبکه</label>
-            <div class="range-row">
-              <input type="range" id="p_loss_range" min="0" max="50" step="1" value="20" class="cost-range">
-              <div class="flex items-center gap-1">
-                <input type="number" id="p_loss" min="0" max="50" step="1" value="20" class="w-full" dir="ltr">
-                <span class="text-sm text-slate-600">٪</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Environmental & Social -->
-        <div class="col-span-12 md:col-span-6 lg:col-span-2 bg-white rounded-2xl shadow p-4 flex flex-col gap-4">
-          <h2 class="text-sm font-medium">محیطی و اجتماعی</h2>
-          <div class="flex flex-col gap-2">
-            <label for="p_power_outage_range" class="block">درصد تأثیر قطعی برق</label>
-            <div class="range-row">
-              <input type="range" id="p_power_outage_range" min="0" max="20" step="1" value="5" class="cost-range">
-              <div class="flex items-center gap-1">
-                <input type="number" id="p_power_outage" min="0" max="20" step="1" value="5" class="w-full" dir="ltr">
-                <span class="text-sm text-slate-600">٪</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-span-12">
-          <h3 class="font-semibold mb-2">جدول سهم هر متغیر</h3>
-          <div class="max-h-64 overflow-y-auto">
-            <table id="breakdown_table" class="min-w-full text-sm text-right border-collapse tabular-nums"></table>
-          </div>
-        </div>
-        <div class="col-span-12">
-          <h3 class="font-semibold mb-2">نمودار دونات سهم عوامل</h3>
-          <div class="relative min-h-[320px]">
-            <canvas id="costChart"></canvas>
-          </div>
-        </div>
-        <div class="col-span-12">
-          <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
-          <div class="max-h-64 overflow-y-auto">
-            <ul id="sensitivity_list" class="text-sm text-right tabular-nums space-y-1 list-none"></ul>
-          </div>
-          <div class="relative min-h-[320px] mt-4">
-            <canvas id="sensitivityChart"></canvas>
-          </div>
-        </div>
-        <div class="col-span-12">
-          <h3 class="font-semibold mb-2">جمع‌بندی تحلیلی</h3>
-          <p id="summary" class="text-sm text-slate-600"></p>
+        <div class="rounded-xl border shadow p-6 bg-rose-50 flex flex-col items-center text-center">
+          <h2 class="text-xl font-semibold text-rose-800">قیمت تمام‌شده واقعی</h2>
+          <p data-output="true_cost" class="mt-2 text-4xl lg:text-5xl font-extrabold text-rose-600">0 تومان</p>
         </div>
       </div>
-    </section>
-    <script src="../assets/libs/chart.umd.min.js"></script>
-    <script defer src="../assets/numfmt.js"></script>
-    <script defer src="../assets/water-init.js"></script>
-    <script defer src="./cost-calculator.js"></script>
-    <script defer src="../assets/cost-calculator.js"></script>
-    <script defer src="/assets/footer.js"></script>
-  </body>
+      <!-- Inputs -->
+      <div class="order-2 lg:order-1 flex flex-col gap-6">
+        <div class="rounded-xl border shadow p-6 bg-white space-y-4">
+          <h2 class="text-lg font-medium">عوامل فنی و زیربنایی</h2>
+          <div class="space-y-2">
+            <label class="block text-sm">هزینه تولید هر مترمکعب (تومان)</label>
+            <input type="number" min="0" step="100" value="2000" data-input="cost_production" class="w-full rounded border-slate-300" dir="ltr">
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm">هزینه انرژی (تومان)</label>
+            <input type="number" min="0" step="100" value="2000" data-input="cost_energy" class="w-full rounded border-slate-300" dir="ltr">
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm">درصد تلفات شبکه (%)</label>
+            <input type="range" min="0" max="100" step="1" value="25" data-input="loss_pct" class="w-full">
+            <div class="text-xs text-slate-600"><span data-display="loss_pct">25</span>%</div>
+          </div>
+        </div>
+        <div class="rounded-xl border shadow p-6 bg-white space-y-4">
+          <h2 class="text-lg font-medium">عوامل اقتصادی و مدیریتی</h2>
+          <div class="space-y-2">
+            <label class="block text-sm">هزینه نگهداری و تعمیرات (تومان)</label>
+            <input type="number" min="0" step="100" value="1500" data-input="cost_om" class="w-full rounded border-slate-300" dir="ltr">
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm">درصد یارانه پنهان (%)</label>
+            <input type="range" min="0" max="100" step="1" value="85" data-input="subsidy_pct" class="w-full">
+            <div class="text-xs text-slate-600"><span data-display="subsidy_pct">85</span>%</div>
+          </div>
+        </div>
+        <div class="rounded-xl border shadow p-6 bg-white space-y-4">
+          <h2 class="text-lg font-medium">محیطی و اجتماعی</h2>
+          <div class="space-y-2">
+            <label class="block text-sm">درصد تأثیر قطعی برق (%)</label>
+            <input type="range" min="0" max="100" step="1" value="15" data-input="blackout_pct" class="w-full">
+            <div class="text-xs text-slate-600"><span data-display="blackout_pct">15</span>%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-8 space-y-8">
+      <div>
+        <h3 class="font-semibold mb-2">جدول سهم هر متغیر</h3>
+        <div class="max-h-64 overflow-y-auto">
+          <table id="breakdown_table" class="min-w-full text-sm text-right border-collapse"></table>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-semibold mb-2">نمودار دونات سهم عوامل</h3>
+        <div class="relative min-h-[320px]">
+          <canvas id="costChart"></canvas>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-semibold mb-2">تحلیل حساسیت</h3>
+        <ul id="sensitivity_list" class="text-sm text-right space-y-1 list-disc pr-4"></ul>
+      </div>
+      <div>
+        <h3 class="font-semibold mb-2">جمع‌بندی تحلیل</h3>
+        <p id="summary" class="text-sm text-slate-600"></p>
+      </div>
+    </div>
+  </section>
+  <script src="../assets/libs/chart.umd.min.js"></script>
+  <script defer src="../assets/numfmt.js"></script>
+  <script defer src="../assets/water-init.js"></script>
+  <script defer src="../assets/water-cost-calculator.js"></script>
+  <script defer src="/assets/footer.js"></script>
+</body>
 </html>
