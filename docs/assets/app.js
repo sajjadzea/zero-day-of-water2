@@ -50,9 +50,10 @@ async function handleSimulation() {
   const consumptionReduction = consumptionSlider.value;
   const futureRainfall = rainfallSlider.value;
 
-  simulationResultContainer.classList.remove('hidden');
-  simulationLoader.classList.remove('hidden');
+  // Hide any previous result and show loading state immediately
   simulationResultDiv.innerHTML = '';
+  simulationResultContainer.classList.add('hidden');
+  simulationLoader.classList.remove('hidden');
   simulateBtn.disabled = true;
   simulateBtn.classList.add('opacity-50');
 
@@ -115,6 +116,8 @@ Return ONLY valid JSON (no markdown) with this exact shape:
       </p>
       <p class="text-slate-700 text-lg">${result.explanation}</p>
     `;
+    // Reveal the updated result after loading finishes
+    simulationResultContainer.classList.remove('hidden');
   } catch (error) {
     console.error('Gemini API Error (Simulator):', error);
     showErrorModal('پاسخ هوش مصنوعی قابل استفاده نبود. لطفاً دوباره تلاش کنید.');

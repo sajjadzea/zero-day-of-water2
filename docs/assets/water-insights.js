@@ -182,8 +182,12 @@ All numbers must be numeric (no units attached in JSON).
     if (!btn || !rain || !cut || !out) return;
 
     btn.addEventListener('click', async () => {
+      const thinking = document.getElementById('simulate-thinking');
       try {
-        setLoading(btn, true); out.textContent = '⏳';
+        setLoading(btn, true);
+        if (thinking) thinking.classList.remove('hidden');
+        out.textContent = '';
+        out.classList.add('hidden');
         const rainVal = rain.value || rain.getAttribute('value') || '0';
         const cutVal  = cut.value  || cut.getAttribute('value')  || '0';
         const prompt =
@@ -214,8 +218,16 @@ All numbers must be numeric (no units attached in JSON).
         note.className = 'mt-1';
         note.textContent = data.note_fa || '';
         out.replaceChildren(ul, impact, note);
-      } catch(e){ out.textContent = '⚠️ خطا در شبیه‌سازی.'; console.warn(e.message); }
-      finally { setLoading(btn, false); }
+        out.classList.remove('hidden');
+      } catch(e){
+        out.textContent = '⚠️ خطا در شبیه‌سازی.';
+        out.classList.remove('hidden');
+        console.warn(e.message);
+      }
+      finally {
+        if (thinking) thinking.classList.add('hidden');
+        setLoading(btn, false);
+      }
     });
   })();
 
