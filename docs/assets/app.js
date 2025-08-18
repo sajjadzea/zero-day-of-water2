@@ -147,8 +147,8 @@ function renderSmartTips({ intro, tips, outro }) {
 
 // --- جایگزین کن با این نسخه
 async function handleGenerateTips() {
-  const familySize = Number(familySizeInput.value || 4);
-  const showerTime = Number(showerTimeInput.value || 10);
+  const familySize = familySizeInput.value || '4';
+  const showerTime = showerTimeInput.value || '10';
 
   tipsResultContainer.classList.remove('hidden');
   tipsLoader.classList.remove('hidden');
@@ -156,42 +156,69 @@ async function handleGenerateTips() {
   generateTipsBtn.disabled = true;
   generateTipsBtn.classList.add('opacity-50');
 
-  // 1) ابتدا فالبک محلی را رندر کن تا UI همیشه کامل دیده شود
-  const local = localSmartTips(familySize, showerTime);
-  tipsLoader.classList.add('hidden');
-  tipsResultDiv.innerHTML = renderSmartTips(local);
+  const prompt = `به عنوان یک متخصص دلسوز در زمینه بحران آب در ایران، برای یک خانواده ${familySize} نفره در مشهد که اعضای آن به طور متوسط ${showerTime} دقیقه حمام می‌کنند، سه راهکار خلاقانه، عملی و کم‌هزینه برای کاهش فوری مصرف آب ارائه بده. لحن تو باید بسیار دوستانه، تشویق‌کننده و ساده باشد تا برای همه قابل فهم باشد. پاسخ را به فارسی و با قالب سادهٔ زیر بده:
+- از عنوان‌های کوتاه (با پیشوند #) برای هر راهکار استفاده کن
+- برای هر راهکار یک توضیح یک تا دو خطی بنویس
+- در صورت نیاز کلمات کلیدی را بین **دو ستاره** بولد کن
+- در پایان یک جملهٔ انگیزشی کوتاه اضافه کن`;
 
-  // 2) سپس AI را صدا بزن؛ فقط اگر موفق بود، همین قالب را با دادهٔ AI به‌روزرسانی کن
+  // Helper واحد: اول askAI اگر هست، وگرنه callGeminiAPI
+  const callAI = typeof askAI === 'function'
+    ? (p) => askAI(p, { json: false })
+    : (p) => callGeminiAPI(p, false);
+
   try {
-    const prompt = `
-شما یک کارشناس دلسوز مدیریت مصرف آب در مشهد هستید. برای خانواده‌ای ${familySize} نفره که میانگین زمان حمام‌شان ${showerTime} دقیقه است،
-سه راهکار عملی، کم‌هزینه و فوری پیشنهاد دهید.
+    const rawText = await callAI(prompt);
 
-خروجی را فقط به‌صورت JSON با این ساختار بده (بدون مارک‌داون/توضیح اضافی):
-{
-  "intro": "<یک پاراگراف کوتاه آغازین به فارسی، لحن دوستانه و تشویقی>",
-  "tips": [
-    { "title": "<عنوان کوتاه و جذاب>", "body": "<توضیح 1-3 جمله‌ای ساده و عملی>" },
-    { "title": "<...>", "body": "<...>" },
-    { "title": "<...>", "body": "<...>" }
-  ],
-  "outro": "<یک جمله انگیزشی جمع‌بندی به فارسی>"
-}
-    `.trim();
+    // --- Sanitization & Markdown-lite → HTML ---
+    // 1) Escape برای جلوگیری از تزریق HTML
+    const esc = (s) => s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
 
-    const jsonText = await askAI(prompt, { json: true });
+    let t = esc(String(rawText).trim());
 
-    // پاکسازی احتمالی backticks
-    const cleaned = String(jsonText).trim().replace(/^```json\s*|\s*```$/g,'');
-    const data = JSON.parse(cleaned);
+    // 2) **bold** → <strong>
+    t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    if (!data || !Array.isArray(data.tips) || data.tips.length === 0) throw new Error('BAD_AI_PAYLOAD');
+    // 3) خطوط عنوان: ابتدای خط با #
+    t = t.replace(/^#\s*(.+)$/gm, '<h3 class="tips-title">$1</h3>');
 
-    tipsResultDiv.innerHTML = renderSmartTips(data);
-  } catch (err) {
-    console.warn('Tips: AI failed, fallback shown.', err);
-    // فالبک محلی همین حالا رندر شده است؛ کاری لازم نیست
+    // 4) آیتم‌ها: خطوطی که با "- " شروع می‌شوند → li
+    // ابتدا liها را بسازیم
+    let madeList = false;
+    t = t.replace(/^- (.+)$/gm, (_m, p1) => {
+      madeList = true;
+      return `<li>${p1}</li>`;
+    });
+    // اگر li ساخته شد، آن‌ها را داخل ul قرار بده
+    if (madeList) {
+      // گروه‌بندی li های پیوسته داخل یک ul
+      t = t
+        .replace(/(?:<li>[\s\S]*?<\/li>\s*)+/g, (block) => {
+          const items = block.trim();
+          return `<ul class="tips-list">${items}</ul>`;
+        });
+    }
+
+    // 5) باقی خطوط شکسته شوند
+    t = t.replace(/\n/g, '<br>');
+
+    // 6) خروجی نهایی داخل قالب موجود
+    tipsResultDiv.innerHTML = `
+      <div class="tips-card">
+        <div class="tips-prose">
+          ${t}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Gemini API Error (Tips):', error);
+    showErrorModal();
+    // کانتینر نتیجه را پنهان نکن؛ کاربر پیام خطا را می‌بیند
   } finally {
+    tipsLoader.classList.add('hidden');
     generateTipsBtn.disabled = false;
     generateTipsBtn.classList.remove('opacity-50');
   }
