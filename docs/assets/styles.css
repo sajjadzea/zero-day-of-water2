@@ -105,3 +105,9 @@ h1, h2, h3, .result-number {
 .tips-body { color:#334155; /* slate-700 */ }
 .tips-list { list-style:disc; list-style-position: outside; padding-right:1.25rem; margin:.5rem 0 .5rem 0; }
 .tips-hr { border:0; height:1px; background:#e5e7eb; margin:1rem 0; }
+
+/* Collapse potential leftover logo or banner containers on landing page */
+main .hero, main .brand, main .hero-logo, main .banner {
+  margin: 0;
+  padding: 0;
+}
