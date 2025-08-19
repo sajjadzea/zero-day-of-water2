@@ -67,3 +67,30 @@ curl -i -X POST http://localhost:8888/api/gemini \
 ## Backlog
 
 - Migrate from `cdn.tailwindcss.com` to CSS compiled with Tailwind CLI at build time.
+
+## Local Setup, Test, and Deploy
+
+1. **Install dependencies**
+   ```bash
+   npm i
+   ```
+2. **Build dashboard and vendor files**
+   ```bash
+   npm run build:agri && npm run prepare:agri
+   ```
+3. **Serve locally**
+   ```bash
+   npx http-server docs -p 8080
+   ```
+   Visit [http://localhost:8080/agrivoltaics/](http://localhost:8080/agrivoltaics/) and ensure it loads without CSP errors.
+4. **Test Netlify functions**
+   ```bash
+   npx netlify dev
+   curl -X POST http://localhost:8888/api/save-scenario -H "Content-Type: application/json" -d '{"state":{"hello":"world"}}'
+   curl "http://localhost:8888/api/get-scenario?id=<ID>"
+   ```
+5. **Deploy**
+   Push to `main` to trigger a Deploy Preview and then production.
+6. **Troubleshoot CORS**
+   If the preview throws a CORS error, verify that the origin uses `process.env.URL` or `DEPLOY_PRIME_URL`.
+
