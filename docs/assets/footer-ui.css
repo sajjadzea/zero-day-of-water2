@@ -1,0 +1,46 @@
+:root{
+  --footer-bg: transparent;            /* بدون کادر سفید */
+  --footer-text: #94a3b8;              /* متن ملایم و خوانا */
+  --footer-link: #cbd5e1;
+  --footer-border: rgba(148,163,184,.15);
+}
+
+footer, .site-footer, #footer{
+  background: var(--footer-bg) !important;
+  color: var(--footer-text);
+  border-top: 1px solid var(--footer-border);
+  text-align: center;
+  padding: 18px 0;
+  box-shadow: none !important;
+}
+
+footer .container, footer .wrap{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+footer p, footer span{
+  margin: 0;
+  font-size: .88rem;
+  line-height: 1.9;
+}
+
+footer a{
+  color: var(--footer-link);
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(203,213,225,.4);
+}
+footer a:hover{ text-decoration-color: currentColor; }
+
+footer img[src*="IRAN-FLAG"]{
+  width: 22px;
+  height: auto;
+  margin-inline-end: 8px;
+  vertical-align: -3px;
+}
+
+html, body{ background-color:#0b1220; }  /* هماهنگی با تم تیره */
+
+/* اگر برخی صفحات به فوتر زمینه سفید تزریق می‌کنند، این‌ها خنثی می‌کند */
+footer * { background: transparent !important; }

@@ -8,7 +8,6 @@
       .catch(function(err) {
         console.error('Failed to load footer', err);
       });
-    document.body.style.marginBottom = '60px';
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadFooter);
