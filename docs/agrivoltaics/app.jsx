@@ -51,7 +51,11 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ state })
         });
-        if (!res.ok) { alert("ذخیره نشد؛ بعداً دوباره امتحان کن."); return; }
+        if (!res.ok) {
+          const err = await res.json().catch(()=>({}));
+          alert(err.message || "ذخیره نشد؛ بعداً دوباره امتحان کن.");
+          return;
+        }
         const { id } = await res.json();
         const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
         setShareLink(share);
@@ -60,7 +64,11 @@
       async function loadScenarioById(id, setState){
         if (!id) return;
         const res = await fetch(`/api/get-scenario?id=${encodeURIComponent(id)}`);
-        if (!res.ok) { alert("خواندن نشد؛ بعداً دوباره امتحان کن."); return; }
+        if (!res.ok) {
+          const err = await res.json().catch(()=>({}));
+          alert(err.message || "خواندن نشد؛ بعداً دوباره امتحان کن.");
+          return;
+        }
         const saved = await res.json();
         if (saved) setState(saved);
       }

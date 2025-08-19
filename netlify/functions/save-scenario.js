@@ -31,6 +31,11 @@ exports.handler = async (event) => {
     await store.setJSON(`scenario:${id}`, body.state || {});
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, id }) };
   } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: "SERVER_ERROR" }) };
+    console.error(e);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: "internal", message: e.message }),
+    };
   }
 };
