@@ -1,46 +1,54 @@
+/* چسباندن فوتر به پایین صفحه برای همهٔ صفحات */
+html, body { min-height: 100%; }
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+body > footer, body > .site-footer, body > #footer { margin-top: auto; }
+
+/* پوست پایه فوتر */
 :root{
   --footer-bg: transparent;            /* بدون کادر سفید */
-  --footer-text: #94a3b8;              /* متن ملایم و خوانا */
-  --footer-link: #cbd5e1;
-  --footer-border: rgba(148,163,184,.15);
+  --footer-text: #cbd5e1;              /* پیش‌فرض برای صفحات تیره */
+  --footer-border: rgba(203,213,225,.2);
 }
 
 footer, .site-footer, #footer{
+  position: relative; z-index: 10;     /* روی هر اورلِی/گرادیان باقی بماند */
   background: var(--footer-bg) !important;
   color: var(--footer-text);
   border-top: 1px solid var(--footer-border);
   text-align: center;
-  padding: 18px 0;
+  padding: 16px 0;
   box-shadow: none !important;
 }
 
-footer .container, footer .wrap{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 16px;
+/* ظرف داخلی و چینش متن + پرچم */
+footer .footer-inner{ max-width:1100px; margin:0 auto; padding:0 16px; }
+footer .footer-text{
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:.9rem; line-height:1.9; font-weight:500;
 }
+footer .footer-flag{ width:22px; height:auto; margin-inline-end:6px; vertical-align:-3px; }
 
-footer p, footer span{
-  margin: 0;
-  font-size: .88rem;
-  line-height: 1.9;
+/* رفع نامرئی شدن به‌دلیل استایل‌های قدیمی */
+footer, footer * { background: transparent !important; opacity: 1 !important; }
+
+/* لینک‌ها */
+footer a{ color: currentColor; text-decoration: underline; text-underline-offset: 2px; }
+footer a:hover{ text-decoration-thickness: 2px; }
+
+/* تم هر بخش (براساس data-theme روی <html>) */
+html[data-theme="electric"]{
+  --footer-text:#cbd5e1;               /* برق: پس‌زمینه تیره */
+  --footer-border: rgba(148,163,184,.2);
 }
-
-footer a{
-  color: var(--footer-link);
-  text-underline-offset: 2px;
-  text-decoration-color: rgba(203,213,225,.4);
+html[data-theme="water"]{
+  --footer-text:#334155;               /* آب: پس‌زمینه روشن/خاکستری */
+  --footer-border: rgba(15,23,42,.12);
 }
-footer a:hover{ text-decoration-color: currentColor; }
-
-footer img[src*="IRAN-FLAG"]{
-  width: 22px;
-  height: auto;
-  margin-inline-end: 8px;
-  vertical-align: -3px;
+html[data-theme="gas"]{
+  --footer-text:#374151;
+  --footer-border: rgba(55,65,81,.15);
 }
-
-html, body{ background-color:#0b1220; }  /* هماهنگی با تم تیره */
-
-/* اگر برخی صفحات به فوتر زمینه سفید تزریق می‌کنند، این‌ها خنثی می‌کند */
-footer * { background: transparent !important; }
