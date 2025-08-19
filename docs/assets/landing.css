@@ -129,3 +129,161 @@ html,body{height:100%;margin:0;padding:0;}
 @media all{
   .hero-cards, .hero-cards > *{ will-change: transform; }
 }
+
+/* ====== Van Gogh Hero & Cards – WESH360 (Landing) ====== */
+:root{
+  --hero-img-url: url('/docs/page/landing/hiro2.webp');  /* exact path */
+  --hero-blur: 8px;               /* background blur strength */
+  --hero-darkness: 0.35;          /* overlay darkness */
+  --hero-min-h: 72vh;             /* hero min height */
+  --card-bg: rgba(255,255,255,0.26);
+  --card-blur: 14px;
+  --card-radius: 18px;
+  --card-shadow: 0 10px 30px rgba(12, 23, 52, 0.24);
+  --brand-blue: #0b3c6f;          /* matches painting blues */
+  --brand-blue-2: #134b88;
+  --brand-cyan: #2eaadc;
+  --brand-orange: #f4a261;        /* accents */
+}
+
+/* HERO container */
+#landing-hero{
+  position: relative;
+  min-height: var(--hero-min-h);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: clamp(12px, 2vw, 20px);
+  place-items: center;
+  padding-inline: clamp(12px, 3vw, 24px);
+  padding-bottom: clamp(18px, 5vw, 36px);
+  overflow: clip;
+  isolation: isolate; /* clean stacking context */
+}
+
+/* Layer 1: image + blur (non-destructive) */
+#landing-hero::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--hero-img-url);
+  background-size: cover;
+  background-position: center 35%;  /* keep turbines visible */
+  background-repeat: no-repeat;
+  filter: blur(var(--hero-blur));
+  transform: scale(1.05); /* hide blur edges */
+  z-index: -2;
+  will-change: transform, filter;
+}
+
+/* Layer 2: dark gradient overlay for contrast */
+#landing-hero::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+     180deg,
+     rgba(0,0,0,var(--hero-darkness)) 0%,
+     rgba(0,0,0,calc(var(--hero-darkness) * .6)) 45%,
+     rgba(0,0,0,calc(var(--hero-darkness) * .9)) 100%
+  );
+  z-index: -1;
+}
+
+/* Headline area */
+#landing-hero .hero-content{
+  width: min(1100px, 92vw);
+  margin: clamp(8px, 1.5vw, 12px) auto 0;
+  text-align: center;
+}
+#landing-hero .hero-content h1,
+#landing-hero .hero-content p{
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.35);
+}
+
+/* Cards layout (responsive, equal heights) */
+#landing-hero .hero-cards{
+  width: min(1100px, 92vw);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: clamp(12px, 2.4vw, 20px);
+  align-items: stretch;
+}
+
+/* Card base – override Tailwind utility mix with consistent "frosted glass" look */
+#landing-hero .dash-card{
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;               /* standard height floor */
+  padding: clamp(16px, 2.5vw, 28px);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+  -webkit-backdrop-filter: blur(var(--card-blur));
+          backdrop-filter: blur(var(--card-blur));
+  border: 1px solid rgba(255,255,255,0.32);
+  box-shadow: var(--card-shadow);
+  transition: transform .25s ease, box-shadow .25s ease, background-color .25s ease;
+}
+
+/* Card content cosmetics */
+#landing-hero .dash-card h2{
+  color: #0f172a; /* slate-900 */
+  font-weight: 700;
+}
+#landing-hero .dash-card p{
+  color: #334155; /* slate-700 */
+  margin-top: .25rem;
+  margin-bottom: .25rem;
+  flex-grow: 1;               /* equalize card heights */
+}
+#landing-hero .dash-card a{
+  align-self: flex-start;
+  border-radius: 9999px;
+  padding: 10px 16px;
+  color: #fff !important;
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-2));
+  box-shadow: 0 8px 18px rgba(11,60,111,.35);
+  transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+#landing-hero .dash-card a:hover{
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #1560a9, var(--brand-blue));
+  box-shadow: 0 10px 22px rgba(11,60,111,.45);
+}
+
+/* Hover/Focus elevation */
+#landing-hero .dash-card:hover,
+#landing-hero .dash-card:focus-within{
+  transform: translateY(-6px);
+  box-shadow: 0 14px 36px rgba(12,23,52,.30);
+}
+
+/* Navigation/header readability on busy bg (optional but recommended) */
+header{
+  backdrop-filter: saturate(120%) blur(6px);
+  -webkit-backdrop-filter: saturate(120%) blur(6px);
+  background: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.35);
+}
+
+/* Mobile tuning */
+@media (max-width: 640px){
+  :root{ --hero-blur: 6px; --hero-darkness: .42; }
+  #landing-hero{ min-height: 64vh; }
+  #landing-hero .dash-card{ min-height: 200px; }
+}
+
+/* Prefer reduced motion accessibility */
+@media (prefers-reduced-motion: reduce){
+  #landing-hero .dash-card,
+  #landing-hero .dash-card a{ transition: none; }
+}
+
+/* Fallback when backdrop-filter unsupported */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  #landing-hero .dash-card{ background: rgba(255,255,255,.85); }
+}
+
+/* ====== END Van Gogh Hero & Cards ====== */
