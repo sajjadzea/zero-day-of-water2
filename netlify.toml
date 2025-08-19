@@ -1,6 +1,6 @@
 [build]
   publish = "docs"
-  command = "npx tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify"
+  command = "npx tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify && npm run build:agri && npm run prepare:agri"
   
 [build.environment]
   NODE_VERSION = "20"
