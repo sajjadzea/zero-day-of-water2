@@ -470,9 +470,9 @@
               <div className="mt-4 text-xs text-gray-400">* سال صفر شامل هزینه ساخت است و در جدول نیامده است.</div>
             </section>
 
-            <footer className="text-xs text-gray-400 pb-8">
+            <div className="text-xs text-gray-400 pb-8">
               نکته: برای دقت بیشتر، قیمت محصول و هزینه آب/برق را از فیش‌های اخیر خودتان وارد کنید. اگر خواستید، می‌توانیم نسخه روستایی/دهستانی با اعداد دقیق‌تری بسازیم.
-            </footer>
+            </div>
           </main>
           {shareLink && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
