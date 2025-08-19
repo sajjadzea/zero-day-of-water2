@@ -1,18 +1,11 @@
-/* footer flag sizing */
-.footer-flag {
-  height: 28px;          /* اندازه‌ی استاندارد دسکتاپ */
-  width: auto;           /* جلوگیری از کشیدگی */
-  max-width: none;       /* نادیده گرفتن قواعد پیش‌فرض img {max-width:100%} */
-  object-fit: contain;
-  vertical-align: middle;
+.site-footer {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(0,0,0,.08);
+  background: transparent;
+  font-size: .9rem;
 }
-@media (max-width: 768px) {
-  .footer-flag { height: 22px; }  /* موبایل */
-}
-.footer-note {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  justify-content: center;
-  text-align: center;
-}
+.site-footer .container { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
+.footer-copy { display: inline-flex; align-items: center; gap: .5rem; }
+.iran-flag { inline-size: 22px; block-size: auto; vertical-align: middle; }
+html[dir="rtl"] .footer-copy { flex-direction: row-reverse; } /* پرچم قبل از متن در RTL */
