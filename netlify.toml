@@ -10,11 +10,6 @@
   node_bundler = "esbuild"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
   from = "/agrivoltaics"
   to = "/agrivoltaics/"
   status = 301
@@ -22,6 +17,11 @@
 [[redirects]]
   from = "/agrivoltaics/*"
   to = "/agrivoltaics/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 [[headers]]
