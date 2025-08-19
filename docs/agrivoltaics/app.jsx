@@ -45,7 +45,7 @@
         </div>
       );
 
-      async function saveScenario(state) {
+      async function saveScenario(state, setShareLink) {
         const res = await fetch("/api/save-scenario", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -54,7 +54,7 @@
         if (!res.ok) { alert("ذخیره نشد؛ بعداً دوباره امتحان کن."); return; }
         const { id } = await res.json();
         const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
-        alert("ذخیره شد! این لینک را نگه دارید:\n" + share);
+        setShareLink(share);
       }
 
       async function loadScenarioById(id, setState){
@@ -67,6 +67,7 @@
 
       function AgrivoltaicsKhorasan(){
         const [simple, setSimple] = useState(true);
+        const [shareLink, setShareLink] = React.useState("");
 
       // منطقه‌های پرتکرار استان (تقریبی)
       const regions = {
@@ -150,6 +151,13 @@
           const id = new URLSearchParams(location.search).get("id");
           loadScenarioById(id, setS);
         }, []);
+
+        React.useEffect(()=>{ if(!shareLink) return;
+          const el = document.getElementById("qrBox"); if(!el) return;
+          el.innerHTML=""; const typeNumber=0, errorCorrectLevel=QRErrorCorrectLevel.M;
+          const qr = qrcode(typeNumber, errorCorrectLevel); qr.addData(shareLink); qr.make();
+          el.innerHTML = qr.createSvgTag(6); // مقیاس
+        }, [shareLink]);
 
         const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
       const pct = (x) => (Number(x) || 0) / 100;
@@ -319,7 +327,7 @@
             <div className="flex items-center gap-2 flex-wrap">
               <button className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white" onClick={()=>setSimple(v=>!v)}>حالت {simple? 'پیشرفته' : 'ساده'}</button>
                 <button onClick={downloadCSV} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود CSV</button>
-                <button onClick={() => saveScenario(s)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
+                <button onClick={() => saveScenario(s, setShareLink)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
                 <button onClick={() => { const id = prompt("کُد/لینک را وارد کنید:"); const onlyId = (id||"").split("id=").pop(); loadScenarioById(onlyId, setS); }} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">بازکردن از لینک</button>
             </div>
           </header>
@@ -443,6 +451,17 @@
               نکته: برای دقت بیشتر، قیمت محصول و هزینه آب/برق را از فیش‌های اخیر خودتان وارد کنید. اگر خواستید، می‌توانیم نسخه روستایی/دهستانی با اعداد دقیق‌تری بسازیم.
             </footer>
           </main>
+          {shareLink && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white text-black p-4 rounded-xl flex flex-col items-center">
+                <div id="qrBox" className="mb-4"></div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-2 rounded bg-emerald-600 text-white" onClick={() => navigator.clipboard.writeText(shareLink)}>کپی لینک</button>
+                  <button className="px-3 py-2 rounded bg-gray-300" onClick={() => setShareLink("")}>بستن</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
