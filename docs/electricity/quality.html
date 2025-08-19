@@ -13,7 +13,7 @@
     <script src="../vendor/chart.umd.min.js"></script>
 
     <!-- فونت محلی Vazirmatn -->
-    <link rel="stylesheet" href="../assets/fonts.css">
+  <link rel="stylesheet" href="../assets/fonts.css">
 
     <style>
         body {
@@ -28,7 +28,12 @@
         }
     </style>
   <link rel="stylesheet" href="/assets/footer-ui.css">
+ codex/add-update-badge-to-dashboard-cards
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/unified-badge.js"></script>
+
   <script defer src="/assets/footer-fix.js"></script>
+ main
 </head>
 <body class="bg-gray-900 text-gray-200">
 
@@ -52,29 +57,29 @@
         <!-- Main Dashboard -->
         <main class="space-y-8">
             <!-- Section 1: Overview & Trends -->
-            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 dash-card">
                 <h3 class="text-xl font-semibold mb-6 text-cyan-400">نمای کلی استان (ماه جاری)</h3>
 
                 <!-- Overview Cards -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div id="saifi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10">
+                    <div id="saifi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-500/10 dash-card">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین تعداد قطعی (SAIFI)</h4>
                         <p id="saifi-value" class="text-3xl font-bold my-2">--</p>
                         <div id="saifi-change" class="flex items-center text-sm"></div>
                         <p class="text-xs text-gray-500 mt-1">بار/مشترک</p>
                     </div>
-                    <div id="saidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10">
+                    <div id="saidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-green-500 hover:shadow-lg hover:shadow-green-500/10 dash-card">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین مدت قطعی (SAIDI)</h4>
                         <p id="saidi-value" class="text-3xl font-bold my-2">--</p>
                         <div id="saidi-change" class="flex items-center text-sm"></div>
                         <p class="text-xs text-gray-500 mt-1">دقیقه/مشترک</p>
                     </div>
-                    <div id="caidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-500/10">
+                    <div id="caidi-card" data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-yellow-500 hover:shadow-lg hover:shadow-yellow-500/10 dash-card">
                         <h4 class="text-gray-400 text-sm font-medium">میانگین زمان رفع قطعی (CAIDI)</h4>
                         <p id="caidi-value" class="text-3xl font-bold my-2">--</p>
                         <p class="text-xs text-gray-500 mt-1">هر خاموشی چقدر طول می‌کشد؟</p>
                     </div>
-                    <div data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10">
+                    <div data-updated-key="quality" class="bg-gray-900 p-5 rounded-xl border border-gray-700 transition-all hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 dash-card">
                         <h4 class="text-gray-400 text-sm font-medium">سهم قطعی‌های برنامه‌ریزی‌شده</h4>
                         <p id="planned-share-value" class="text-3xl font-bold my-2">--</p>
                         <p class="text-xs text-gray-500 mt-1">از کل قطعی‌های این ماه</p>
@@ -91,7 +96,7 @@
             </section>
 
             <!-- Section 2: Cities Ranking -->
-            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+            <section class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 dash-card">
                 <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
                     <h3 class="text-xl font-semibold text-green-400">وضعیت شهرها</h3>
                     <div class="flex items-center gap-4">
@@ -122,7 +127,7 @@
 
             <!-- Section 3: Causes & Patterns -->
             <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700">
+                <div class="lg:col-span-2 bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 dash-card">
                     <h3 class="text-xl font-semibold mb-6 text-yellow-400">علت‌ها و الگوها (استان)</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="text-center">
@@ -135,7 +140,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 flex flex-col justify-center items-center text-center">
+                <div class="bg-gray-800/50 rounded-2xl p-6 backdrop-blur-sm border border-gray-700 flex flex-col justify-center items-center text-center dash-card">
                      <h3 class="text-xl font-semibold mb-4 text-yellow-400">زمان‌های پرتکرار قطعی</h3>
                      <div class="text-5xl mb-2">🌙</div>
                      <p class="text-lg font-bold">عصر و شب</p>
@@ -180,9 +185,13 @@
 
     <!-- بعد از انتقال: فقط اسکریپت خارجی -->
     <script src="../assets/electricity-quality.js"></script>
+ codex/add-update-badge-to-dashboard-cards
+    <script defer src="/assets/footer.js"></script>
+
     <script defer src="../assets/badge-updated.js"></script>
 <footer dir="rtl">
   کلیه حقوق مادی و معنوی این سایت متعلق به خانه هم‌افزایی انرژی و آب استان خراسان رضوی است.<br>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی
 </footer>
+ main
 </body>
 </html>

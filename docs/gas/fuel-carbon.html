@@ -37,7 +37,12 @@
     .mazut-danger { border: 2px solid #ef4444; }  /* red-500 */
   </style>
   <link rel="stylesheet" href="/assets/footer-ui.css">
+ codex/add-update-badge-to-dashboard-cards
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/unified-badge.js"></script>
+
   <script defer src="/assets/footer-fix.js"></script>
+ main
 </head>
   <body class="bg-slate-50 text-slate-800">
     <span id="fc-js-status" class="hidden">X</span>
@@ -62,27 +67,27 @@
 
     <!-- KPI Cards -->
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-      <div id="gas-share-card" class="card text-center">
+      <div id="gas-share-card" class="card dash-card text-center">
         <h3 class="text-slate-500 font-semibold">سهم گاز (ماه گذشته)</h3>
         <p class="text-4xl font-bold text-teal-600 mt-2">۷۵٪</p>
         <p class="text-sm text-slate-400 mt-1">سوخت اصلی نیروگاه‌ها</p>
       </div>
-      <div id="mazut-share-card" class="card text-center">
+      <div id="mazut-share-card" class="card dash-card text-center">
         <h3 class="text-slate-500 font-semibold">سهم مازوت (ماه گذشته)</h3>
         <p class="text-4xl font-bold text-orange-600 mt-2">۱۲٪</p>
         <p class="text-sm text-orange-500 mt-1">هشدار: بالاتر از آستانه ۱۰٪</p>
       </div>
-      <div id="carbon-intensity-card" class="card text-center">
+      <div id="carbon-intensity-card" class="card dash-card text-center">
         <h3 class="text-slate-500 font-semibold">شدت کربن استان</h3>
         <p class="text-4xl font-bold text-slate-700 mt-2">۰.۴۸</p>
         <p class="text-sm text-slate-400 mt-1">kgCO₂e/kWh (ماه گذشته)</p>
       </div>
-      <div id="yoy-change-card" class="card text-center">
+      <div id="yoy-change-card" class="card dash-card text-center">
         <h3 class="text-slate-500 font-semibold">تغییر سالانه شدت کربن</h3>
         <p class="text-4xl font-bold text-red-500 mt-2">+۵٪</p>
         <p class="text-sm text-slate-400 mt-1">نسبت به ماه مشابه پارسال</p>
       </div>
-      <div id="mazut-free-days-card" class="card text-center">
+      <div id="mazut-free-days-card" class="card dash-card text-center">
         <h3 class="text-slate-500 font-semibold">روزهای بدون مازوت</h3>
         <p class="text-4xl font-bold text-blue-600 mt-2">۸</p>
         <p class="text-sm text-slate-400 mt-1">روز در ماه گذشته</p>
@@ -91,7 +96,7 @@
 
     <!-- Charts Section -->
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-      <div class="lg:col-span-2 card">
+      <div class="lg:col-span-2 card dash-card">
         <h2 class="text-xl font-bold mb-4 text-center">ترکیب سوخت تولید برق (ماه گذشته)</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -105,7 +110,7 @@
         </div>
         <p class="text-center text-sm text-slate-500 mt-4">بیشترین سهم این ماه: <strong>گاز طبیعی</strong>. افزایش سهم گاز معمولاً شدت کربن را کاهش می‌دهد.</p>
       </div>
-      <div class="lg:col-span-3 card">
+      <div class="lg:col-span-3 card dash-card">
         <h2 class="text-xl font-bold mb-4">روند شدت کربن (۲۴ ماه اخیر)</h2>
         <p class="text-sm text-slate-500 mb-4">شدت کربن = کیلوگرم دی‌اکسید کربن معادل (kgCO₂e) به ازای هر کیلووات‌ساعت (kWh) برق تولیدی. هرچه کمتر، بهتر.</p>
         <div class="relative h-80 md:h-96"><canvas id="carbonIntensityTrendChart"></canvas></div>
@@ -113,7 +118,7 @@
     </section>
 
     <!-- Your Impact Section -->
-    <section class="card bg-gradient-to-br from-blue-50 to-indigo-100 mb-8">
+    <section class="card dash-card bg-gradient-to-br from-blue-50 to-indigo-100 mb-8">
       <h2 class="text-2xl font-bold mb-4 text-center text-slate-800">اثر شما: چگونه مصرف ما تفاوت ایجاد می‌کند؟</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div class="bg-white/60 p-6 rounded-lg">
@@ -141,7 +146,7 @@
     </section>
 
     <!-- Water-Energy Nexus Section -->
-    <section class="card bg-gradient-to-br from-cyan-50 to-sky-100 mb-8">
+    <section class="card dash-card bg-gradient-to-br from-cyan-50 to-sky-100 mb-8">
       <h2 class="text-2xl font-bold mb-4 text-center text-slate-800">پیوند آب و انرژی: ردپای پنهان برق در بحران آب استان</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
         <div class="md:col-span-1 flex flex-col items-center text-center bg-white/60 p-6 rounded-lg">
@@ -160,7 +165,7 @@
 
     <!-- Simulator and Educational Section -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div class="card">
+      <div class="card dash-card">
         <h2 class="text-xl font-bold mb-4">شبیه‌ساز «اگر... آنگاه...»</h2>
         <p class="text-slate-600 mb-4">ببینید اگر سهم گاز بیشتر بود، شدت کربن چقدر می‌توانست کاهش یابد.</p>
         <div class="mb-4">
@@ -185,7 +190,7 @@
           </span>
         </div>
       </div>
-      <div class="card">
+      <div class="card dash-card">
         <h2 class="text-xl font-bold mb-4">دانستنی‌های انرژی و محیط زیست</h2>
         <div class="space-y-4 text-slate-700">
           <div><h3 class="font-semibold">چرا گاز کربن کمتری دارد؟</h3><p class="text-sm">گاز طبیعی به ازای هر واحد انرژی، هیدروژن بیشتر و کربن کمتری نسبت به مازوت و گازوئیل دارد، لذا CO₂ کمتری تولید می‌کند.</p></div>

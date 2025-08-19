@@ -1,0 +1,24 @@
+/* موقعیت چیپ بالای کارت */
+.dash-card { position: relative; }
+.dash-badge-wrap { display:flex; justify-content:flex-start; margin-top:.5rem; }
+
+/* چیپ مدرن، خوانا و فشرده */
+.badge-update{
+  display:inline-flex; align-items:center; gap:.45rem;
+  padding:.26rem .70rem; border-radius:999px;
+  font-weight:700; font-size:.78rem; line-height:1;
+  color:#0b1220; 
+  background: linear-gradient(135deg, var(--badge-c1), var(--badge-c2));
+  box-shadow:0 8px 22px rgba(0,0,0,.25);
+}
+.badge-update svg{ width:14px; height:14px; fill:currentColor; }
+
+/* تم‌ها بر اساس data-theme روی <html> */
+html[data-theme="electric"] { --badge-c1:#22d3ee; --badge-c2:#a78bfa; } /* برق: فیروزه‌ای→بنفش */
+html[data-theme="water"]    { --badge-c1:#38bdf8; --badge-c2:#06b6d4; } /* آب: آبی→فیروزه‌ای */
+html[data-theme="gas"]      { --badge-c1:#f59e0b; --badge-c2:#fb923c; } /* گاز: کهربایی→نارنجی */
+
+/* اگر کارت پس‌زمینه بسیار روشن دارد، سایه‌ی بیشتر بده */
+.dash-card.bg-white .badge-update,
+.dash-card.bg-gray-50 .badge-update { box-shadow:0 10px 26px rgba(0,0,0,.28); }
+

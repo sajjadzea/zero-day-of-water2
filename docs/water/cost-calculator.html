@@ -8,7 +8,12 @@
   <link rel="stylesheet" href="../assets/fonts.css">
   <link rel="stylesheet" href="../assets/water-cost.css">
   <link rel="stylesheet" href="/assets/footer-ui.css">
+ codex/add-update-badge-to-dashboard-cards
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/unified-badge.js"></script>
+
   <script defer src="/assets/footer-fix.js"></script>
+ main
 </head>
 <body>
   <main class="container">
@@ -31,7 +36,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card dash-card">
         <h3>جدول سهم هر متغیر</h3>
         <table class="tbl" aria-describedby="tbl-hint">
           <thead>
@@ -42,17 +47,17 @@
         <div id="tbl-hint" class="hint" style="margin-top:8px">مقادیر با تغییر ورودی‌ها به‌روزرسانی می‌شوند.</div>
       </div>
 
-      <div class="card">
+      <div class="card dash-card">
         <h3>نمودار دونات سهم عوامل</h3>
         <div class="chart-box"><canvas id="shareChart"></canvas></div>
       </div>
 
-      <div class="card">
+      <div class="card dash-card">
         <h3>تحلیل حساسیت (±۱۰٪ در ورودی‌ها)</h3>
         <ul id="sensitivity-list" class="list"><!-- li items by JS --></ul>
       </div>
 
-      <div class="card note">
+      <div class="card dash-card note">
         <h3>جمع‌بندی تحلیل</h3>
         <div id="analysis-summary">—</div>
       </div>
@@ -60,7 +65,7 @@
 
     <!-- ستون راست: ورودی‌های مدل -->
     <div class="right controls">
-      <div class="card">
+      <div class="card dash-card">
         <h3>۱) عوامل فنی و زیربنایی</h3>
         <div class="group">
           <label for="cost_production">هزینه تولید هر مترمکعب (تومان)</label>
@@ -81,7 +86,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card dash-card">
         <h3>۲) عوامل اقتصادی و مدیریتی</h3>
         <div class="group">
           <label for="maintenance">هزینه نگهداری و تعمیرات (تومان)</label>
@@ -95,7 +100,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card dash-card">
         <h3>۳) محیطی و اجتماعی</h3>
         <div class="group">
           <label for="power_change">درصد تغییر قیمتی برق (%)</label>

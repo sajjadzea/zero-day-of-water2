@@ -9,7 +9,12 @@
   <link rel="stylesheet" href="../assets/power-tariff.css">
   <script defer src="../assets/power-tariff.js"></script>
   <link rel="stylesheet" href="/assets/footer-ui.css">
+ codex/add-update-badge-to-dashboard-cards
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/unified-badge.js"></script>
+
   <script defer src="/assets/footer-fix.js"></script>
+ main
 </head>
 <body class="bg-slate-100 text-slate-800">
 <div id="etf-root" class="container mx-auto p-4 md:p-8">
@@ -34,7 +39,7 @@
         <div id="etf-tariffs" class="etf-tab-content space-y-8">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <!-- Tariff Table Card -->
-                <div class="etf-card col-span-1 md:col-span-2 border-indigo-500">
+                <div class="etf-card dash-card col-span-1 md:col-span-2 border-indigo-500">
                     <h2 class="text-xl font-bold mb-4 text-slate-700 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2 2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                         جدول تعرفه‌های پلکانی برق (نمونه)
@@ -54,7 +59,7 @@
                 </div>
                 
                 <!-- Helper Cards -->
-                <div class="etf-card border-purple-500">
+                <div class="etf-card dash-card border-purple-500">
                     <h3 class="text-lg font-bold mb-3 text-slate-800 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         پله من کدام است؟
@@ -72,7 +77,7 @@
                     <div id="etf-tier-check-result" class="mt-4 text-center font-semibold text-indigo-700 h-6"></div>
                 </div>
 
-                <div class="etf-card border-teal-500">
+                <div class="etf-card dash-card border-teal-500">
                     <h3 class="text-lg font-bold mb-3 text-slate-800 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>
                         چطور به پله پایین‌تر برگردم؟
@@ -86,7 +91,7 @@
         <div id="etf-simulator" class="etf-tab-content hidden space-y-8">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Input Form -->
-                <div class="lg:col-span-1 etf-card border-indigo-500">
+                <div class="lg:col-span-1 etf-card dash-card border-indigo-500">
                     <h2 class="text-xl font-bold mb-6 flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                         ۱. اطلاعات مصرف
@@ -125,7 +130,7 @@
 
                 <!-- Output Bill -->
                 <div class="lg:col-span-2">
-                    <div id="etf-bill-output-container" class="etf-card border-indigo-500 hidden">
+                    <div id="etf-bill-output-container" class="etf-card dash-card border-indigo-500 hidden">
                          <div id="etf-bill-to-print" class="p-2">
                             <h2 class="text-xl font-bold mb-6 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -147,7 +152,7 @@
                     </div>
                     
                     <!-- What if scenario -->
-                    <div id="etf-what-if-container" class="etf-card mt-8 hidden border-teal-500">
+                    <div id="etf-what-if-container" class="etf-card dash-card mt-8 hidden border-teal-500">
                          <h3 class="text-lg font-bold mb-5 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             🎯 اگر مصرفم را کم کنم...
@@ -170,7 +175,7 @@
 
         <!-- Analysis Tab -->
         <div id="etf-analysis" class="etf-tab-content hidden space-y-8">
-            <div class="etf-card border-indigo-500">
+            <div class="etf-card dash-card border-indigo-500">
                 <h2 class="text-xl font-bold mb-6 flex items-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     تحلیل الگوی مصرف شما
@@ -190,7 +195,7 @@
             </div>
             
             <div id="etf-analysis-result-container" class="hidden space-y-8">
-                <div class="etf-card border-purple-500">
+                <div class="etf-card dash-card border-purple-500">
                     <h3 class="text-lg font-bold mb-4">جایگاه مصرف شما</h3>
                     <div class="w-full bg-slate-200 rounded-full h-8 overflow-hidden flex relative">
                         <div class="bg-green-500 h-full flex items-center justify-center text-white font-bold" style="width: 33.33%">کم‌مصرف</div>
@@ -209,7 +214,7 @@
                 <div class="space-y-4">
                     <h2 class="text-2xl font-bold text-center text-slate-800">راهکارهای هوشمند برای کاهش مصرف</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div class="etf-card border-cyan-500">
+                        <div class="etf-card dash-card border-cyan-500">
                             <h4 class="font-bold text-lg mb-2 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                 جادوی سرمایش بهینه
@@ -217,7 +222,7 @@
                             <p class="text-slate-600 text-sm">تنظیم دمای کولر گازی روی ۲۴ تا ۲۶ درجه و سرویس سالیانه آن، می‌تواند تا ۱۵٪ مصرف سرمایشی شما را کاهش دهد.</p>
                             <p class="text-center mt-4 font-bold text-cyan-600 bg-cyan-50 p-2 rounded-lg">صرفه‌جویی تا ۴۵۰٬۰۰۰ ریال در ماه</p>
                         </div>
-                        <div class="etf-card border-amber-500">
+                        <div class="etf-card dash-card border-amber-500">
                             <h4 class="font-bold text-lg mb-2 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                 روشنایی هوشمند
@@ -225,7 +230,7 @@
                             <p class="text-slate-600 text-sm">جایگزین کردن لامپ‌های رشته‌ای قدیمی با لامپ‌های LED فوق کم‌مصرف، مصرف برق روشنایی را تا ۸۰٪ کاهش می‌دهد.</p>
                             <p class="text-center mt-4 font-bold text-amber-600 bg-amber-50 p-2 rounded-lg">صرفه‌جویی تا ۲۰۰٬۰۰۰ ریال در ماه</p>
                         </div>
-                        <div class="etf-card border-rose-500">
+                        <div class="etf-card dash-card border-rose-500">
                             <h4 class="font-bold text-lg mb-2 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ml-2 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                 خاموشی دزدان برق
