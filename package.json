@@ -12,7 +12,7 @@
     "flag:test": "node scripts/check-flag.js",
     "check:no-binary": "node tools/check-no-binary.js",
     "build:agri": "babel docs/agrivoltaics/app.jsx --presets @babel/preset-react -o docs/agrivoltaics/app.js",
-    "prepare:agri": "mkdir -p docs/agrivoltaics/vendor && cp node_modules/react/umd/react.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/react-dom/umd/react-dom.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/qrcode-generator/dist/qrcode.js docs/agrivoltaics/vendor/"
+    "prepare:agri": "mkdir -p docs/agrivoltaics/vendor && cp node_modules/react/umd/react.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/react-dom/umd/react-dom.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/qrcode-generator/dist/qrcode.js docs/agrivoltaics/vendor/ && cp node_modules/jspdf/dist/jspdf.umd.min.js docs/agrivoltaics/vendor/"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +27,7 @@
   "dependencies": {
     "@netlify/blobs": "^10.0.8",
     "@netlify/functions": "^4.2.1",
+    "jspdf": "^3.0.1",
     "qrcode-generator": "^2.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
