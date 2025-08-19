@@ -1,56 +1,52 @@
-/* تعیین تم صفحه + تضمین ساختار واحد فوتر و افزودن پرچم قبل از متن */
 (function(){
+  if (window.__FOOTER_FIX_LOADED__) return; // guard
+  window.__FOOTER_FIX_LOADED__ = true;
+
   const themeByPath = () => {
     const p = location.pathname;
     if (p.startsWith('/electricity')) return 'electric';
     if (p.startsWith('/water'))       return 'water';
     if (p.startsWith('/gas'))         return 'gas';
-    return 'electric'; // پیش‌فرض تیره
+    return 'electric';
   };
 
   document.addEventListener('DOMContentLoaded', () => {
-    // تم را روی <html> ست کن تا CSS براساسش اعمال شود
     document.documentElement.setAttribute('data-theme', themeByPath());
 
-    // پیدا کردن فوتر
-    const footer = document.querySelector('footer, .site-footer, #footer');
-    if (!footer) return;
+    // فوترها را پیدا و تکراری‌ها را حذف کن
+    const all = Array.from(document.querySelectorAll('footer, .site-footer, #footer'));
+    if (!all.length) return;
+    const keep = all[all.length - 1];
+    all.forEach(f => { if (f !== keep) f.remove(); });
 
+    const footer = keep;
     footer.classList.add('site-footer');
 
-    // ظرف داخلی یکنواخت
+    // ظرف داخلی یکتا
     let inner = footer.querySelector('.footer-inner');
     if (!inner) {
       inner = document.createElement('div');
       inner.className = 'footer-inner';
-      // همهٔ گره‌های فعلی فوتر را به inner منتقل کن
-      const nodes = Array.from(footer.childNodes);
-      nodes.forEach(n => inner.appendChild(n));
+      while (footer.firstChild) inner.appendChild(footer.firstChild);
       footer.appendChild(inner);
     }
 
-    // جعبهٔ متن فوتر
+    // جعبهٔ متن یکتا
     let textBox = inner.querySelector('.footer-text');
     if (!textBox) {
       textBox = document.createElement('span');
       textBox.className = 'footer-text';
-
-      // تمام محتوای متنی/المنت‌های inline را داخل textBox جمع‌آوری کن
-      const keep = [];
-      Array.from(inner.childNodes).forEach(n => {
-        if (n !== textBox) keep.push(n);
-      });
-      keep.forEach(n => textBox.appendChild(n));
+      while (inner.firstChild) textBox.appendChild(inner.firstChild);
       inner.appendChild(textBox);
     }
 
-    // افزودن پرچم در ابتدای متن (اگر نباشد)
+    // پرچم اگر نیست، اضافه کن
     if (!textBox.querySelector('.footer-flag')) {
       const img = new Image();
       img.className = 'footer-flag';
       img.alt = 'IR';
       img.loading = 'lazy';
-      img.src = '/assets/IRAN-FLAG.png';  // موجود در مخزن: docs/assets/IRAN-FLAG.png
+      img.src = '/assets/IRAN-FLAG.png';
       textBox.prepend(img);
     }
   });
