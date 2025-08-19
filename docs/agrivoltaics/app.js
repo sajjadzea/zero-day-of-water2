@@ -75,7 +75,7 @@ const KV = ({
 }, k), /*#__PURE__*/React.createElement("div", {
   className: "text-sm md:text-base font-semibold text-gray-100 mt-0.5"
 }, v));
-async function saveScenario(state) {
+async function saveScenario(state, setShareLink) {
   const res = await fetch("/api/save-scenario", {
     method: "POST",
     headers: {
@@ -93,7 +93,7 @@ async function saveScenario(state) {
     id
   } = await res.json();
   const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
-  alert("ذخیره شد! این لینک را نگه دارید:\n" + share);
+  setShareLink(share);
 }
 async function loadScenarioById(id, setState) {
   if (!id) return;
@@ -107,6 +107,7 @@ async function loadScenarioById(id, setState) {
 }
 function AgrivoltaicsKhorasan() {
   const [simple, setSimple] = useState(true);
+  const [shareLink, setShareLink] = React.useState("");
 
   // منطقه‌های پرتکرار استان (تقریبی)
   const regions = {
@@ -294,6 +295,18 @@ function AgrivoltaicsKhorasan() {
     const id = new URLSearchParams(location.search).get("id");
     loadScenarioById(id, setS);
   }, []);
+  React.useEffect(() => {
+    if (!shareLink) return;
+    const el = document.getElementById("qrBox");
+    if (!el) return;
+    el.innerHTML = "";
+    const typeNumber = 0,
+      errorCorrectLevel = QRErrorCorrectLevel.M;
+    const qr = qrcode(typeNumber, errorCorrectLevel);
+    qr.addData(shareLink);
+    qr.make();
+    el.innerHTML = qr.createSvgTag(6); // مقیاس
+  }, [shareLink]);
   const set = (k, v) => setS(prev => ({
     ...prev,
     [k]: v
@@ -508,7 +521,7 @@ function AgrivoltaicsKhorasan() {
     onClick: downloadCSV,
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
   }, "\u062F\u0627\u0646\u0644\u0648\u062F CSV"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => saveScenario(s),
+    onClick: () => saveScenario(s, setShareLink),
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
   }, "\u0630\u062E\u06CC\u0631\u0647 \u0633\u0646\u0627\u0631\u06CC\u0648"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
@@ -843,6 +856,21 @@ function AgrivoltaicsKhorasan() {
     className: "mt-4 text-xs text-gray-400"
   }, "* \u0633\u0627\u0644 \u0635\u0641\u0631 \u0634\u0627\u0645\u0644 \u0647\u0632\u06CC\u0646\u0647 \u0633\u0627\u062E\u062A \u0627\u0633\u062A \u0648 \u062F\u0631 \u062C\u062F\u0648\u0644 \u0646\u06CC\u0627\u0645\u062F\u0647 \u0627\u0633\u062A.")), /*#__PURE__*/React.createElement("footer", {
     className: "text-xs text-gray-400 pb-8"
-  }, "\u0646\u06A9\u062A\u0647: \u0628\u0631\u0627\u06CC \u062F\u0642\u062A \u0628\u06CC\u0634\u062A\u0631\u060C \u0642\u06CC\u0645\u062A \u0645\u062D\u0635\u0648\u0644 \u0648 \u0647\u0632\u06CC\u0646\u0647 \u0622\u0628/\u0628\u0631\u0642 \u0631\u0627 \u0627\u0632 \u0641\u06CC\u0634\u200C\u0647\u0627\u06CC \u0627\u062E\u06CC\u0631 \u062E\u0648\u062F\u062A\u0627\u0646 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC\u062F. \u0627\u06AF\u0631 \u062E\u0648\u0627\u0633\u062A\u06CC\u062F\u060C \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u0645 \u0646\u0633\u062E\u0647 \u0631\u0648\u0633\u062A\u0627\u06CC\u06CC/\u062F\u0647\u0633\u062A\u0627\u0646\u06CC \u0628\u0627 \u0627\u0639\u062F\u0627\u062F \u062F\u0642\u06CC\u0642\u200C\u062A\u0631\u06CC \u0628\u0633\u0627\u0632\u06CC\u0645.")));
+  }, "\u0646\u06A9\u062A\u0647: \u0628\u0631\u0627\u06CC \u062F\u0642\u062A \u0628\u06CC\u0634\u062A\u0631\u060C \u0642\u06CC\u0645\u062A \u0645\u062D\u0635\u0648\u0644 \u0648 \u0647\u0632\u06CC\u0646\u0647 \u0622\u0628/\u0628\u0631\u0642 \u0631\u0627 \u0627\u0632 \u0641\u06CC\u0634\u200C\u0647\u0627\u06CC \u0627\u062E\u06CC\u0631 \u062E\u0648\u062F\u062A\u0627\u0646 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC\u062F. \u0627\u06AF\u0631 \u062E\u0648\u0627\u0633\u062A\u06CC\u062F\u060C \u0645\u06CC\u200C\u062A\u0648\u0627\u0646\u06CC\u0645 \u0646\u0633\u062E\u0647 \u0631\u0648\u0633\u062A\u0627\u06CC\u06CC/\u062F\u0647\u0633\u062A\u0627\u0646\u06CC \u0628\u0627 \u0627\u0639\u062F\u0627\u062F \u062F\u0642\u06CC\u0642\u200C\u062A\u0631\u06CC \u0628\u0633\u0627\u0632\u06CC\u0645.")), shareLink && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white text-black p-4 rounded-xl flex flex-col items-center"
+  }, /*#__PURE__*/React.createElement("div", {
+    id: "qrBox",
+    className: "mb-4"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "px-3 py-2 rounded bg-emerald-600 text-white",
+    onClick: () => navigator.clipboard.writeText(shareLink)
+  }, "\u06A9\u067E\u06CC \u0644\u06CC\u0646\u06A9"), /*#__PURE__*/React.createElement("button", {
+    className: "px-3 py-2 rounded bg-gray-300",
+    onClick: () => setShareLink("")
+  }, "\u0628\u0633\u062A\u0646")))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(AgrivoltaicsKhorasan));
