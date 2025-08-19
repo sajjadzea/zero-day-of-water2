@@ -41,41 +41,91 @@
 html,body{height:100%;margin:0;padding:0;}
 .hero .hero-content{padding:clamp(16px,4vw,48px);}
 @media (max-width:1024px){ .hero::before{ background-attachment:scroll; } }
+/* ===== Hero cards – professional responsive layout ===== */
+:root{
+  /* ابعاد تطبیقی کارت‌ها */
+  --card-w: clamp(220px, 22vw, 320px);
+  --card-h: clamp(320px, 38vh, 520px);
+  --card-gap: clamp(12px, 2.5vw, 24px);
+  --cards-bottom: clamp(12px, 6vh, 96px); /* فاصله از پایین هیرو در دسکتاپ */
+}
 
-/* -- Overlay cards inside hero -- */
-.hero { position: relative; }
+.hero{ position: relative; }
 
+/* ظرف کارت‌ها روی هیرو */
 .hero-cards{
   position: absolute;
   left: 50%;
-  z-index: 1; /* بالاتر از پس‌زمینه‌ی هیرو */
-  width: min(1200px, 94vw);
+  bottom: var(--cards-bottom);
+  transform: translateX(-50%);
+  z-index: 1;               /* بالاتر از فیلتر پس‌زمینه */
   display: grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
-  gap: 16px;
-  margin: 0 !important;
-  /* حالت دسکتاپ: وسط عمودی */
-  top: 58%;
-  transform: translate(-50%, -50%);
-}
-
-/* اگر کارت‌ها margin-top/ bottom دارند، درون هیرو حذف شود */
-.hero-cards > * { margin: 0; }
-
-/* شیشه‌ایِ ملایم برای خوانایی بهتر، بدون تغییر استایل داخلی کارت‌ها */
-.hero-cards{
+  grid-auto-rows: 1fr;
+  grid-template-columns: repeat(3, minmax(var(--card-w), 1fr));
+  gap: var(--card-gap);
+  width: min(1200px, 94vw);
+  pointer-events: auto;
+  /* خوانایی بهتر روی بک‌گراند */
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* ریسپانسیو: در موبایل یا قدِ کوتاه، کارت‌ها نزدیک انتهای هیرو قرار بگیرند و عمودی شوند */
-@media (max-width: 1024px), (max-height: 700px){
+/* خودِ کارت‌ها را مجبور به اندازه‌ی یکنواخت کن */
+.hero-cards > *{
+  width: var(--card-w) !important;
+  height: var(--card-h) !important;
+  margin: 0 !important;
+  display: flex;            /* برای پخش عمودی محتوا بدون شکست */
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  border-radius: 18px;      /* اگر کارت‌ها radius ندارند، کمی نرم‌شان کن */
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+
+/* افکت ظریف تعامل */
+.hero-cards > *:hover{
+  transform: translateY(-6px);
+  transition: transform .2s ease;
+}
+
+/* تبلت: کمی فشرده‌تر ولی هنوز سه‌ستونه اگر جا شد */
+@media (max-width: 1024px){
+  :root{
+    --card-w: clamp(190px, 28vw, 260px);
+    --card-h: clamp(300px, 36vh, 460px);
+  }
   .hero-cards{
-    top: auto;
-    bottom: 24px;
-    transform: translateX(-50%);
-    grid-template-columns: 1fr;
-    width: min(780px, 92vw);
+    width: 96vw;
     gap: 12px;
   }
+}
+
+/* موبایل/قد کوتاه: یک‌ستونه نزدیک پایین هیرو */
+@media (max-width: 768px), (max-height: 720px){
+  :root{
+    --card-w: min(92vw, 420px);
+    --card-h: clamp(260px, 54vh, 440px);
+  }
+  .hero-cards{
+    grid-template-columns: 1fr;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    width: 92vw;
+    gap: 10px;
+  }
+  .hero-cards > *{
+    border-radius: 16px;
+  }
+}
+
+/* جلوگیری از تداخل با سربرگ چسبان (اگر header ثابت است) */
+@media (min-width: 1025px){
+  .hero{ padding-top: 10vh; }
+}
+
+/* اطمینان از برتری این فایل نسبت به فریم‌ورک‌ها */
+@media all{
+  .hero-cards, .hero-cards > *{ will-change: transform; }
 }
