@@ -312,6 +312,20 @@
         const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'agrivoltaics_khorasan.csv'; a.click(); URL.revokeObjectURL(url);
       };
 
+      const downloadPDF = () => {
+        const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit:"pt", format:"a4" });
+        doc.setFontSize(14); doc.text("گزارش فوتوکِشت – خراسان رضوی", 40, 40);
+        doc.setFontSize(11);
+        doc.text(`هزینه اولیه: ${fmtMoney(capex_total)}`, 40, 70);
+        doc.text(`برق سال اول: ${fmt(totalPVkWhYear1)} kWh`, 40, 90);
+        doc.text(`درآمد/صرفه‌جویی برق سال اول: ${fmtMoney(elecRevenueYear(0))}`, 40, 110);
+        doc.text(`ارزش امروز: ${fmtMoney(NPV_incremental)}`, 40, 130);
+        doc.text(`نتیجه: ${decisionText()}`, 40, 150);
+        let y = 190; doc.text("سال | برق | درآمد برق | افزایشی", 40, y); y+=18;
+        for(let i=0;i<Math.min(5, years);i++){ doc.text(`${i+1} | ${fmt(annualPV(i))} | ${fmtMoney(elecRevenueYear(i))} | ${fmtMoney(cashflowsIncremental[i+1]||0)}`, 40, y); y+=16; }
+        doc.save("agrivoltaics-report.pdf");
+      };
+
       return (
         <div dir="rtl" className="min-h-screen w-full bg-gradient-to-b from-neutral-950 to-neutral-900 text-gray-100 px-4 py-6 md:py-10 md:px-8">
           <header className="max-w-7xl mx-auto mb-6 md:mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -327,6 +341,7 @@
             <div className="flex items-center gap-2 flex-wrap">
               <button className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white" onClick={()=>setSimple(v=>!v)}>حالت {simple? 'پیشرفته' : 'ساده'}</button>
                 <button onClick={downloadCSV} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود CSV</button>
+                <button onClick={downloadPDF} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود PDF</button>
                 <button onClick={() => saveScenario(s, setShareLink)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
                 <button onClick={() => { const id = prompt("کُد/لینک را وارد کنید:"); const onlyId = (id||"").split("id=").pop(); loadScenarioById(onlyId, setS); }} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">بازکردن از لینک</button>
             </div>

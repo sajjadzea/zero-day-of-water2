@@ -501,6 +501,31 @@ function AgrivoltaicsKhorasan() {
     a.click();
     URL.revokeObjectURL(url);
   };
+  const downloadPDF = () => {
+    const {
+      jsPDF
+    } = window.jspdf;
+    const doc = new jsPDF({
+      unit: "pt",
+      format: "a4"
+    });
+    doc.setFontSize(14);
+    doc.text("گزارش فوتوکِشت – خراسان رضوی", 40, 40);
+    doc.setFontSize(11);
+    doc.text(`هزینه اولیه: ${fmtMoney(capex_total)}`, 40, 70);
+    doc.text(`برق سال اول: ${fmt(totalPVkWhYear1)} kWh`, 40, 90);
+    doc.text(`درآمد/صرفه‌جویی برق سال اول: ${fmtMoney(elecRevenueYear(0))}`, 40, 110);
+    doc.text(`ارزش امروز: ${fmtMoney(NPV_incremental)}`, 40, 130);
+    doc.text(`نتیجه: ${decisionText()}`, 40, 150);
+    let y = 190;
+    doc.text("سال | برق | درآمد برق | افزایشی", 40, y);
+    y += 18;
+    for (let i = 0; i < Math.min(5, years); i++) {
+      doc.text(`${i + 1} | ${fmt(annualPV(i))} | ${fmtMoney(elecRevenueYear(i))} | ${fmtMoney(cashflowsIncremental[i + 1] || 0)}`, 40, y);
+      y += 16;
+    }
+    doc.save("agrivoltaics-report.pdf");
+  };
   return /*#__PURE__*/React.createElement("div", {
     dir: "rtl",
     className: "min-h-screen w-full bg-gradient-to-b from-neutral-950 to-neutral-900 text-gray-100 px-4 py-6 md:py-10 md:px-8"
@@ -521,6 +546,9 @@ function AgrivoltaicsKhorasan() {
     onClick: downloadCSV,
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
   }, "\u062F\u0627\u0646\u0644\u0648\u062F CSV"), /*#__PURE__*/React.createElement("button", {
+    onClick: downloadPDF,
+    className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
+  }, "\u062F\u0627\u0646\u0644\u0648\u062F PDF"), /*#__PURE__*/React.createElement("button", {
     onClick: () => saveScenario(s, setShareLink),
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
   }, "\u0630\u062E\u06CC\u0631\u0647 \u0633\u0646\u0627\u0631\u06CC\u0648"), /*#__PURE__*/React.createElement("button", {
