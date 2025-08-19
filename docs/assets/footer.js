@@ -1,9 +1,12 @@
 (function() {
   function loadFooter() {
+    if (document.querySelector('#global-footer')) return;
     fetch('/assets/footer.html')
       .then(function(res) { return res.text(); })
       .then(function(html) {
-        document.body.insertAdjacentHTML('beforeend', html);
+        if (!document.querySelector('#global-footer')) {
+          document.body.insertAdjacentHTML('beforeend', html);
+        }
       })
       .catch(function(err) {
         console.error('Failed to load footer', err);
