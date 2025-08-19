@@ -107,16 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tipEl) tipEl.textContent = tips[tipIndex];
   };
 
-  const updateBadges = () => {
-    const now = new Date(); now.setHours(now.getHours() - 48);
-    const lastUpdated = now.toLocaleDateString('fa-IR', { hour: '2-digit', minute: '2-digit' });
-    document.querySelectorAll('.widget-badge').forEach(el => {
-      el.innerHTML = `
-        <span class="text-[10px] px-2 py-0.5 rounded-full font-medium bg-cyan-700 text-white">عمومی</span>
-        <span class="text-xs text-slate-400 mr-2">بروزرسانی: ${lastUpdated}</span>
-      `;
-    });
-  };
 
   const createOrUpdateCharts = (data) => {
     if (window.Chart && Chart.defaults) {
@@ -263,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateDashboard = () => {
     const data = processDataForView();
     updateKPIs(data);
-    updateBadges();
     updatePublicInfoSection();
     createOrUpdateCharts(data);
   };

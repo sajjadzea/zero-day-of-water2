@@ -17,8 +17,10 @@
 
       <link rel="stylesheet" href="water.css">
   <!-- Vazirmatn -->
-    
   <link rel="stylesheet" href="/assets/footer-ui.css">
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/footer-fix.js"></script>
+  <script defer src="/assets/unified-badge.js"></script>
 </head>
 <body class="p-4 sm:p-6 md:p-8">
     <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
@@ -36,14 +38,14 @@
             <p class="text-slate-600 text-lg mt-4">آخرین بروزرسانی: شنبه 25مرداد ۱۴۰۴</p>
         </header>
         <section class="cards mb-12">
-            <div class="card days-left-card md:col-span-2 flex flex-col justify-center items-center text-center p-8" data-fa-digits>
+            <div class="card dash-card days-left-card md:col-span-2 flex flex-col justify-center items-center text-center p-8" data-fa-digits>
                 <span class="text-5xl mb-4 opacity-75" aria-hidden="true">⏳</span>
                 <h2 class="text-2xl font-bold mb-2">روزهای باقی‌مانده تا روز صفر آبی</h2>
                 <p class="text-8xl font-extrabold" id="days-left">32</p>
                 <p class="text-2xl font-bold">روز</p>
                 <p class="mt-4 text-lg opacity-90">این یک پیش‌بینی بر اساس حجم قابل استفاده فعلی سدها و میانگین مصرف روزانه است.</p>
             </div>
-            <div class="card flex flex-col justify-center items-center" data-fa-digits>
+            <div class="card dash-card flex flex-col justify-center items-center" data-fa-digits>
                 <span class="text-5xl mb-4 text-blue-500" aria-hidden="true">🌧️</span>
                 <h2 class="text-xl font-bold text-slate-800 mb-6 text-center">مقایسه بارش امسال با میانگین بلندمدت</h2>
                 <div class="w-full flex justify-around items-end h-48">
@@ -55,26 +57,26 @@
         <section class="mb-12">
             <h2 class="text-3xl font-bold text-slate-800 text-center mb-8">پایش لحظه‌ای سدها</h2>
             <div class="cards">
-                <div class="card text-center" data-fa-digits>
+                <div class="card dash-card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد دوستی</h3>
                     <div class="waffle mb-4" id="waffle-doosti"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۵٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۶۳ میلیون متر مکعب</p>
                     <div class="mt-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm font-semibold border border-amber-200"><span class="mr-2" aria-hidden="true">⚠️</span>بخشی از این حجم متعلق به ترکمنستان است.</div>
                 </div>
-                <div class="card text-center" data-fa-digits>
+                <div class="card dash-card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد طرق</h3>
                     <div class="waffle mb-4" id="waffle-torogh"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۶٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۲ میلیون متر مکعب</p>
                 </div>
-                <div class="card text-center" data-fa-digits>
+                <div class="card dash-card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد کارده</h3>
                     <div class="waffle mb-4" id="waffle-kardeh"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
                     <p class="text-slate-500 mt-2">حجم: حدود ۵ میلیون متر مکعب</p>
                 </div>
-                <div class="card text-center" data-fa-digits>
+                <div class="card dash-card text-center" data-fa-digits>
                     <h3 class="text-2xl font-bold text-slate-700 mb-4">سد ارداک</h3>
                     <div class="waffle mb-4" id="waffle-erak"></div>
                     <div class="value text-5xl font-extrabold text-blue-600">۰٪</div>
@@ -83,7 +85,7 @@
             </div>
         </section>
         <section class="mb-12">
-            <div class="card footprint-card">
+            <div class="card dash-card footprint-card">
                 <h2 class="text-3xl font-bold text-slate-800 text-center mb-2">✨ ردپای پنهان آب: غذای شما چقدر آب می‌نوشد؟ ✨</h2>
                 <p class="text-center text-slate-600 mb-8">مواد غذایی یک وعده خود را وارد کنید...</p>
                 <div class="max-w-xl mx-auto">
@@ -112,7 +114,7 @@
             </div>
         </section>
         <section class="mb-12">
-            <div class="card simulator-card">
+            <div class="card dash-card simulator-card">
                 <h2 class="text-3xl font-bold text-slate-800 text-center mb-2">✨ شبیه‌ساز آینده آب مشهد ✨</h2>
                 <p class="text-center text-slate-600 mb-8">ببینید مشارکت شما و رحمت الهی چگونه می‌تواند آینده را تغییر دهد!</p>
                 <div class="max-w-2xl mx-auto">
@@ -139,7 +141,7 @@
             </div>
         </section>
         <section class="mb-12">
-            <div class="card bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200">
+            <div class="card dash-card bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200">
                 <h2 class="text-3xl font-bold text-slate-800 text-center mb-2">✨ راهکارهای هوشمند برای شما ✨</h2>
                 <p class="text-center text-slate-600 mb-8">با پاسخ به چند سوال ساده...</p>
                 <div class="max-w-xl mx-auto">
@@ -167,7 +169,7 @@
         </section>
         <section class="mb-12">
             <div class="cards">
-                <div class="card stats-card" data-fa-digits>
+                <div class="card dash-card stats-card" data-fa-digits>
                     <h2 class="text-2xl font-bold text-slate-800 text-center mb-6">آب ما کجا مصرف می‌شود؟</h2>
                     <div class="space-y-5">
                         <div class="flex items-center">
@@ -200,7 +202,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="card tips-card">
+                <div class="card dash-card tips-card">
                     <h2 class="text-2xl font-bold text-blue-800 text-center mb-6">چگونه می‌توانیم کمک کنیم؟</h2>
                     <ul class="space-y-4 text-slate-700">
                         <li class="flex items-start"><span class="text-blue-500 mt-1 ml-4" aria-hidden="true">🚰</span><span><strong>شیرهای آب چکه کن را تعمیر کنیم.</strong> یک چکه کوچک می‌تواند روزانه ده‌ها لیتر آب را هدر دهد.</span></li>
@@ -225,6 +227,8 @@
     <script defer src="../assets/emoji-flag.js"></script>
     <script defer src="../assets/numfmt.js"></script>
     <script type="module" src="../assets/js/insights-waffle.js"></script>
-    <script defer src="/assets/footer.js"></script>
-  </body>
+  <footer dir="rtl">
+  کلیه حقوق مادی و معنوی این سایت متعلق به خانه هم‌افزایی انرژی و آب استان خراسان رضوی است.<br>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی
+</footer>
+</body>
 </html>

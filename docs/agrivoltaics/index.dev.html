@@ -16,6 +16,10 @@
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background:#0a0a0a; color:#eee}
     a{color:#6ee7b7}
   </style>
+  <link rel="stylesheet" href="/assets/footer-ui.css">
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/footer-fix.js"></script>
+  <script defer src="/assets/unified-badge.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -460,9 +464,9 @@
               <div className="mt-4 text-xs text-gray-400">* سال صفر شامل هزینه ساخت است و در جدول نیامده است.</div>
             </section>
 
-            <footer className="text-xs text-gray-400 pb-8">
+            <div className="text-xs text-gray-400 pb-8">
               نکته: برای دقت بیشتر، قیمت محصول و هزینه آب/برق را از فیش‌های اخیر خودتان وارد کنید. اگر خواستید، می‌توانیم نسخه روستایی/دهستانی با اعداد دقیق‌تری بسازیم.
-            </footer>
+            </div>
           </main>
         </div>
       );
@@ -471,5 +475,8 @@
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<AgrivoltaicsKhorasan/>);
   </script>
+<footer dir="rtl">
+  کلیه حقوق مادی و معنوی این سایت متعلق به خانه هم‌افزایی انرژی و آب استان خراسان رضوی است.<br>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی
+</footer>
 </body>
 </html>

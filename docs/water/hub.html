@@ -10,13 +10,16 @@
     @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
   </style>
   <link rel="stylesheet" href="/assets/footer-ui.css">
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/footer-fix.js"></script>
+  <script defer src="/assets/unified-badge.js"></script>
 </head>
 <body class="bg-gradient-to-b from-slate-50 via-sky-50/60 to-white text-slate-800 min-h-screen relative overflow-hidden text-sm md:text-base">
   <main class="max-w-6xl mx-auto px-4 py-10 md:py-14">
     <h1 class="text-2xl md:text-3xl font-bold text-slate-800 text-center">یک داشبورد انتخاب کنید</h1>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mt-10">
       <!-- Card 1: Insights -->
-      <article class="relative rounded-2xl p-6 md:p-8 bg-white/80 backdrop-blur shadow-lg hover:shadow-xl border border-slate-100 transition-all duration-300 hover:-translate-y-1">
+      <article class="relative rounded-2xl p-6 md:p-8 bg-white/80 backdrop-blur shadow-lg hover:shadow-xl border border-slate-100 transition-all duration-300 hover:-translate-y-1 dash-card">
         <div class="flex items-start gap-4">
           <span class="shrink-0 grid place-items-center w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 text-white">
             <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.25C9 6 6.75 8.6 6.75 11.25a5.25 5.25 0 1010.5 0c0-2.65-2.25-5.25-4.5-9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -40,7 +43,7 @@
         </div>
       </article>
       <!-- Card 2: Cost Calculator -->
-      <article class="relative rounded-2xl p-6 md:p-8 bg-white/80 backdrop-blur shadow-lg hover:shadow-xl border border-slate-100 transition-all duration-300 hover:-translate-y-1">
+      <article class="relative rounded-2xl p-6 md:p-8 bg-white/80 backdrop-blur shadow-lg hover:shadow-xl border border-slate-100 transition-all duration-300 hover:-translate-y-1 dash-card">
         <div class="flex items-start gap-4">
           <span class="shrink-0 grid place-items-center w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
             <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 11h16M4 15h16M4 19h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 3v4M16 3v4M8 11v8M16 11v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -65,6 +68,8 @@
   </main>
   <svg class="absolute bottom-0 left-0 w-full opacity-30 text-sky-200 pointer-events-none animate-[float_12s_ease-in-out_infinite]" viewBox="0 0 1440 320" aria-hidden="true"><path fill="currentColor" d="M0 224L48 218.7C96 213 192 203 288 176C384 149 480 107 576 117.3C672 128 768 192 864 213.3C960 235 1056 213 1152 208C1248 203 1344 213 1392 218.7L1440 224V320H1392C1344 320 1248 320 1152 320C1056 320 960 320 864 320C768 320 672 320 576 320C480 320 384 320 288 320C192 320 96 320 48 320H0Z"></path></svg>
   <script defer src="../assets/water-init.js"></script>
-  <script defer src="/assets/footer.js"></script>
+<footer dir="rtl">
+  کلیه حقوق مادی و معنوی این سایت متعلق به خانه هم‌افزایی انرژی و آب استان خراسان رضوی است.<br>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی
+</footer>
 </body>
 </html>

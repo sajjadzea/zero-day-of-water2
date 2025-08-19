@@ -13,6 +13,9 @@
   <link rel="stylesheet" href="../assets/tailwind.css" />
   <link rel="stylesheet" href="../assets/styles.css" />
   <link rel="stylesheet" href="/assets/footer-ui.css">
+  <link rel="stylesheet" href="/assets/unified-badge.css">
+  <script defer src="/assets/footer-fix.js"></script>
+  <script defer src="/assets/unified-badge.js"></script>
 </head>
 <body class="min-h-screen bg-slate-900 text-slate-200 antialiased">
   <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
@@ -49,23 +52,23 @@
       <!-- KPI ها -->
       <section id="kpi-section">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center dash-card">
             <h3 class="text-sm text-slate-400">تراز گاز دیروز (MCM)</h3>
             <p id="kpi-gas-balance" class="text-2xl font-extrabold text-green-400 mt-2">+۱.۵</p>
           </div>
-          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center dash-card">
             <h3 class="text-sm text-slate-400">مصرف کل گاز دیروز (MCM)</h3>
             <p id="kpi-gas-consumption" class="text-2xl font-extrabold text-cyan-400 mt-2">۲۲.۵</p>
           </div>
-          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center dash-card">
             <h3 class="text-sm text-slate-400">پیک مصرف گاز (MCM/h)</h3>
             <p id="kpi-gas-peak" class="text-2xl font-extrabold text-white mt-2">۱.۲ <span class="text-xs text-slate-500">@ ۲۰:۰۰</span></p>
           </div>
-          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center dash-card">
             <h3 class="text-sm text-slate-400">ذخیره بنزین (Days of Cover)</h3>
             <p id="kpi-gasoline-doc" class="text-2xl font-extrabold text-amber-400 mt-2">۱۵</p>
           </div>
-          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+          <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center dash-card">
             <h3 class="text-sm text-slate-400">ذخیره گازوئیل (Days of Cover)</h3>
             <p id="kpi-diesel-doc" class="text-2xl font-extrabold text-amber-400 mt-2">۲۱</p>
           </div>
@@ -75,7 +78,7 @@
       <!-- وضعیت عمومی + نکته روز -->
       <section id="public-info-section">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+          <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 dash-card">
             <h2 class="text-lg font-bold mb-4">وضعیت شبکه انرژی امروز</h2>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -86,7 +89,7 @@
               <p id="network-status-text" class="text-base font-medium"></p>
             </div>
           </div>
-          <div class="bg-slate-800 p-5 rounded-lg border border-slate-700">
+          <div class="bg-slate-800 p-5 rounded-lg border border-slate-700 dash-card">
             <h2 class="text-lg font-bold mb-4">نکته روز برای صرفه‌جویی</h2>
             <p id="saving-tip-text" class="text-slate-300 leading-relaxed"></p>
           </div>
@@ -94,7 +97,7 @@
       </section>
 
       <!-- محاسبه‌گر مصرف -->
-      <section id="consumption-calculator-section" class="bg-slate-800 p-6 rounded-lg border border-slate-700">
+      <section id="consumption-calculator-section" class="bg-slate-800 p-6 rounded-lg border border-slate-700 dash-card">
         <h2 class="text-xl font-bold mb-4 text-center text-cyan-400">مصرف گاز خانگی خود را بسنجید</h2>
         <div class="flex flex-col md:flex-row items-center justify-center gap-4">
           <input type="number" id="user-consumption-input" placeholder="مصرف گاز ماهانه (متر مکعب)" class="bg-slate-700 text-white border-slate-600 rounded-lg px-4 py-2 text-center w-full md:w-64 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
@@ -105,31 +108,27 @@
 
       <!-- نمودارها -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 dash-card">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">نمودار آبشاری تراز گاز (MCM)</h2>
-            <div id="gas-balance-badge" class="widget-badge text-xs"></div>
           </div>
           <div class="h-80"><canvas id="gasBalanceWaterfallChart"></canvas></div>
         </div>
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 dash-card">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">سهم بخش‌ها از مصرف گاز</h2>
-            <div id="gas-share-badge" class="widget-badge text-xs"></div>
           </div>
           <div class="h-80"><canvas id="gasConsumptionShareChart"></canvas></div>
         </div>
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 dash-card">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">تأمین فرآورده‌ها (هزار لیتر)</h2>
-            <div id="product-supply-badge" class="widget-badge text-xs"></div>
           </div>
           <div class="h-80"><canvas id="productSupplyChart"></canvas></div>
         </div>
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 dash-card">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold">روند مصرف ۲۴ ماه گذشته</h2>
-            <div id="long-trend-badge" class="widget-badge text-xs"></div>
           </div>
           <div class="h-80"><canvas id="longTermTrendChart"></canvas></div>
         </div>
@@ -142,7 +141,8 @@
   <script defer src="../assets/libs/chart.umd.min.js"></script>
   <script defer src="../assets/numfmt.js"></script>
   <script defer src="./energy.js"></script>
-  <script defer src="../assets/badge-updated.js"></script>
-  <script defer src="/assets/footer.js"></script>
+  <footer dir="rtl">
+    کلیه حقوق مادی و معنوی این سایت متعلق به خانه هم‌افزایی انرژی و آب استان خراسان رضوی است.<br>طراحی و تولید: خانه هم‌افزایی انرژی و آب خراسان رضوی
+  </footer>
 </body>
 </html>
