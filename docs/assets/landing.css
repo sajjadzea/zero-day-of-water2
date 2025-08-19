@@ -41,3 +41,41 @@
 html,body{height:100%;margin:0;padding:0;}
 .hero .hero-content{padding:clamp(16px,4vw,48px);}
 @media (max-width:1024px){ .hero::before{ background-attachment:scroll; } }
+
+/* -- Overlay cards inside hero -- */
+.hero { position: relative; }
+
+.hero-cards{
+  position: absolute;
+  left: 50%;
+  z-index: 1; /* بالاتر از پس‌زمینه‌ی هیرو */
+  width: min(1200px, 94vw);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 0 !important;
+  /* حالت دسکتاپ: وسط عمودی */
+  top: 58%;
+  transform: translate(-50%, -50%);
+}
+
+/* اگر کارت‌ها margin-top/ bottom دارند، درون هیرو حذف شود */
+.hero-cards > * { margin: 0; }
+
+/* شیشه‌ایِ ملایم برای خوانایی بهتر، بدون تغییر استایل داخلی کارت‌ها */
+.hero-cards{
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ریسپانسیو: در موبایل یا قدِ کوتاه، کارت‌ها نزدیک انتهای هیرو قرار بگیرند و عمودی شوند */
+@media (max-width: 1024px), (max-height: 700px){
+  .hero-cards{
+    top: auto;
+    bottom: 24px;
+    transform: translateX(-50%);
+    grid-template-columns: 1fr;
+    width: min(780px, 92vw);
+    gap: 12px;
+  }
+}
