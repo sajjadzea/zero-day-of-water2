@@ -85,16 +85,23 @@ async function saveScenario(state) {
       state
     })
   });
+  if (!res.ok) {
+    alert("ذخیره نشد؛ بعداً دوباره امتحان کن.");
+    return;
+  }
   const {
     id
   } = await res.json();
   const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
   alert("ذخیره شد! این لینک را نگه دارید:\n" + share);
 }
-async function loadScenarioIfAny(setState) {
-  const id = new URLSearchParams(location.search).get("id");
+async function loadScenarioById(id, setState) {
   if (!id) return;
   const res = await fetch(`/api/get-scenario?id=${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    alert("خواندن نشد؛ بعداً دوباره امتحان کن.");
+    return;
+  }
   const saved = await res.json();
   if (saved) setState(saved);
 }
@@ -284,7 +291,8 @@ function AgrivoltaicsKhorasan() {
     tax_rate_pct: 0
   });
   useEffect(() => {
-    loadScenarioIfAny(setS);
+    const id = new URLSearchParams(location.search).get("id");
+    loadScenarioById(id, setS);
   }, []);
   const set = (k, v) => setS(prev => ({
     ...prev,
@@ -504,11 +512,12 @@ function AgrivoltaicsKhorasan() {
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
   }, "\u0630\u062E\u06CC\u0631\u0647 \u0633\u0646\u0627\u0631\u06CC\u0648"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
-      const link = prompt("لینک سناریو را وارد کنید:");
-      if (link) location.href = link;
+      const id = prompt("کُد/لینک را وارد کنید:");
+      const onlyId = (id || "").split("id=").pop();
+      loadScenarioById(onlyId, setS);
     },
     className: "px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100"
-  }, "\u0628\u0627\u0632 \u06A9\u0631\u062F\u0646 \u0627\u0632 \u0644\u06CC\u0646\u06A9"))), /*#__PURE__*/React.createElement("main", {
+  }, "\u0628\u0627\u0632\u06A9\u0631\u062F\u0646 \u0627\u0632 \u0644\u06CC\u0646\u06A9"))), /*#__PURE__*/React.createElement("main", {
     className: "max-w-7xl mx-auto space-y-6 md:space-y-8"
   }, /*#__PURE__*/React.createElement("section", {
     className: "bg-neutral-950/60 border border-neutral-800 rounded-2xl p-4 md:p-6 shadow-xl"

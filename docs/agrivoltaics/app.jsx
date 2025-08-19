@@ -51,15 +51,16 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ state })
         });
+        if (!res.ok) { alert("ذخیره نشد؛ بعداً دوباره امتحان کن."); return; }
         const { id } = await res.json();
         const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
         alert("ذخیره شد! این لینک را نگه دارید:\n" + share);
       }
 
-      async function loadScenarioIfAny(setState) {
-        const id = new URLSearchParams(location.search).get("id");
+      async function loadScenarioById(id, setState){
         if (!id) return;
         const res = await fetch(`/api/get-scenario?id=${encodeURIComponent(id)}`);
+        if (!res.ok) { alert("خواندن نشد؛ بعداً دوباره امتحان کن."); return; }
         const saved = await res.json();
         if (saved) setState(saved);
       }
@@ -146,7 +147,8 @@
         });
 
         useEffect(() => {
-          loadScenarioIfAny(setS);
+          const id = new URLSearchParams(location.search).get("id");
+          loadScenarioById(id, setS);
         }, []);
 
         const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
@@ -316,9 +318,9 @@
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white" onClick={()=>setSimple(v=>!v)}>حالت {simple? 'پیشرفته' : 'ساده'}</button>
-              <button onClick={downloadCSV} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود CSV</button>
-              <button onClick={()=>saveScenario(s)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
-              <button onClick={()=>{const link=prompt("لینک سناریو را وارد کنید:"); if(link) location.href=link;}} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">باز کردن از لینک</button>
+                <button onClick={downloadCSV} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود CSV</button>
+                <button onClick={() => saveScenario(s)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
+                <button onClick={() => { const id = prompt("کُد/لینک را وارد کنید:"); const onlyId = (id||"").split("id=").pop(); loadScenarioById(onlyId, setS); }} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">بازکردن از لینک</button>
             </div>
           </header>
 
