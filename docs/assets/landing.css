@@ -1,8 +1,13 @@
 /* --- Landing Hero Background (WESH360) --- */
 :root{
+  --hero-url: url("/page/landing/hiro2.webp");
   --hero-blur:12px;
-  --hero-darken:0.55;
-  --hero-topfade:0.25;
+  --hero-blur-panel: 6px;
+  --hero-darken:0.38;
+  --hero-topfade:0.18;
+  --hero-focus-x:50%;
+  --hero-focus-y:60%;
+  --cards-bottom: clamp(12px, 6vh, 90px);
 }
 
 .hero{
@@ -19,8 +24,9 @@
 .hero::before{
   content:"";
   position:absolute;inset:0;
-  /* absolute path from site root => /page/landing/hiro1.webp maps to docs/page/landing/hiro1.webp */
-  background:url("/page/landing/hiro1.webp") center/cover no-repeat;
+  /* absolute path from site root => /page/landing/hiro2.webp maps to docs/page/landing/hiro2.webp */
+  background:var(--hero-url) center/cover no-repeat;
+  background-position: var(--hero-focus-x) var(--hero-focus-y);
   filter:blur(var(--hero-blur));
   transform:scale(1.05);
   z-index:-2;
@@ -39,7 +45,13 @@
 
 /* Keep body clean */
 html,body{height:100%;margin:0;padding:0;}
-.hero .hero-content{padding:clamp(16px,4vw,48px);}
+.content-panel{
+  padding:clamp(16px,4vw,48px);
+  backdrop-filter:blur(var(--hero-blur-panel));
+  -webkit-backdrop-filter:blur(var(--hero-blur-panel));
+  background:rgba(0,0,0,0.3);
+  border-radius:16px;
+}
 @media (max-width:1024px){ .hero::before{ background-attachment:scroll; } }
 /* ===== Hero cards – professional responsive layout ===== */
 :root{
@@ -47,7 +59,6 @@ html,body{height:100%;margin:0;padding:0;}
   --card-w: clamp(220px, 22vw, 320px);
   --card-h: clamp(320px, 38vh, 520px);
   --card-gap: clamp(12px, 2.5vw, 24px);
-  --cards-bottom: clamp(12px, 6vh, 96px); /* فاصله از پایین هیرو در دسکتاپ */
 }
 
 .hero{ position: relative; }
