@@ -61,15 +61,34 @@
       </div>
     );
 
-    const KV = ({ k, v }) => (
-      <div className="rounded-xl bg-neutral-900/50 border border-neutral-800 p-3">
-        <div className="text-gray-400 text-xs">{k}</div>
-        <div className="text-sm md:text-base font-semibold text-gray-100 mt-0.5">{v}</div>
-      </div>
-    );
+      const KV = ({ k, v }) => (
+        <div className="rounded-xl bg-neutral-900/50 border border-neutral-800 p-3">
+          <div className="text-gray-400 text-xs">{k}</div>
+          <div className="text-sm md:text-base font-semibold text-gray-100 mt-0.5">{v}</div>
+        </div>
+      );
 
-    function AgrivoltaicsKhorasan(){
-      const [simple, setSimple] = useState(true);
+      async function saveScenario(state) {
+        const res = await fetch("/api/save-scenario", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state })
+        });
+        const { id } = await res.json();
+        const share = `${location.origin}${location.pathname}?id=${encodeURIComponent(id)}`;
+        alert("ذخیره شد! این لینک را نگه دارید:\n" + share);
+      }
+
+      async function loadScenarioIfAny(setState) {
+        const id = new URLSearchParams(location.search).get("id");
+        if (!id) return;
+        const res = await fetch(`/api/get-scenario?id=${encodeURIComponent(id)}`);
+        const saved = await res.json();
+        if (saved) setState(saved);
+      }
+
+      function AgrivoltaicsKhorasan(){
+        const [simple, setSimple] = useState(true);
 
       // منطقه‌های پرتکرار استان (تقریبی)
       const regions = {
@@ -104,7 +123,7 @@
       const soils = { sandy: { title: "شنی", pump_kWh_m3: 0.45 }, loam: { title: "لوم (میان‌دانه)", pump_kWh_m3: 0.5 }, clay: { title: "رسی", pump_kWh_m3: 0.55 } };
 
       // وضعیت ورودی‌ها
-      const [s, setS] = useState({
+        const [s, setS] = useState({
         region: "torbat",
         crop_type: "زعفران",
         water_source: "well_electric_subsidized",
@@ -146,10 +165,14 @@
         avoided_co2_t_per_MWh: 0.55,
         insurance_cost_pct_of_asset_value_per_year: 1.2,
         land_lease_cost_per_ha_year: 0,
-        tax_rate_pct: 0,
-      });
+          tax_rate_pct: 0,
+        });
 
-      const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
+        useEffect(() => {
+          loadScenarioIfAny(setS);
+        }, []);
+
+        const set = (k, v) => setS(prev => ({ ...prev, [k]: v }));
       const pct = (x) => (Number(x) || 0) / 100;
       const nz = (x) => Number(x) || 0;
       const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -317,6 +340,8 @@
             <div className="flex items-center gap-2 flex-wrap">
               <button className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white" onClick={()=>setSimple(v=>!v)}>حالت {simple? 'پیشرفته' : 'ساده'}</button>
               <button onClick={downloadCSV} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">دانلود CSV</button>
+              <button onClick={()=>saveScenario(s)} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">ذخیره سناریو</button>
+              <button onClick={()=>{const link=prompt("لینک سناریو را وارد کنید:"); if(link) location.href=link;}} className="px-4 py-2 rounded-xl bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-gray-100">باز کردن از لینک</button>
             </div>
           </header>
 
