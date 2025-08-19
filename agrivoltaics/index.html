@@ -23,6 +23,9 @@
   <script type="text/babel">
     const { useState, useMemo, useEffect } = React;
 
+    // نسخه مخصوص استان خراسان رضوی (ساده برای کشاورزان)
+    // نکته: اعداد پیش‌فرض تقریبی هستند. لطفاً با شرایط واقعی زمین خودتان تنظیم کنید.
+
     // اجزای کمکی ساده
     const Section = ({ title, children }) => (
       <section className="bg-neutral-950/60 border border-neutral-800 rounded-2xl p-4 md:p-6 shadow-xl">
@@ -65,7 +68,7 @@
       </div>
     );
 
-    function App(){
+    function AgrivoltaicsKhorasan(){
       const [simple, setSimple] = useState(true);
 
       // منطقه‌های پرتکرار استان (تقریبی)
@@ -441,7 +444,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App/>);
+    root.render(<AgrivoltaicsKhorasan/>);
   </script>
 </body>
 </html>
