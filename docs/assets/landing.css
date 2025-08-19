@@ -1,56 +1,43 @@
-/* --- Landing Hero Background --- */
-:root {
-  --hero-blur: 12px;       /* adjust if needed */
-  --hero-darken: 0.55;     /* bottom gradient strength */
-  --hero-topfade: 0.25;    /* top gradient strength */
+/* --- Landing Hero Background (WESH360) --- */
+:root{
+  --hero-blur:12px;
+  --hero-darken:0.55;
+  --hero-topfade:0.25;
 }
 
-/* Full-viewport hero container */
-.hero {
-  position: relative;
-  min-height: 100vh;      /* full screen */
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #fff;
-  isolation: isolate;      /* ensure stacking context */
-  overflow: hidden;
+.hero{
+  position:relative;
+  min-height:100vh;
+  width:100%;
+  display:flex;align-items:center;justify-content:center;
+  text-align:center;color:#fff;
+  isolation:isolate;overflow:hidden;
+  margin:0;
 }
 
-/* Blurred background image layer */
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: url("page/landing/hiro1.webp") center / cover no-repeat fixed;
-  filter: blur(var(--hero-blur));
-  transform: scale(1.05);   /* avoid blur edge cropping */
-  z-index: -2;
+/* Blurred image layer */
+.hero::before{
+  content:"";
+  position:absolute;inset:0;
+  /* absolute path from site root => /page/landing/hiro1.webp maps to docs/page/landing/hiro1.webp */
+  background:url("/page/landing/hiro1.webp") center/cover no-repeat;
+  filter:blur(var(--hero-blur));
+  transform:scale(1.05);
+  z-index:-2;
 }
 
-/* Dark overlay for contrast (gradient) */
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, var(--hero-darken)),
-    rgba(0, 0, 0, var(--hero-topfade))
+/* Contrast overlay */
+.hero::after{
+  content:"";
+  position:absolute;inset:0;
+  background:linear-gradient(to top,
+    rgba(0,0,0,var(--hero-darken)),
+    rgba(0,0,0,var(--hero-topfade))
   );
-  z-index: -1;
+  z-index:-1;
 }
 
-/* Optional: responsive spacing for any hero text/buttons */
-.hero .hero-content {
-  padding: clamp(16px, 4vw, 48px);
-  backdrop-filter: none;      /* keep text crisp; no glass effect */
-}
-
-/* Ensure body has no unexpected margins around hero */
-body {
-  margin: 0;
-}
-
+/* Keep body clean */
+html,body{height:100%;margin:0;padding:0;}
+.hero .hero-content{padding:clamp(16px,4vw,48px);}
+@media (max-width:1024px){ .hero::before{ background-attachment:scroll; } }
