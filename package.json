@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build:css": "tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify",
+    "build": "npm run build:css && npm run build:agri && npm run prepare:agri",
     "test": "echo \"No tests\"",
     "flag:test": "node scripts/check-flag.js",
     "check:no-binary": "node tools/check-no-binary.js",
