@@ -1,22 +1,88 @@
-.parallax-section{ position:relative; min-height:100vh; overflow:hidden; isolation:isolate; }
-.parallax-layer{ position:absolute; inset:-10% 0 0 0; background-size:cover; background-position:center; will-change:transform; transform:translate3d(0,0,0); }
-.layer-front{ filter:contrast(1.05) saturate(1.05) blur(.2px); opacity:.55; }
-.parallax-overlay{ position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,.25) 40%, rgba(0,0,0,.15)); pointer-events:none; }
-.hero-content{ position:relative; z-index:2; display:grid; place-items:center; text-align:center; color:#fff; padding:14vh 1rem 8vh; }
-.hero-content h1{ font-size:clamp(22px,4vw,42px); line-height:1.25; text-shadow:0 2px 6px rgba(0,0,0,.35); }
-.hero-content p{ margin-top:.75rem; font-size:clamp(14px,2.1vw,18px); opacity:.95; }
-
-.cards-section{ display:grid; grid-template-columns:repeat(3, minmax(210px,1fr)); gap:1.25rem; max-width:980px; margin:-60px auto 48px; padding:0 16px; }
-.card{ background:rgba(255,255,255,.9); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12); backdrop-filter:blur(2px); padding:18px 20px; text-align:center; transform:translateY(32px); opacity:0; transition:transform .8s ease, opacity .8s ease; }
-.card.visible{ transform:translateY(0); opacity:1; }
-
-@media (max-width:992px){ .cards-section{ grid-template-columns:1fr 1fr; } }
-@media (max-width:640px){
-  .cards-section{ grid-template-columns:1fr; margin-top:-30px; }
-  .hero-content{ padding:12vh 1rem 6vh; }
-  .layer-front{ display:none; }
+:root{
+  --vg: url('./hiro2.webp');   /* تصویر هیرو فقط از این مسیر */
+  --overlay: .35;              /* تیرگی اولیه اورلی */
 }
+
+/* Hero Parallax */
+.parallax-section{
+  position: relative;
+  min-height: 100svh; /* svh برای iOS جدید پایدارتر از vh است */
+  overflow: hidden;
+  isolation: isolate;
+}
+.parallax-layer{
+  position: absolute; inset: -10% 0 0 0;
+  background-image: var(--vg);
+  background-size: cover;
+  background-position: center;
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+.layer-front{
+  filter: contrast(1.05) saturate(1.05) blur(.2px);
+  opacity: .55;
+}
+.parallax-overlay{
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,var(--overlay)),
+    rgba(0,0,0, calc(var(--overlay) - .1)) 40%,
+    rgba(0,0,0, .12)
+  );
+  pointer-events: none;
+}
+.hero-content{
+  position: relative; z-index: 2;
+  display: grid; place-items: center;
+  text-align: center; color: #fff;
+  padding: 14svh 1rem 8svh;
+}
+.hero-content h1{
+  font-size: clamp(22px, 4vw, 42px);
+  line-height: 1.25;
+  text-shadow: 0 2px 6px rgba(0,0,0,.32);
+}
+.hero-content p{
+  margin-top: .9rem;
+  font-size: clamp(14px, 2.1vw, 18px);
+  opacity: .95;
+}
+
+/* Cards زیر هیرو (همپوشانی برای سیگنال اسکرول) */
+.cards-section{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(210px,1fr));
+  gap: 1.25rem;
+  max-width: 980px;
+  margin: -64px auto 48px;   /* همپوشانی با هیرو */
+  padding: 0 16px;
+  content-visibility: auto; contain-intrinsic-size: 800px;
+}
+.card{
+  background: rgba(255,255,255,.9);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.16);
+  backdrop-filter: blur(2px);
+  padding: 18px 20px; text-align: center;
+  transform: translateY(32px); opacity: 0;
+  transition: transform .8s ease, opacity .8s ease;
+}
+.card.visible{ transform: translateY(0); opacity: 1; }
+
+/* ریسپانسیو و موبایل */
+@media (max-width: 992px){
+  .cards-section{ grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px){
+  .cards-section{ grid-template-columns: 1fr; margin: -32px auto 40px; }
+  .hero-content{ padding: 12svh 1rem 6svh; }
+  .parallax-layer{ background-position: 40% center; } /* فوکوس بهتر تابلو در موبایل */
+  .layer-front{ display: none; } /* موبایل: سبک‌تر */
+}
+
+/* کاهش حرکت برای دسترس‌پذیری */
 @media (prefers-reduced-motion: reduce){
-  .parallax-layer{ transform:none !important; }
-  .card{ transition:none; transform:none; opacity:1; }
+  .parallax-layer{ transform: none !important; }
+  .card{ transition: none; transform: none; opacity: 1; }
 }

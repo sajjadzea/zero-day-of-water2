@@ -10,16 +10,9 @@
   <meta name="twitter:image" content="header2.webp" />
   <meta name="section" content="site" />
   <title>wesh360</title>
-  <link rel="stylesheet" href="./assets/tailwind.css" />
-  <link rel="stylesheet" href="./assets/global-footer.css">
-  <link rel="stylesheet" href="./assets/footer.css">
-  <link rel="preload" as="image" href="./page/landing/hiro2.webp" fetchpriority="high">
   <link rel="stylesheet" href="./assets/fonts.css">
-  <link rel="stylesheet" href="./assets/unified-badge.css">
   <link rel="stylesheet" href="./page/landing/landing.css">
   <link rel="icon" type="image/x-icon" href="./page/landing/favicon.ico">
-  <script defer src="./assets/unified-badge.js"></script>
-  <script defer src="./assets/global-footer.js"></script>
 </head>
   <body class="min-h-screen flex flex-col">
     <a class="skip-link" href="#main">پرش به محتوای اصلی</a>
@@ -46,10 +39,10 @@
         </button>
       </div>
     </header>
-    <section class="parallax-section" aria-label="hero" data-bg="./page/landing/hiro2.webp">
-      <div class="parallax-layer layer-back" data-speed="-0.15" aria-hidden="true"></div>
-      <div class="parallax-layer layer-front" data-speed="-0.35" aria-hidden="true"></div>
-      <div class="parallax-overlay" aria-hidden="true"></div>
+    <section class="parallax-section" aria-label="hero">
+      <div class="parallax-layer layer-back"  data-speed="-0.10"></div>
+      <div class="parallax-layer layer-front" data-speed="-0.35"></div>
+      <div class="parallax-overlay"></div>
       <div class="hero-content">
         <h1>مدیریت هوشمند آب، برق و گاز در خراسان رضوی</h1>
         <p>داشبوردهای تعاملی برای آگاهی، بهینه‌سازی و تصمیم‌گیری بهتر</p>
@@ -217,24 +210,6 @@
       </a>
     </div>
   </div>
-  <script>
-(function(){
-  const root = document.documentElement;
-  const header = document.querySelector('header, .site-header, nav[role="navigation"]');
-  const footer = document.querySelector('footer, .site-footer');
-  function setHF(){
-    const hh = header ? header.getBoundingClientRect().height : 0;
-    const fh = footer ? footer.getBoundingClientRect().height : 0;
-    root.style.setProperty('--header-h', hh + 'px');
-    root.style.setProperty('--footer-h', fh + 'px');
-  }
-  setHF();
-  addEventListener('load', setHF);
-  addEventListener('resize', setHF);
-})();
-</script>
-  <script defer src="./assets/parallax.js"></script>
-  <script defer src="index.js?v=1"></script>
-  <script defer src="assets/numfmt.js?v=1"></script>
+  <script src="./assets/parallax.js" defer></script>
 </body>
 </html>
