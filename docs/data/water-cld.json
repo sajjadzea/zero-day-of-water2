@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {"id":"efficiency","label":"بهره‌وری آبیاری","group":"نوآوری"},
+    {"id":"water_use","label":"مصرف آب","group":"تقاضا"},
+    {"id":"gw_stock","label":"منابع آب زیرزمینی","group":"منابع"},
+    {"id":"ag_output","label":"محصولات کشاورزی","group":"تولید"}
+  ],
+  "edges": [
+    {"source":"gw_stock","target":"ag_output","sign":"+","label":"+","curved":true},
+    {"source":"ag_output","target":"water_use","sign":"+","label":"+","curved":true},
+    {"source":"water_use","target":"gw_stock","sign":"-","label":"−","curved":true},
+    {"source":"efficiency","target":"water_use","sign":"-","label":"−","curved":true}
+  ],
+  "groups": [
+    {"id":"نوآوری","color":"#fef3c7"},
+    {"id":"تقاضا","color":"#e0f2fe"},
+    {"id":"منابع","color":"#e7f5e9"},
+    {"id":"تولید","color":"#f3e8ff"}
+  ]
+}
