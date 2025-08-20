@@ -1,32 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('cld-svg');
   const width = 600;
-  const height = 400;
+  const height = 420;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
-  const svg = d3
-    .select('#cld-diagram')
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height);
-
-  svg
-    .append('defs')
-    .append('marker')
-    .attr('id', 'arrow')
-    .attr('viewBox', '0 -5 10 10')
-    .attr('refX', 10)
-    .attr('refY', 0)
-    .attr('markerWidth', 6)
-    .attr('markerHeight', 6)
-    .attr('orient', 'auto')
-    .append('path')
-    .attr('d', 'M0,-5L10,0L0,5')
-    .attr('fill', '#555');
+  const defs = document.createElementNS(svgNS, 'defs');
+  const marker = document.createElementNS(svgNS, 'marker');
+  marker.setAttribute('id', 'arrow');
+  marker.setAttribute('viewBox', '0 -5 10 10');
+  marker.setAttribute('refX', '10');
+  marker.setAttribute('refY', '0');
+  marker.setAttribute('markerWidth', '6');
+  marker.setAttribute('markerHeight', '6');
+  marker.setAttribute('orient', 'auto');
+  const path = document.createElementNS(svgNS, 'path');
+  path.setAttribute('d', 'M0,-5L10,0L0,5');
+  path.setAttribute('fill', '#555');
+  marker.appendChild(path);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
 
   const nodes = [
-    { id: 'منابع آب زیرزمینی' },
-    { id: 'بهره‌وری آبیاری' },
-    { id: 'محصول کشاورزی' },
-    { id: 'مصرف آب' }
+    { id: 'منابع آب زیرزمینی', x: 100, y: 210 },
+    { id: 'بهره‌وری آبیاری', x: 300, y: 60 },
+    { id: 'محصول کشاورزی', x: 300, y: 360 },
+    { id: 'مصرف آب', x: 500, y: 210 }
   ];
 
   const links = [
@@ -36,93 +35,53 @@ document.addEventListener('DOMContentLoaded', () => {
     { source: 'بهره‌وری آبیاری', target: 'مصرف آب', sign: '−' }
   ];
 
-  const simulation = d3
-    .forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(150))
-    .force('charge', d3.forceManyBody().strength(-500))
-    .force('center', d3.forceCenter(width / 2, height / 2));
+  const nodeById = Object.fromEntries(nodes.map(n => [n.id, n]));
 
-  const link = svg
-    .append('g')
-    .attr('stroke', '#999')
-    .attr('stroke-width', 2)
-    .selectAll('line')
-    .data(links)
-    .enter()
-    .append('line')
-    .attr('marker-end', 'url(#arrow)');
+  links.forEach(l => {
+    const s = nodeById[l.source];
+    const t = nodeById[l.target];
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', s.x);
+    line.setAttribute('y1', s.y);
+    line.setAttribute('x2', t.x);
+    line.setAttribute('y2', t.y);
+    line.setAttribute('stroke', '#999');
+    line.setAttribute('stroke-width', '2');
+    line.setAttribute('marker-end', 'url(#arrow)');
+    svg.appendChild(line);
 
-  const linkLabels = svg
-    .append('g')
-    .selectAll('text')
-    .data(links)
-    .enter()
-    .append('text')
-    .attr('font-size', 12)
-    .attr('fill', '#000')
-    .text(d => d.sign);
-
-  const node = svg
-    .append('g')
-    .selectAll('g')
-    .data(nodes)
-    .enter()
-    .append('g')
-    .call(
-      d3
-        .drag()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended)
-    );
-
-  node
-    .append('circle')
-    .attr('r', 30)
-    .attr('fill', '#69b3a2');
-
-  node
-    .append('text')
-    .attr('text-anchor', 'middle')
-    .attr('dy', 4)
-    .text(d => d.id);
-
-  simulation.on('tick', () => {
-    link
-      .attr('x1', d => d.source.x)
-      .attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x)
-      .attr('y2', d => d.target.y);
-
-    node.attr('transform', d => `translate(${d.x},${d.y})`);
-
-    linkLabels
-      .attr('x', d => (d.source.x + d.target.x) / 2)
-      .attr('y', d => (d.source.y + d.target.y) / 2);
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', (s.x + t.x) / 2);
+    label.setAttribute('y', (s.y + t.y) / 2 - 10);
+    label.setAttribute('font-size', '12');
+    label.setAttribute('fill', '#000');
+    label.setAttribute('text-anchor', 'middle');
+    label.textContent = l.sign;
+    svg.appendChild(label);
   });
 
-  function dragstarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
-    d.fx = d.x;
-    d.fy = d.y;
-  }
+  nodes.forEach(n => {
+    const g = document.createElementNS(svgNS, 'g');
+    g.setAttribute('transform', `translate(${n.x},${n.y})`);
 
-  function dragged(event, d) {
-    d.fx = event.x;
-    d.fy = event.y;
-  }
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('r', '30');
+    circle.setAttribute('fill', '#69b3a2');
+    g.appendChild(circle);
 
-  function dragended(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
-    d.fx = null;
-    d.fy = null;
-  }
+    const text = document.createElementNS(svgNS, 'text');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', '4');
+    text.textContent = n.id;
+    g.appendChild(text);
 
-  // --- مدل ساده Stock & Flow با استفاده از SD.js ---
+    svg.appendChild(g);
+  });
+
   const years = 30;
   let waterResources = 100;
   const rainfall = 2;
-  const agProductLevel = 2; // سطح محصول کشاورزی
+  const agProductLevel = 2;
   const waterLevels = [];
 
   for (let year = 0; year <= years; year++) {
@@ -133,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const labels = Array.from({ length: years + 1 }, (_, i) => i.toString());
-
   const ctx = document.getElementById('sd-simulation').getContext('2d');
   new Chart(ctx, {
     type: 'line',
@@ -153,3 +111,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
