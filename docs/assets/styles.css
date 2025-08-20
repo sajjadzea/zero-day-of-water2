@@ -181,3 +181,122 @@ main .cta, main .hero-cta {
   border: 1px solid #E5E7EB;
   border-radius: .5rem;
 }
+
+/* ===== Parallax Hero ===== */
+.parallax-section {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.parallax-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 150%;
+  background-size: cover;
+  background-position: center;
+  will-change: transform;
+}
+
+.layer-back {
+  background-image: url('../page/landing/hiro2.webp');
+}
+
+.layer-front {
+  background-image: url('../page/landing/hiro1.webp');
+  filter: brightness(1.1) saturate(1.2);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+}
+
+.parallax-section .content {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  padding: 0 1rem;
+}
+
+.parallax-section .content h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.parallax-section .content h2 {
+  font-size: 1.125rem;
+  margin-bottom: 1.5rem;
+  font-weight: 400;
+}
+
+.cta-button {
+  background-color: #FFD600;
+  color: #0D47A1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color .3s ease;
+}
+.cta-button:hover {
+  background-color: #ffca28;
+}
+
+/* ===== Dashboard Cards ===== */
+.cards-section {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 3rem 1rem;
+  flex-wrap: wrap;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity .8s ease-out, transform .8s ease-out;
+  font-size: 1.125rem;
+}
+
+.card .icon {
+  font-size: 2.5rem;
+  margin-bottom: .5rem;
+}
+
+.card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card.water { background-color: #0097A7; color: #fff; }
+.card.electricity { background-color: #FFA000; color: #000; }
+.card.gas { background-color: #388E3C; color: #fff; }
+
+@media (max-width: 768px) {
+  .layer-front { display: none; }
+  .parallax-section .content h1 { font-size: 1.5rem; }
+  .parallax-section .content h2 { font-size: 1rem; }
+  .cards-section { flex-direction: column; align-items: center; }
+  .card { width: 100%; max-width: 320px; }
+}
+
