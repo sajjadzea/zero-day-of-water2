@@ -3,7 +3,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (!container || typeof window.cytoscape === 'undefined') return;
 
   try {
-    const res = await fetch('/docs/data/water-cld.json');
+    const base = window.location.pathname.startsWith('/docs/') ? '/docs' : '';
+    const jsonUrl = `${base}/data/water-cld.json?v=1`;
+    const res = await fetch(jsonUrl, { cache: 'no-store' });
+    if (res.status === 404) {
+      console.error('water-cld.json not found at', jsonUrl);
+      return;
+    }
     const data = await res.json();
 
     const elements = [];
