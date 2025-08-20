@@ -4,16 +4,17 @@
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Language" content="fa-IR" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta property="og:image" content="header2.webp" />
+  <meta property="og:image" content="./assets/hero2.jpg" />
   <meta property="og:image:alt" content="wesh360 – تصویر شاخص صفحه" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="header2.webp" />
+  <meta name="twitter:image" content="./assets/hero2.jpg" />
   <meta name="section" content="site" />
   <title>wesh360</title>
+  <script>if(!document.createElement('canvas').toDataURL('image/webp').includes('data:image/webp')){document.documentElement.classList.add('no-webp');}</script>
   <link rel="stylesheet" href="./assets/tailwind.css" />
   <link rel="stylesheet" href="./assets/global-footer.css">
   <link rel="stylesheet" href="./assets/footer.css">
-  <link rel="preload" as="image" href="./page/landing/hiro2.webp" fetchpriority="high">
+  <link rel="preload" as="image" href="./page/landing/hiro2.webp" type="image/webp">
   <link rel="stylesheet" href="./assets/fonts.css">
   <link rel="stylesheet" href="./assets/unified-badge.css">
   <link rel="stylesheet" href="./page/landing/landing.css">
@@ -46,9 +47,7 @@
         </button>
       </div>
     </header>
-    <section class="parallax-section" aria-label="hero" data-bg="./page/landing/hiro2.webp">
-      <div class="parallax-layer layer-back" data-speed="-0.14" aria-hidden="true"></div>
-      <div class="parallax-layer layer-front" data-speed="-0.46" aria-hidden="true"></div>
+    <section class="parallax-section" aria-label="hero">
       <div class="hero-content">
         <h1 class="hero-title">مدیریت هوشمند آب، برق و گاز در خراسان رضوی</h1>
         <p>داشبوردهای تعاملی برای آگاهی، بهینه‌سازی و تصمیم‌گیری بهتر</p>
