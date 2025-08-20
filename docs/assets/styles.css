@@ -181,3 +181,78 @@ main .cta, main .hero-cta {
   border: 1px solid #E5E7EB;
   border-radius: .5rem;
 }
+
+/* Hero Parallax */
+.parallax-section{
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.parallax-layer{
+  position: absolute; inset: -10% 0 0 0;
+  background-size: cover; background-position: center;
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+/* تصویر پیش‌فرض اگر --vg-url ست نشده بود: از header2.webp استفاده شود.
+   توجه: این مسیر از دید CSS صحیح است (assets → ../header2.webp) */
+.layer-back{
+  background-image: var(--vg-url, url('../header2.webp'));
+}
+.layer-front{
+  background-image: var(--vg-url, url('../header2.webp'));
+  filter: contrast(1.05) saturate(1.05) blur(0.2px);
+  opacity: .55;
+}
+.parallax-overlay{
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,.25) 40%, rgba(0,0,0,.15));
+  pointer-events: none;
+}
+.hero-content{
+  position: relative; z-index: 2;
+  display: grid; place-items: center;
+  text-align: center; color: #fff;
+  padding: 14vh 1rem 8vh;
+}
+.hero-content h1{ font-size: clamp(22px, 4vw, 42px); line-height: 1.25; text-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.hero-content p{ margin-top: .75rem; font-size: clamp(14px, 2.1vw, 18px); opacity: .95; }
+
+/* Cards */
+.cards-section{
+  display: grid; grid-template-columns: repeat(3, minmax(210px, 1fr));
+  gap: 1.25rem; max-width: 980px; margin: -60px auto 48px; padding: 0 16px;
+}
+.card{
+  background: rgba(255,255,255,.9);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  backdrop-filter: blur(2px);
+  padding: 18px 20px; text-align: center;
+  transform: translateY(32px); opacity: 0; transition: transform .8s ease, opacity .8s ease;
+}
+.card .icon{ font-size:2.5rem; display:block; margin-bottom:.5rem; }
+.card.visible{ transform: translateY(0); opacity: 1; }
+
+/* رنگ‌های نمونه همسو با ونگوک – در صورت داشتن کلاس‌های اختصاصی کارت‌ها، اعمال کن */
+.card.water{ background: #007c91; color:#fff; }
+.card.electricity{ background: #f6a800; color:#1a1a1a; }
+.card.gas{ background: #2e7d32; color:#fff; }
+
+/* ریسپانسیو */
+@media (max-width: 992px){
+  .cards-section{ grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px){
+  .cards-section{ grid-template-columns: 1fr; margin-top: -30px; }
+  .hero-content{ padding: 12vh 1rem 6vh; }
+  .layer-front{ display: none; }
+}
+
+/* کاهش حرکت برای دسترس‌پذیری */
+@media (prefers-reduced-motion: reduce){
+  .parallax-layer{ transform: none !important; }
+  .card{ transition: none; transform: none; opacity: 1; }
+}
+
