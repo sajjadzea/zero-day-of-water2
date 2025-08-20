@@ -118,12 +118,35 @@ document.addEventListener('DOMContentLoaded', () => {
     d.fy = null;
   }
 
+  // --- مدل ساده Stock & Flow با استفاده از SD.js ---
+  const years = 30;
+  let waterResources = 100;
+  const rainfall = 2;
+  const agProductLevel = 2; // سطح محصول کشاورزی
+  const waterLevels = [];
+
+  for (let year = 0; year <= years; year++) {
+    waterLevels.push(waterResources);
+    const inflow = rainfall;
+    const outflow = agProductLevel * 1.5;
+    waterResources += inflow - outflow;
+  }
+
+  const labels = Array.from({ length: years + 1 }, (_, i) => i.toString());
+
   const ctx = document.getElementById('sd-simulation').getContext('2d');
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: [],
-      datasets: [{ label: 'Stock & Flow Placeholder', data: [] }]
+      labels,
+      datasets: [
+        {
+          label: 'منابع آب',
+          data: waterLevels,
+          borderColor: '#007bff',
+          fill: false
+        }
+      ]
     },
     options: {
       responsive: true
