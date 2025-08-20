@@ -118,37 +118,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const years = 30;
-  let waterResources = 100;
-  const rainfall = 2;
-  const agProductLevel = 2;
-  const waterLevels = [];
+  function simulate() {
+    const steps = 30;
+    const years = [];
+    const stockSeries = [];
+    let stock = 100;
 
-  for (let year = 0; year <= years; year++) {
-    waterLevels.push(waterResources);
-    const inflow = rainfall;
-    const outflow = agProductLevel * 1.5;
-    waterResources += inflow - outflow;
+    for (let year = 0; year <= steps; year++) {
+      years.push(year);
+      stockSeries.push(stock);
+      const inflow = 2;
+      const product = Math.min(100, Math.max(0, 0.8 * stock));
+      const outflow = 1.5 * product;
+      stock = Math.max(0, stock + inflow - outflow);
+    }
+
+    return { years, stockSeries };
   }
 
-  const labels = Array.from({ length: years + 1 }, (_, i) => i.toString());
-  const ctx = document.getElementById('sd-simulation').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'منابع آب',
-          data: waterLevels,
-          borderColor: '#007bff',
-          fill: false
+  const { years, stockSeries } = simulate();
+  const canvas = document.getElementById('sd-simulation');
+  if (canvas && window.Chart) {
+    new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [
+          {
+            data: stockSeries,
+            borderColor: '#007bff',
+            fill: false,
+            pointRadius: 0
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: { grid: { color: '#eee' } },
+          y: { grid: { color: '#eee' } }
         }
-      ]
-    },
-    options: {
-      responsive: true
-    }
-  });
+      }
+    });
+  }
 });
 
