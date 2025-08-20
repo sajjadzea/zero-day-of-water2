@@ -3,22 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <title>آزمایش: بهره‌وری آب در کشاورزی</title>
-  <link rel="icon" type="image/webp" href="/docs/page/landing/logo2.webp" />
+  <link rel="icon" type="image/webp" href="/page/landing/logo2.webp" />
 </head>
 <body>
   <main dir="rtl">
     <h1>آزمایش: بهره‌وری آب در کشاورزی</h1>
     <section>
       <h2>نمودار علی و معلولی (CLD)</h2>
-      <svg id="cld-svg" width="100%" height="420" style="border:1px solid #e5e7eb; background:#fff;"></svg>
+      <div id="cy" style="width:100%;height:70vh;border:1px solid #e5e7eb;"></div>
     </section>
     <section style="margin-top:2rem">
       <h2>شبیه‌سازی Stock & Flow</h2>
       <canvas id="sd-simulation" height="160"></canvas>
     </section>
+    <p style="margin-top:1rem;font-size:0.875rem;"><a href="/test/water-cld.html">تست CLD جدید</a></p>
   </main>
-
-  <script src="../vendor/chart.umd.min.js" defer></script>
-  <script src="../assets/water-efficiency.js" defer></script>
+  <script src="/docs/assets/vendor/cytoscape.min.js" defer></script>
+  <script src="/docs/assets/vendor/elk.bundled.js" defer></script>
+  <script src="/docs/assets/vendor/cytoscape-elk.js" defer></script>
+  <script src="/docs/assets/vendor/dagre.min.js" defer></script>
+  <script src="/docs/assets/vendor/cytoscape-dagre.js" defer></script>
+  <script src="/docs/vendor/chart.umd.min.js" defer></script>
+  <script src="/docs/assets/water-cld.js" defer></script>
+  <script src="/docs/assets/water-efficiency.js" defer></script>
 </body>
 </html>
