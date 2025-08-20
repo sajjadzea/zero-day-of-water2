@@ -12,7 +12,7 @@ No existing files will be modified.
 
 ## Dependencies & Assets
 - Tailwind CSS: reuse `../assets/tailwind.css`.
-- Site-wide styles and Vazirmatn font: `../assets/styles.css`.
+- Site-wide styles and Vazirmatn font: `../assets/fonts.css`.
 - Charts: `../assets/libs/chart.umd.min.js` (and adapter/annotation plugins if needed).
 - Number formatting helper: `../assets/numfmt.js`.
 - Existing images for branding: `../header2.webp` and `../page/landing/logo2.webp`.
