@@ -10,6 +10,18 @@
     <h1>مدل پویایی بهره‌وری آب در کشاورزی</h1>
     <div id="legend" style="margin:10px 0;"></div>
     <div id="cy" style="width:100%;height:70vh;border:1px solid #e5e7eb;"></div>
+    <section id="sim-panel" style="display:none;margin-top:1rem;">
+      <form id="sim-form" style="margin-bottom:1rem;">
+        <label>ضریب اثر
+          <input id="sim-effect" type="number" step="0.1" value="0.1" style="margin-right:4px;">
+        </label>
+        <label style="margin-right:8px;">تاخیر
+          <input id="sim-delay" type="number" step="1" value="0" min="0" style="margin-right:4px;">
+        </label>
+        <button type="submit">اجرا</button>
+      </form>
+      <canvas id="sim-chart" height="200"></canvas>
+    </section>
   </main>
 
   <script src="/docs/assets/vendor/cytoscape.min.js" defer></script>
@@ -17,6 +29,7 @@
   <script src="/docs/assets/vendor/cytoscape-elk.js" defer></script>
   <script src="/docs/assets/vendor/dagre.min.js" defer></script>
   <script src="/docs/assets/vendor/cytoscape-dagre.js" defer></script>
+  <script src="/docs/vendor/chart.umd.min.js" defer></script>
   <script src="/docs/assets/water-cld.js" defer></script>
 </body>
 </html>
