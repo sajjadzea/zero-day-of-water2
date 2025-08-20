@@ -143,34 +143,105 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // minimap (optional)
-    if (typeof cy.minimap === 'function') {
-      cy.minimap({
-        position: 'bottom-right',
-        width: 150,
-        height: 100,
-        padding: 5
-      });
-    }
-
-    // edge tooltip
-    let tip;
-    cy.on('tap', 'edge', evt => {
-      const edge = evt.target;
-      if (tip) tip.destroy();
-      const content = `${edge.data('label')} (${edge.data('sign')})`;
-      if (window.tippy && edge.popperRef) {
-        tip = window.tippy(edge.popperRef(), {
-          content,
-          trigger: 'manual',
-          placement: 'bottom',
-          hideOnClick: true,
-          onHidden(inst) { inst.destroy(); }
+      if (typeof cy.minimap === 'function') {
+        cy.minimap({
+          position: 'bottom-right',
+          width: 150,
+          height: 100,
+          padding: 5
         });
-        tip.show();
-      } else {
-        alert(content);
       }
-    });
+
+      // simple stock simulation
+      function simulate(effect, delay, sign) {
+        const years = Array.from({ length: 30 }, (_, i) => i + 1);
+        const inflow = 10;
+        const baseOutflow = 8;
+        let stock = 100;
+        const series = [];
+        years.forEach(y => {
+          let out = baseOutflow;
+          if (y > delay) {
+            out = baseOutflow * (1 + effect * (sign === '+' ? 1 : -1));
+          }
+          stock += inflow - out;
+          series.push(stock);
+        });
+        return { years, series };
+      }
+
+      const simPanel = document.getElementById('sim-panel');
+      const effectInput = document.getElementById('sim-effect');
+      const delayInput = document.getElementById('sim-delay');
+      const simForm = document.getElementById('sim-form');
+      const canvas = document.getElementById('sim-chart');
+      let chart;
+
+      function renderSim(edge) {
+        if (!simPanel || !canvas) return;
+        simPanel.style.display = 'block';
+        if (typeof window.Chart === 'undefined') {
+          canvas.parentElement.innerHTML = '<p>Chart.js بارگذاری نشد</p>';
+          return;
+        }
+
+        const run = () => {
+          const eff = parseFloat(effectInput.value) || 0;
+          const del = parseInt(delayInput.value) || 0;
+          const { years, series } = simulate(eff, del, edge.data('sign'));
+          if (chart) chart.destroy();
+          chart = new Chart(canvas, {
+            type: 'line',
+            data: {
+              labels: years,
+              datasets: [{
+                label: 'ذخیره آب زیرزمینی',
+                data: series,
+                borderColor: '#0284c7',
+                backgroundColor: 'rgba(2,132,199,0.1)',
+                fill: true
+              }]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                x: { title: { display: true, text: 'سال' } },
+                y: { title: { display: true, text: 'ذخیره' } }
+              }
+            }
+          });
+        };
+
+        run();
+        simForm.onsubmit = e => {
+          e.preventDefault();
+          run();
+        };
+      }
+
+      // edge tooltip
+      let tip;
+      cy.on('tap', 'edge', evt => {
+        const edge = evt.target;
+        if (tip) tip.destroy();
+        const content = `${edge.data('label')} (${edge.data('sign')})`;
+        if (window.tippy && edge.popperRef) {
+          tip = window.tippy(edge.popperRef(), {
+            content,
+            trigger: 'manual',
+            placement: 'bottom',
+            hideOnClick: true,
+            onHidden(inst) { inst.destroy(); }
+          });
+          tip.show();
+        } else {
+          alert(content);
+        }
+
+        if (edge.data('sign') === '+' || edge.data('sign') === '-') {
+          renderSim(edge);
+        }
+      });
 
     // dblclick highlight neighbors
     let tappedNode;
