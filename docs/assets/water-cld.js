@@ -2,12 +2,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('cy');
   if (!container || typeof window.cytoscape === 'undefined') return;
 
+  const dataUrl = "/data/water-cld.json?v=2";
   try {
-    const base = window.location.pathname.startsWith('/docs/') ? '/docs' : '';
-    const jsonUrl = `${base}/data/water-cld.json?v=1`;
-    const res = await fetch(jsonUrl, { cache: 'no-store' });
-    if (res.status === 404) {
-      console.error('water-cld.json not found at', jsonUrl);
+    const res = await fetch(dataUrl, { cache: 'no-store' });
+    if (!res.ok) {
+      console.error("CLD JSON load failed:", dataUrl, res && res.status);
       return;
     }
     const data = await res.json();
@@ -280,7 +279,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       legend.innerHTML = items.join('');
     }
   } catch (err) {
-    console.error('Error loading CLD', err);
+    console.error("CLD JSON load failed:", dataUrl, err);
   }
 });
 
