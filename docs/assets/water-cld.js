@@ -3,6 +3,15 @@
 
   let model;
   let simParams = {};
+  const SC_KEY = 'cld-scenarios';
+
+  function getScenarios() {
+    try { return JSON.parse(localStorage.getItem(SC_KEY)) || {}; } catch (e) { return {}; }
+  }
+
+  function setScenarios(obj) {
+    localStorage.setItem(SC_KEY, JSON.stringify(obj));
+  }
 
   function parseModel(json) {
     const parser = new Parser();
@@ -462,6 +471,22 @@
     const delayInput = document.getElementById('p-delay');
     const runBtn = document.getElementById('btn-run');
     const resetBtn = document.getElementById('btn-reset');
+    const exportBtn = document.getElementById('btn-export');
+    const scNew = document.getElementById('sc-new');
+    const scSave = document.getElementById('sc-save');
+    const scLoad = document.getElementById('sc-load');
+    const scDelete = document.getElementById('sc-delete');
+    const scTable = document.getElementById('sc-table');
+    const sensParam = document.getElementById('sens-param');
+    const sensMin = document.getElementById('sens-min');
+    const sensMax = document.getElementById('sens-max');
+    const sensStep = document.getElementById('sens-step');
+    const sensRun = document.getElementById('sens-run');
+    const sensProgress = document.getElementById('sens-progress');
+    let selectedScenario = null;
+    let lastSensitivity = null;
+    const worker = new Worker('/assets/sim-worker.js');
+    worker.postMessage({ cmd: 'init' });
     const effVal = document.getElementById('val-eff');
     const demVal = document.getElementById('val-dem');
     const delayVal = document.getElementById('val-delay');
@@ -506,6 +531,131 @@
             y: { title: { display: true, text: 'ذخیره' } }
           }
         }
+      });
+
+      const scTbody = scTable ? scTable.querySelector('tbody') : null;
+      function refreshScenarioTable() {
+        if (!scTbody) return;
+        scTbody.innerHTML = '';
+        const scs = getScenarios();
+        Object.entries(scs).forEach(([name, p]) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${name}</td><td>${p.eff}</td><td>${p.dem}</td><td>${p.delay}</td>`;
+          tr.addEventListener('click', () => {
+            selectedScenario = name;
+            Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
+            tr.classList.add('selected');
+          });
+          scTbody.appendChild(tr);
+        });
+      }
+      refreshScenarioTable();
+
+      if (scNew) scNew.addEventListener('click', () => {
+        selectedScenario = null;
+        resetScenario();
+        if (scTbody) Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
+      });
+
+      if (scSave) scSave.addEventListener('click', () => {
+        const name = prompt('Scenario name', selectedScenario || '');
+        if (!name) return;
+        const scs = getScenarios();
+        scs[name] = {
+          eff: parseFloat(effInput.value),
+          dem: parseFloat(demInput.value),
+          delay: parseInt(delayInput.value)
+        };
+        setScenarios(scs);
+        selectedScenario = name;
+        refreshScenarioTable();
+      });
+
+      if (scLoad) scLoad.addEventListener('click', () => {
+        const scs = getScenarios();
+        if (!selectedScenario || !scs[selectedScenario]) return;
+        const p = scs[selectedScenario];
+        effInput.value = p.eff;
+        demInput.value = p.dem;
+        delayInput.value = p.delay;
+        effInput.dispatchEvent(new Event('input'));
+        demInput.dispatchEvent(new Event('input'));
+        delayInput.dispatchEvent(new Event('input'));
+        runBtn.click();
+      });
+
+      if (scDelete) scDelete.addEventListener('click', () => {
+        const scs = getScenarios();
+        if (selectedScenario && scs[selectedScenario]) {
+          delete scs[selectedScenario];
+          setScenarios(scs);
+          selectedScenario = null;
+          refreshScenarioTable();
+        }
+      });
+
+      if (exportBtn) exportBtn.addEventListener('click', () => {
+        if (!simChart) return;
+        const labels = simChart.data.labels;
+        const datasets = simChart.data.datasets;
+        let csv = 'year,' + datasets.map(ds => ds.label).join(',') + '\n';
+        labels.forEach((lab, i) => {
+          const row = [lab];
+          datasets.forEach(ds => row.push(ds.data[i] != null ? ds.data[i] : ''));
+          csv += row.join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'results.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      worker.onmessage = e => {
+        if (e.data.type === 'progress') {
+          if (sensProgress) sensProgress.textContent = Math.round(e.data.value * 100) + '%';
+        } else if (e.data.type === 'complete') {
+          if (sensProgress) sensProgress.textContent = '';
+          const { years, p10, p50, p90 } = e.data;
+          while (simChart.data.datasets.length > 1) simChart.data.datasets.pop();
+          simChart.data.labels = years;
+          simChart.data.datasets.push({
+            label: 'p90',
+            data: p90,
+            borderColor: 'rgba(0,0,0,0)',
+            fill: false
+          });
+          simChart.data.datasets.push({
+            label: 'p10',
+            data: p10,
+            borderColor: 'rgba(0,0,0,0)',
+            backgroundColor: 'rgba(99,102,241,0.2)',
+            fill: '-1'
+          });
+          simChart.data.datasets.push({
+            label: 'p50',
+            data: p50,
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.1)',
+            fill: false
+          });
+          simChart.update();
+          lastSensitivity = { years, p10, p50, p90 };
+        }
+      };
+
+      if (sensRun) sensRun.addEventListener('click', () => {
+        const param = sensParam.value;
+        const range = { min: parseFloat(sensMin.value), max: parseFloat(sensMax.value), step: parseFloat(sensStep.value) };
+        const base = {
+          eff: parseFloat(effInput.value),
+          dem: parseFloat(demInput.value),
+          delay: parseInt(delayInput.value)
+        };
+        if (sensProgress) sensProgress.textContent = '0%';
+        worker.postMessage({ cmd: 'runBatch', param, range, base });
       });
 
       const tabParam = document.getElementById('tab-param');
