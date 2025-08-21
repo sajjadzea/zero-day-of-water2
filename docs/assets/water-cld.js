@@ -200,6 +200,8 @@
     });
   }
 
+  window.measureAndResizeNodes = measureAndResizeNodes;
+
   let cy;
   let simChart;
   let baseSim;
@@ -495,6 +497,70 @@
       layout: { name: 'grid' }
     });
     window.cy = cy;
+
+    // ---- Modern Cytoscape styling: card-like nodes & readable edge labels ----
+    (function(){
+      var cy = window.cy; if(!cy) return;
+
+      cy.style()
+        // Nodes: card-like
+        .selector('node')
+        .style({
+          'width': 'label',
+          'height': 'label',
+          'text-wrap': 'wrap',
+          'text-max-width': 240,
+          'padding': '16px',
+          'font-size': 15,
+          'font-weight': 600,
+          'color': '#0a0f0e',
+          'background-color': '#f8fafc',   // NOTE: Cytoscape از CSS var پشتیبانی مستقیم ندارد
+          'border-color': '#94a3b8',
+          'border-width': 1,
+          'shape': 'round-rectangle'
+        })
+        .selector('node.compound')
+        .style({ 'width': 'auto', 'height': 'auto' })
+
+        // Edges: base
+        .selector('edge')
+        .style({
+          'curve-style': 'bezier',
+          'width': 'mapData(weight, 0, 1.2, 2, 6)',
+          'target-arrow-shape': 'triangle',
+          'line-cap': 'round',
+          'label': 'data(label)',
+          'text-rotation': 'autorotate',
+          'font-size': 11,
+          'text-background-color': 'rgba(11,18,32,.65)',
+          'text-background-opacity': 1,
+          'text-background-shape': 'roundrectangle',
+          'text-background-padding': 3,
+          'color': '#e6f1ff'
+        })
+
+        // Edge color by sign (categorical)
+        .selector('edge[sign = "+"]')
+        .style({ 'line-color': '#16a34a', 'target-arrow-color': '#16a34a' })
+        .selector('edge[sign = "-"]')
+        .style({ 'line-color': '#dc2626', 'target-arrow-color': '#dc2626' })
+
+        // Dashed if delayed
+        .selector('edge[delayYears > 0]')
+        .style({ 'line-style': 'dashed', 'line-dash-pattern': [8,6] })
+
+        .update();
+
+      // Re-measure after layout & fonts load so labels never clip
+      cy.on('layoutstop', function(){
+        if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
+      });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function(){
+          if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
+        });
+      }
+    })();
 
     cy.on('ready', () => setTimeout(safeFit, 0));
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
@@ -1158,47 +1224,6 @@
             if (window.safeFit) window.safeFit();
           });
         };
-      })();
-
-      // ---------- ensure node label wrapping & sizing ----------
-      (function(){
-        var cy = window.cy;
-        if (!cy) {
-          document.addEventListener('DOMContentLoaded', function(){ if (window.cy) applyStyles(window.cy); });
-        } else { applyStyles(cy); }
-
-        function applyStyles(cy){
-          cy.style()
-            .selector('node')
-            .style({
-              'width': 'label',
-              'height': 'label',
-              'text-wrap': 'wrap',
-              'text-max-width': 240,
-              'padding': '16px',
-              'font-size': 15,
-              'font-weight': 500,
-              'color': '#0a0f0e'
-            })
-            .selector('node.compound')
-            .style({ 'width': 'auto', 'height': 'auto' })
-            .update();
-
-          if (document.fonts && document.fonts.ready) {
-            document.fonts.ready.then(function(){
-              if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
-              if (window.safeFit) window.safeFit();
-            });
-          }
-
-          window.addEventListener('resize', function(){
-            if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
-          });
-
-          cy.on('layoutstop', function(){
-            if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
-          });
-        }
       })();
 
       // ---------- persist & restore UI controls + cy view

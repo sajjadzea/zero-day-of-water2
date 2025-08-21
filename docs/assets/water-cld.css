@@ -71,10 +71,29 @@
 /* واکنش‌گرا */
 @media (max-width: 1024px) {
   #cld-legend.cld-legend {
-    top: 8px; right: 8px; 
+    top: 8px; right: 8px;
     font-size: 11px;
     padding: 6px 8px;
   }
   #cld-legend .legend-line { width: 36px; }
 }
+
+/* === Theme tokens (scoped) === */
+:root{
+  --bg0: #0b1220;        /* پس‌زمینه بوم */
+  --card: rgba(17,24,39,.88);
+  --border: rgba(229,231,235,.18);
+  --text-hi: #e6f1ff;
+  --text-lo: #9fb3c8;
+  --accent: #22c55e;     /* سبز اکسنـت */
+  --accent-2: #60a5fa;   /* آبی اکسنـت */
+  --pos: #16a34a;        /* یال مثبت */
+  --neg: #dc2626;        /* یال منفی */
+  --delay: #a3a3a3;      /* dashed */
+  --node-fill: #f8fafc;  /* باکس گره */
+  --node-border: #94a3b8;
+  --group-opacity: .18;  /* پس‌زمینه گروه‌ها */
+}
+
+#cy-wrap{ background: var(--bg0); }
 
