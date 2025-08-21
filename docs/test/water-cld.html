@@ -19,6 +19,10 @@
     .btn{padding:6px 10px;border:1px solid var(--muted);border-radius:10px;background:var(--muted);color:var(--text);cursor:pointer;}
     .btn.outline{background:transparent;}
     .btn.off{opacity:.5;}
+    .tabs{display:flex;gap:8px;margin-bottom:10px;}
+    .tab.active{background:var(--accent);}
+    #panel-formula textarea{width:100%;height:80px;margin-top:8px;background:var(--bg);color:var(--text);border:1px solid var(--muted);border-radius:8px;padding:6px;font-family:monospace;}
+    #panel-formula select{width:100%;}
     #cy{background:transparent;border:1px solid var(--muted);border-radius:18px;min-height:520px;height:calc(100vh - 260px);}
     .slider{margin-bottom:12px;}
     .slider label{display:flex;justify-content:space-between;font-weight:600;}
@@ -41,25 +45,40 @@
       <div id="cy"></div>
     </div>
     <div class="card">
-      <div class="controls">
-        <div class="slider">
-          <label for="p-eff">بهره‌وری آبیاری <span id="val-eff">0.3</span></label>
-          <input id="p-eff" type="range" min="0" max="1" step="0.05" value="0.3"/>
-        </div>
-        <div class="slider">
-          <label for="p-dem">شدت تقاضا <span id="val-dem">0.6</span></label>
-          <input id="p-dem" type="range" min="0" max="1" step="0.05" value="0.6"/>
-        </div>
-        <div class="slider">
-          <label for="p-delay">تاخیر (سال) <span id="val-delay">1</span></label>
-          <input id="p-delay" type="range" min="0" max="5" step="1" value="1"/>
-        </div>
+      <div class="tabs">
+        <button id="tab-param" class="btn tab active">پارامتر</button>
+        <button id="tab-formula" class="btn tab">فرمول</button>
       </div>
-      <div class="actions">
-        <button id="btn-run" class="btn">اجرای سناریو</button>
-        <button id="btn-reset" class="btn outline">بازنشانی</button>
+      <div id="panel-param">
+        <div class="controls">
+          <div class="slider">
+            <label for="p-eff">بهره‌وری آبیاری <span id="val-eff">0.3</span></label>
+            <input id="p-eff" type="range" min="0" max="1" step="0.05" value="0.3"/>
+          </div>
+          <div class="slider">
+            <label for="p-dem">شدت تقاضا <span id="val-dem">0.6</span></label>
+            <input id="p-dem" type="range" min="0" max="1" step="0.05" value="0.6"/>
+          </div>
+          <div class="slider">
+            <label for="p-delay">تاخیر (سال) <span id="val-delay">1</span></label>
+            <input id="p-delay" type="range" min="0" max="5" step="1" value="1"/>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="btn-run" class="btn">اجرای سناریو</button>
+          <button id="btn-reset" class="btn outline">بازنشانی</button>
+        </div>
+        <canvas id="sim-chart" height="160" style="margin-top:12px"></canvas>
       </div>
-      <canvas id="sim-chart" height="160" style="margin-top:12px"></canvas>
+      <div id="panel-formula" style="display:none">
+        <select id="formula-node" class="btn outline"></select>
+        <textarea id="formula-expr"></textarea>
+        <div class="actions">
+          <button id="btn-validate" class="btn">Validate</button>
+          <button id="btn-save" class="btn outline">Save</button>
+        </div>
+        <div id="formula-msg" style="margin-top:6px;color:#fbbf24"></div>
+      </div>
     </div>
   </div>
   <script src="/assets/vendor/cytoscape.min.js" defer></script>
@@ -69,6 +88,7 @@
   <script src="/assets/vendor/cytoscape-dagre.js" defer></script>
   <!-- Chart.js محلی -->
   <script src="/vendor/chart.umd.min.js" defer></script>
+  <script src="/assets/vendor/expr-eval.min.js" defer></script>
   <script src="/assets/water-cld.js?v=4" defer></script>
 </body>
 </html>
