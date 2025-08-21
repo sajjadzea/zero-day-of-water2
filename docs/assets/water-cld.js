@@ -141,6 +141,13 @@ window.addEventListener('DOMContentLoaded', async () => {
           }
         },
         {
+          selector: 'node:locked',
+          style: {
+            'border-color': '#f97316',
+            'border-width': 3
+          }
+        },
+        {
           selector: 'node.highlighted',
           style: {
             'border-color': '#facc15',
@@ -167,20 +174,36 @@ window.addEventListener('DOMContentLoaded', async () => {
       layout: { name: 'grid' }
     });
 
-    // layout using elk, fallback to dagre
-    try {
-      cy.layout({
-        name: 'elk',
-        elk: { algorithm: 'layered' },
-        nodeDimensionsIncludeLabels: true,
-        fit: true
-      }).run();
-    } catch (err) {
-      try {
-        cy.layout({ name: 'dagre', rankDir: 'LR' }).run();
-      } catch (e2) {
-        console.error('layout failed', e2);
+    function runLayout(name) {
+      if (name === 'elk') {
+        try {
+          cy.layout({
+            name: 'elk',
+            elk: { algorithm: 'layered' },
+            nodeDimensionsIncludeLabels: true,
+            fit: true
+          }).run();
+        } catch (err) {
+          try {
+            cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
+          } catch (e2) {
+            console.error('layout failed', e2);
+          }
+        }
+      } else {
+        try {
+          cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
+        } catch (err) {
+          console.error('layout failed', err);
+        }
       }
+    }
+
+    runLayout('elk');
+
+    const layoutSel = document.getElementById('layout');
+    if (layoutSel) {
+      layoutSel.addEventListener('change', e => runLayout(e.target.value));
     }
 
     // minimap (optional)
@@ -214,19 +237,23 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
-    // dblclick highlight neighbors
     let tappedNode;
     cy.on('tap', 'node', evt => {
-      const node = evt.target;
-      if (tappedNode && tappedNode === node) {
-        cy.elements().removeClass('highlighted');
-        node.closedNeighborhood().addClass('highlighted');
+      const n = evt.target;
+      if (tappedNode && tappedNode === n) {
+        if (n.locked()) {
+          n.unlock();
+        } else {
+          n.lock();
+        }
         tappedNode = null;
       } else {
-        tappedNode = node;
+        tappedNode = n;
         setTimeout(() => { tappedNode = null; }, 300);
       }
     });
+
+ codex/add-layout-switch-and-pin-functionality
 
     // ESC to clear highlight
     document.addEventListener('keydown', e => {
@@ -281,6 +308,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+ main
     // legend
     const legend = document.getElementById('legend');
     if (legend) {
