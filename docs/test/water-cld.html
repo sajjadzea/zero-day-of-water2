@@ -6,133 +6,69 @@
   <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
   <style>
     :root{
-      --bg:#0b1f16; --card:#142a20cc; --stroke:#e8fff3;
-      --primary:#37c088; --primary-700:#2ea876;
-      --pos:#24c46b; --neg:#e76060;
+      --bg:#0b1d1a; --card:#122825; --muted:#1a3430; --text:#e6f1ef; --accent:#58a79a; --line:#2f6158;
+      --pos:#16a34a; --neg:#dc2626;
     }
-    body{background:linear-gradient(180deg,#13261e,#091611); font-family: Vazirmatn,Tahoma,sans-serif;}
-    .rtl{direction: rtl}
-    .wc-root{max-width:1200px; margin:0 auto; padding:16px;}
-    .row{display:grid; gap:16px;}
-    #wc-row1{grid-template-columns: minmax(420px,28%) 1fr; align-items: stretch;}
-    #wc-row2.single{grid-template-columns: 1fr;}
-    @media (max-width: 992px){
-      #wc-row1{grid-template-columns: 1fr; }
-    }
-    .card{
-      background: var(--card); backdrop-filter: blur(10px);
-      border:1px solid #ffffff22; border-radius:18px; padding:14px 16px;
-      box-shadow: 0 10px 30px #00000040; color: var(--stroke);
-    }
-    .btn{display:inline-flex; align-items:center; gap:8px;
-         padding:8px 12px; border-radius:12px; border:1px solid #ffffff2b;
-         background:#1b3a2d; color:#e8fff3; transition:.2s; cursor:pointer;}
-    .btn:hover{transform:translateY(-1px); background:#214334}
-    .btn.primary{background:var(--primary); border-color:transparent; color:#042316;}
-    .btn.primary:hover{background:var(--primary-700)}
-    .select, .input, .file{
-      background:#0f231b; border:1px solid #ffffff2b; color:#e8fff3;
-      border-radius:12px; padding:8px 10px; min-height:40px;
-    }
-    .controls-grid{display:grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap:12px;}
-    @media (max-width: 992px){ .controls-grid{grid-template-columns: 1fr 1fr;} }
-    #wc-canvas{position:relative; min-height: min(78vh, 820px);}
-    .wc-toolbar{position:absolute; right:14px; top:14px; display:flex; gap:8px; z-index:5;}
-    #cy{width:100%; min-height:520px; height:calc(100vh - 260px); border:1px solid #334155; border-radius:16px; background:transparent;}
-    #wc-scenario{min-width:420px;}
-    .link.pos{stroke: var(--pos); stroke-width:4px;}
-    .link.neg{stroke: var(--neg); stroke-dasharray: 8 6; stroke-width:4px;}
-    .node{filter: drop-shadow(0 2px 8px #00000055);}
-    .node .outer{fill:#ffffff10; stroke:#ffffffcc; stroke-width:1.4}
-    .node .inner{fill:#ffffff18; stroke:#ffffff66;}
-    .legend{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
-    .badge{display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
-           border-radius:999px; background:#1b3a2d; border:1px solid #ffffff22;}
-    .badge.pos{background: #143226; border-color:#2bbd85;}
-    .badge.neg{background: #351a1a; border-color:#e76060;}
-    .badge.dashed{background:#203241;}
-    .dot{width:12px;height:12px;border-radius:50%;}
-    .slider{margin:10px 0;}
-    .slider label{display:flex; justify-content:space-between; font-weight:600;}
-    .actions{display:flex; gap:10px; margin-top:8px}
-    .flex{display:flex;}
-    .gap-8{gap:8px;}
-    .wrap{flex-wrap:wrap;}
+    body{background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;}
+    .rtl{direction:rtl}
+    .board{display:grid;grid-template-columns:1fr minmax(380px,32%);gap:16px;max-width:1280px;margin:0 auto;padding:16px;}
+    @media(max-width:992px){.board{grid-template-columns:1fr;}}
+    .card{background:var(--card);border:1px solid var(--muted);border-radius:20px;padding:14px;}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;}
+    .controls input[type="range"]{accent-color:var(--accent);}
+    .btn{padding:6px 10px;border:1px solid var(--muted);border-radius:10px;background:var(--muted);color:var(--text);cursor:pointer;}
+    .btn.outline{background:transparent;}
+    .btn.off{opacity:.5;}
+    #cy{background:transparent;border:1px solid var(--muted);border-radius:18px;min-height:520px;height:calc(100vh - 260px);}
+    .slider{margin-bottom:12px;}
+    .slider label{display:flex;justify-content:space-between;font-weight:600;}
+    .actions{display:flex;gap:8px;margin-top:8px;}
   </style>
 </head>
-<body>
-  <div id="wc-root" class="wc-root rtl">
-    <section id="wc-row1" class="row">
-      <aside id="wc-scenario" class="card">
+<body class="rtl">
+  <div class="board">
+    <div class="card">
+      <div class="toolbar">
+        <button id="f-pos" class="btn outline">روابط مثبت</button>
+        <button id="f-neg" class="btn outline">روابط منفی</button>
+        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
+        <input id="q" class="btn outline" placeholder="جستجو"/>
+        <select id="layout" class="btn outline">
+          <option value="elk" selected>ELK</option>
+          <option value="dagre">Dagre</option>
+        </select>
+      </div>
+      <div id="cy"></div>
+    </div>
+    <div class="card">
+      <div class="controls">
         <div class="slider">
           <label for="p-eff">بهره‌وری آبیاری <span id="val-eff">0.3</span></label>
-          <input id="p-eff" class="input" type="range" min="0" max="1" step="0.05" value="0.3"/>
+          <input id="p-eff" type="range" min="0" max="1" step="0.05" value="0.3"/>
         </div>
         <div class="slider">
           <label for="p-dem">شدت تقاضا <span id="val-dem">0.6</span></label>
-          <input id="p-dem" class="input" type="range" min="0" max="1" step="0.05" value="0.6"/>
+          <input id="p-dem" type="range" min="0" max="1" step="0.05" value="0.6"/>
         </div>
         <div class="slider">
           <label for="p-delay">تاخیر (سال) <span id="val-delay">1</span></label>
-          <input id="p-delay" class="input" type="range" min="0" max="5" step="1" value="1"/>
-        </div>
-        <div class="actions">
-          <button id="btn-run" class="btn primary">اجرای سناریو</button>
-          <button id="btn-reset" class="btn">بازنشانی</button>
-        </div>
-        <div style="margin-top:12px"><canvas id="sim-chart" height="160"></canvas></div>
-      </aside>
-      <main id="wc-canvas" class="card">
-        <div class="wc-toolbar top-right"></div>
-        <div id="graph-host">
-          <div id="cy"></div>
-        </div>
-      </main>
-    </section>
-
-    <section id="wc-row2" class="row single">
-      <div id="wc-controls" class="card">
-        <div class="controls-grid">
-          <div class="group">
-            <label>انتخاب Layout</label>
-            <select id="layout" class="select">
-              <option value="elk" selected>ELK (لایه‌ای)</option>
-              <option value="dagre">Dagre (چپ→راست)</option>
-            </select>
-          </div>
-          <div class="group">
-            <label>روابط مثبت/منفی</label>
-            <div class="flex gap-8 wrap">
-              <label><input type="checkbox" id="f-pos" checked> روابط مثبت</label>
-              <label><input type="checkbox" id="f-neg" checked> روابط منفی</label>
-            </div>
-          </div>
-          <div class="group">
-            <label>Bar/Legend</label>
-            <div id="legend" class="legend"></div>
-          </div>
-          <div class="group">
-            <label>بارگذاری/ذخیره</label>
-            <div class="flex gap-8 wrap">
-              <button id="btn-export-png" class="btn">Export PNG</button>
-              <button id="btn-export-svg" class="btn" disabled>Export SVG</button>
-              <button id="btn-export-json" class="btn">Export JSON</button>
-              <label class="btn file">Import JSON<input type="file" id="import-json" accept="application/json" hidden></label>
-            </div>
-          </div>
+          <input id="p-delay" type="range" min="0" max="5" step="1" value="1"/>
         </div>
       </div>
-    </section>
+      <div class="actions">
+        <button id="btn-run" class="btn">اجرای سناریو</button>
+        <button id="btn-reset" class="btn outline">بازنشانی</button>
+      </div>
+      <canvas id="sim-chart" height="160" style="margin-top:12px"></canvas>
+    </div>
   </div>
   <script src="/assets/vendor/cytoscape.min.js" defer></script>
   <script src="/assets/vendor/elk.bundled.js" defer></script>
   <script src="/assets/vendor/cytoscape-elk.js" defer></script>
   <script src="/assets/vendor/dagre.min.js" defer></script>
   <script src="/assets/vendor/cytoscape-dagre.js" defer></script>
-  <!-- Chart.js محلی (یکی از این دو بنا به محل فایل موجود پروژه) -->
+  <!-- Chart.js محلی -->
   <script src="/vendor/chart.umd.min.js" defer></script>
-  <!-- یا: -->
-  <!-- <script src="/assets/vendor/chart.umd.min.js" defer></script> -->
   <script src="/assets/water-cld.js?v=4" defer></script>
 </body>
 </html>

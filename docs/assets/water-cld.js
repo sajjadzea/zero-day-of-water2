@@ -70,6 +70,13 @@
     const container = document.getElementById('cy');
     if (!container || typeof window.cytoscape === 'undefined') return;
 
+    const rootStyle = getComputedStyle(document.documentElement);
+    const colorPos = rootStyle.getPropertyValue('--pos').trim() || '#16a34a';
+    const colorNeg = rootStyle.getPropertyValue('--neg').trim() || '#dc2626';
+    const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
+    const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
+    const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
+
     const dataUrl = '/data/water-cld.json?v=2';
     let data;
     try {
@@ -114,11 +121,11 @@
         {
           selector: 'node',
           style: {
-            'background-color': 'rgba(88,167,154,0.95)',
+            'background-color': colorAccent,
             'border-width': 2,
-            'border-color': '#cbd5e1',
+            'border-color': colorLine,
             'label': 'data(label)',
-            'color': '#e5e7eb',
+            'color': colorText,
             'text-valign': 'center',
             'text-halign': 'center',
             'font-family': 'Vazirmatn, sans-serif',
@@ -132,14 +139,15 @@
         {
           selector: 'node.group',
           style: {
-            'background-color': 'data(color)',
-            'background-opacity': 0.4,
-            'padding': '10px',
             'shape': 'round-rectangle',
-            'border-width': 0,
+            'background-color': 'rgba(255,255,255,0.06)',
+            'border-color': '#2b3c39',
+            'border-width': 2,
             'label': 'data(id)',
+            'color': '#cde6e1',
             'text-halign': 'center',
             'text-valign': 'top',
+            'padding': '10px',
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 12
           }
@@ -152,8 +160,9 @@
             'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
             'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0],
             'target-arrow-shape': 'triangle',
-            'line-color': '#94a3b8',
-            'target-arrow-color': '#94a3b8',
+            'line-color': colorLine,
+            'target-arrow-color': colorLine,
+            'source-arrow-color': colorLine,
             'label': 'data(label)',
             'text-rotation': 'autorotate',
             'text-background-color': 'rgba(0,0,0,0.35)',
@@ -162,45 +171,29 @@
             'text-wrap': 'wrap',
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 12,
-            'color': '#e5e7eb'
+            'color': colorText
           }
         },
         {
-          selector: 'edge.positive',
+          selector: 'edge.pos',
           style: {
-            'line-color': '#16a34a',
-            'target-arrow-color': '#16a34a'
+            'line-color': colorPos,
+            'target-arrow-color': colorPos,
+            'source-arrow-color': colorPos
           }
         },
         {
-          selector: 'edge.negative',
+          selector: 'edge.neg',
           style: {
-            'line-color': 'rgb(220,38,38)',
-            'target-arrow-color': 'rgb(220,38,38)'
+            'line-color': colorNeg,
+            'target-arrow-color': colorNeg,
+            'source-arrow-color': colorNeg
           }
         },
-        {
-          selector: 'node:locked',
-          style: {
-            'border-color': '#f97316',
-            'border-width': 3
-          }
-        },
-        {
-          selector: 'node.highlighted',
-          style: {
-            'border-color': '#facc15',
-            'border-width': 3
-          }
-        },
-        {
-          selector: '.hide',
-          style: { 'display': 'none' }
-        },
-        {
-          selector: '.faded',
-          style: { 'opacity': 0.1 }
-        }
+        { selector: '.hidden', style: { 'display': 'none' } },
+        { selector: '.faded', style: { 'opacity': 0.1 } },
+        { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
+        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } }
       ],
       layout: { name: 'grid' }
     });
@@ -213,12 +206,11 @@
     runLayout('elk');
 
     if (cy) {
-      cy.on('dblclick', 'node', e => {
-        const n = e.target;
-        if (n.locked()) {
-          n.unlock();
+      cy.on('dbltap', 'node', n => {
+        if (n.target.locked()) {
+          n.target.unlock().removeClass('highlight');
         } else {
-          n.lock();
+          n.target.lock().addClass('highlight');
         }
       });
     }
@@ -232,21 +224,24 @@
     const qInput = document.getElementById('q');
 
     function updateSignFilter() {
-      if (fPos) cy.edges('.pos').toggleClass('hide', !fPos.checked);
-      if (fNeg) cy.edges('.neg').toggleClass('hide', !fNeg.checked);
+      if (fPos) cy.edges('.pos').toggleClass('hidden', fPos.classList.contains('off'));
+      if (fNeg) cy.edges('.neg').toggleClass('hidden', fNeg.classList.contains('off'));
+      safeFit();
     }
-    if (fPos) fPos.addEventListener('change', updateSignFilter);
-    if (fNeg) fNeg.addEventListener('change', updateSignFilter);
+    if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); updateSignFilter(); });
+    if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); updateSignFilter(); });
     updateSignFilter();
 
     if (fGroup) {
       fGroup.addEventListener('change', () => {
+        cy.elements().removeClass('hidden');
         cy.elements().removeClass('faded');
         const val = fGroup.value;
         if (val) {
-          cy.nodes().filter(n => n.data('parent') !== val && n.id() !== val).addClass('faded');
-          cy.edges().filter(e => e.source().data('parent') !== val || e.target().data('parent') !== val).addClass('faded');
+          cy.nodes().filter(n => n.data('parent') !== val && n.id() !== val).addClass('hidden');
+          cy.edges().filter(e => e.source().data('parent') !== val || e.target().data('parent') !== val).addClass('hidden');
         }
+        safeFit();
       });
     }
 
