@@ -153,6 +153,13 @@
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
         </select><span class="hint" data-tippy-content="انتخاب الگوریتم چیدمان (ELK یا Dagre)">❔</span>
+        <select id="layout-preset" class="btn outline">
+          <option value="">پیش‌فرض</option>
+          <option value="grid">Grid</option>
+          <option value="radial">Radial</option>
+          <option value="hierarchical">Hierarchical</option>
+        </select><span class="hint" data-tippy-content="چیدمان‌های آماده (Grid, Radial, Hierarchical)">❔</span>
+        <button id="btn-loops" class="btn outline">حلقه‌ها</button><span class="hint" data-tippy-content="شناسایی حلقه‌های بازخورد">❔</span>
       </div>
       <details id="panel-loops" style="margin:8px 0">
         <summary>Loops</summary>
@@ -171,6 +178,8 @@
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
   <script defer src="/assets/vendor/expr-eval.min.js"></script>
+  <script defer src="/assets/loop-detect.js"></script>
+  <script defer src="/assets/layout-presets.js"></script>
   <script defer src="/assets/water-cld.js"></script>
 </body>
 </html>

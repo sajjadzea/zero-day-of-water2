@@ -40,4 +40,15 @@
     const preset = dagrePresets[name];
     return preset ? JSON.parse(JSON.stringify(preset)) : null;
   };
+
+  const generalPresets = {
+    grid: { name: 'grid', fit: true, padding: 50 },
+    radial: { name: 'concentric', fit: true, padding: 50, startAngle: Math.PI / 2 },
+    hierarchical: { name: 'breadthfirst', directed: true, fit: true, padding: 50, spacingFactor: 1.5 }
+  };
+
+  window.getLayoutPreset = function (name) {
+    const preset = generalPresets[name];
+    return preset ? JSON.parse(JSON.stringify(preset)) : null;
+  };
 })();
