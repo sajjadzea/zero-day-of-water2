@@ -1,3 +1,7 @@
 /water   /water/hub   301
 /water/  /water/hub   301
 /gas/energy    /gas/   301
+/test/water-efficiency    /test/water-cld.html   301!
+/test/water-efficiency.html    /test/water-cld.html   301!
+/test/water-sfd    /test/water-cld.html   301!
+/test/water-sfd.html    /test/water-cld.html   301!
