@@ -164,7 +164,7 @@
   function measureAndResizeNodes(cy, opts = {}) {
     const fontSize = opts.fontSize || 15;
     const padding = typeof opts.padding === 'number' ? opts.padding : 18;
-    const maxTextWidth = opts.maxTextWidth || 260;
+    const maxTextWidth = opts.maxWidth || opts.maxTextWidth || 260;
     const minWidth = opts.minWidth || 100;
     const minHeight = opts.minHeight || 48;
     const container = cy.container();
@@ -274,13 +274,40 @@
 
   const safeFit = () => {
     try {
-      measureAndResizeNodes(cy, { fontSize: 15, padding: 18, maxTextWidth: 260 });
       cy.resize();
       cy.fit(undefined, 48);
     } catch(e){
-      console.error('measureAndResizeNodes failed', e);
+      console.error('safeFit failed', e);
     }
   };
+
+  // ---------- helper: seed positions by group (grid) ----------
+  function seedByGroup(cy){
+    var groups = {};
+    cy.nodes().forEach(function(n){
+      var g = n.data('group') || '_';
+      (groups[g] = groups[g] || []).push(n);
+    });
+
+    var gNames = Object.keys(groups);
+    var cols = Math.ceil(Math.sqrt(gNames.length));
+    var gx = 0, gy = 0, gi = 0;
+
+    gNames.forEach(function(g){
+      var baseX = (gi % cols) * 800 + 200;
+      var baseY = Math.floor(gi / cols) * 600 + 200;
+      var arr = groups[g];
+
+      arr.forEach(function(n, j){
+        var col = j % 3, row = Math.floor(j / 3);
+        var nx = baseX + col * 260 + (Math.random()*20 - 10);
+        var ny = baseY + row * 220 + (Math.random()*20 - 10);
+        n.position({x: nx, y: ny});
+      });
+
+      gi++;
+    });
+  }
 
   // --- load model from URL and rebuild graph (non-module) ---
   window.loadModelFromUrl = function(url){
@@ -331,9 +358,13 @@
 
       C.endBatch();
 
+      seedByGroup(C);
+
+      var algo = (document.getElementById('layout')||{}).value || 'elk';
+      var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
+      if (window.runLayout) window.runLayout(algo, dir);
+
       if (window.populateLoops) window.populateLoops(C, model.loops || []);
-      if (window.measureAndResizeNodes) window.measureAndResizeNodes(C);
-      if (window.safeFit) window.safeFit();
 
       try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
     });
@@ -466,7 +497,6 @@
     window.cy = cy;
 
     cy.on('ready', () => setTimeout(safeFit, 0));
-    cy.on('layoutstop', safeFit);
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
     if (document.fonts && document.fonts.ready) {
@@ -1080,58 +1110,96 @@
         return dirSel;
       }
 
-      // ---------- patch/define runLayout(name, dir) with direction support
-      var runLayoutOrig = window.runLayout;
-      window.runLayout = function(name, dir) {
-        name = (name || 'elk').toLowerCase();
-        dir  = (dir  || (document.getElementById('layout-dir') ? document.getElementById('layout-dir').value : 'LR'));
+      // ---------- runLayout with generous spacing (ELK/Dagre) ----------
+      (function(){
+        var runLayoutOrig = window.runLayout;
 
-        // اگر cy global نیست، از this یا window استفاده کن
-        var cyInst = (window.cy || (this && this.cy));
-        if (!cyInst) return;
+        window.runLayout = function(name, dir){
+          var cy = window.cy; if(!cy) return;
+          name = (name||'elk').toLowerCase();
+          dir  = dir || (document.getElementById('layout-dir') ? document.getElementById('layout-dir').value : 'LR');
 
-        var opts;
-        if (name === 'elk') {
-          // map LR->RIGHT, TB->DOWN
-          var elkDir = (dir === 'TB' ? 'DOWN' : 'RIGHT');
-          opts = {
-            name: 'elk',
-            nodeDimensionsIncludeLabels: true,
-            fit: true,
-            animate: 'end',
-            animationDuration: 300,
-            elk: {
-              algorithm: 'layered',
-              'elk.direction': elkDir,
-              'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
-              'elk.spacing.nodeNode': 40,
-              'elk.layered.spacing.nodeNodeBetweenLayers': 50
-            }
-          };
-        } else { // dagre
-          var rankDir = (dir === 'TB' ? 'TB' : 'LR');
-          opts = {
-            name: 'dagre',
-            rankDir: rankDir,
-            nodeSep: 50,
-            rankSep: 60,
-            fit: true,
-            animate: 'end',
-            animationDuration: 300
-          };
-        }
+          var opts;
+          if (name === 'elk') {
+            // map LR->RIGHT, TB->DOWN
+            var elkDir = (dir === 'TB' ? 'DOWN' : 'RIGHT');
+            opts = {
+              name: 'elk',
+              nodeDimensionsIncludeLabels: true,
+              fit: false,
+              animate: 'end',
+              animationDuration: 300,
+              elk: {
+                algorithm: 'layered',
+                'elk.direction': elkDir,
+                'elk.layered.spacing.nodeNodeBetweenLayers': 140,
+                'elk.spacing.nodeNode': 100,
+                'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+                'elk.edgeRouting': 'POLYLINE'
+              }
+            };
+          } else {
+            var rankDir = (dir === 'TB' ? 'TB' : 'LR');
+            opts = {
+              name: 'dagre',
+              rankDir: rankDir,
+              nodeSep: 120,
+              rankSep: 140,
+              fit: false,
+              animate: 'end',
+              animationDuration: 300
+            };
+          }
 
-        cyInst.layout(opts).run();
+          cy.layout(opts).run();
 
-        // پس از اتمام چیدمان، اگر state قبلی view داشت اعمال کن
-        var st = loadState();
-        if (st && typeof st.zoom === 'number' && st.pan && typeof st.pan.x === 'number') {
-          cyInst.once('layoutstop', function(){
-            cyInst.zoom(st.zoom);
-            cyInst.pan(st.pan);
+          cy.once('layoutstop', function(){
+            if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth: 240, padding: 16});
+            if (window.safeFit) window.safeFit();
+          });
+        };
+      })();
+
+      // ---------- ensure node label wrapping & sizing ----------
+      (function(){
+        var cy = window.cy;
+        if (!cy) {
+          document.addEventListener('DOMContentLoaded', function(){ if (window.cy) applyStyles(window.cy); });
+        } else { applyStyles(cy); }
+
+        function applyStyles(cy){
+          cy.style()
+            .selector('node')
+            .style({
+              'width': 'label',
+              'height': 'label',
+              'text-wrap': 'wrap',
+              'text-max-width': 240,
+              'padding': '16px',
+              'font-size': 15,
+              'font-weight': 500,
+              'color': '#0a0f0e'
+            })
+            .selector('node.compound')
+            .style({ 'width': 'auto', 'height': 'auto' })
+            .update();
+
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function(){
+              if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
+              if (window.safeFit) window.safeFit();
+            });
+          }
+
+          window.addEventListener('resize', function(){
+            if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
+          });
+
+          cy.on('layoutstop', function(){
+            if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
           });
         }
-      };
+      })();
 
       // ---------- persist & restore UI controls + cy view
       function bindPersistence() {
