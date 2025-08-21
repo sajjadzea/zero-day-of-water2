@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>مدل پویایی بهره‌وری آب در کشاورزی</title>
   <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
+  <link rel="stylesheet" href="/assets/water-cld.css?v=1">
   <style>
     :root{
       --bg:#0b1d1a; --card:#122825; --muted:#1a3430; --text:#e6f1ef; --accent:#58a79a; --line:#2f6158;
@@ -165,7 +166,32 @@
         <summary>Loops</summary>
         <ul id="loops-list"></ul>
       </details>
-      <div id="cy-wrap"><div id="cy"></div></div>
+      <div id="cy-wrap"><div id="cy"></div>
+      <!-- CLD Legend (fixed, scoped to #cy-wrap) -->
+      <div id="cld-legend" class="cld-legend" dir="rtl" aria-label="راهنمای نمودار علّی">
+        <div class="legend-row">
+          <span class="legend-line line-pos" aria-hidden="true"></span>
+          <span class="legend-text">رابطه مثبت (+)</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-line line-neg" aria-hidden="true"></span>
+          <span class="legend-text">رابطه منفی (−)</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-line line-delay" aria-hidden="true"></span>
+          <span class="legend-text">تأخیر (خط‌چین)</span>
+        </div>
+        <div class="legend-row">
+          <span class="legend-line line-weight-thick" aria-hidden="true"></span>
+          <span class="legend-text">ضخامت = وزن رابطه</span>
+        </div>
+        <div class="legend-row">
+          <span class="badge badge-r" aria-hidden="true">R</span>
+          <span class="badge badge-b" aria-hidden="true">B</span>
+          <span class="legend-text">حلقه‌ها: R (تقویتی)، B (موازنه‌ای)</span>
+        </div>
+      </div>
+      </div>
     </section>
   </div>
   <script defer src="/assets/vendor/cytoscape.min.js"></script>
