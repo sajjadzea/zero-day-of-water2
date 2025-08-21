@@ -5,6 +5,13 @@
     };
   };
 
+  // --- readiness flags ---
+  var __modelReady = false;
+  var __chartReady = false;
+  var __modelReadyQueue = [];
+  function whenModelReady(fn){ if(__modelReady){ try{ fn(); }catch(e){ console.error(e);} } else { __modelReadyQueue.push(fn); } }
+  function markModelReady(){ __modelReady = true; for(var i=0;i<__modelReadyQueue.length;i++){ try{ __modelReadyQueue[i](); }catch(e){ console.error(e);} } __modelReadyQueue = []; }
+
   function setVhVar(){
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -74,6 +81,7 @@
   }
 
   function simulateStep(state, t) {
+    const initials = (model && model.initials) ? model.initials : {};
     const prev = state[t - 1] || {};
     const cur = {};
     const tol = 1e-6, maxIter = 8;
@@ -87,11 +95,12 @@
           continue;
         }
         const ctx = Object.assign({}, simParams, prev, cur, {
-          delay: (name, d = 1) => {
+          delay: function(name, d){
+            d = (typeof d === 'number') ? d : 1;
             const tt = t - d;
-            if (tt < 0) return model.initials[name] || 0;
+            if (tt < 0) return initials[name] || 0;
             const st = state[tt];
-            return st && st[name] != null ? st[name] : model.initials[name] || 0;
+            return st && st[name] != null ? st[name] : initials[name] || 0;
           }
         });
         let val = 0;
@@ -107,13 +116,19 @@
   }
 
   function simulate(params) {
+    if (!model || !model.initials) { throw new Error('model not ready'); }
+    params = params || {};
     simParams = params;
     const years = params.years || 30;
-    const state = [Object.assign({}, model.initials)];
-    for (let t = 1; t <= years; t++) {
+    const initials = model.initials || {};
+    const state = [Object.assign({}, initials)];
+    for (var t = 1; t <= years; t++) {
       state[t] = simulateStep(state, t);
     }
-    return { years: Array.from({ length: years + 1 }, (_, i) => i), series: state.map(s => s.gw_stock) };
+    return {
+      years: Array.from({ length: years + 1 }, function (_, i) { return i; }),
+      series: state.map(function (s) { return s.gw_stock; })
+    };
   }
 
   function createTextMeasurer(fontSizePx) {
@@ -202,29 +217,34 @@
           options: { responsive: true, maintainAspectRatio: false }
         });
       }
-      if (typeof simulate === 'function') {
-        try {
-          const base = simulate({ eff: 0, dem: 0, delay: 0, years: 30 });
-          baseSim = { years: base.years, baseline: base.baseline || base.series || [] };
-          updateChartFromSim(baseSim);
-        } catch (err) {
-          console.error('simulate failed', err);
-        }
-      } else if (!window.__wesh_sim_chart.data.labels.length) {
-        baseSim = {
-          years: Array.from({ length: 30 }, (_, i) => i),
-          baseline: Array.from({ length: 30 }, () => 100)
-        };
-        updateChartFromSim(baseSim);
-      }
       simChart = window.__wesh_sim_chart;
+      __chartReady = true;
+      whenModelReady(initBaselineIfPossible);
     } catch (e) {
       console.error('initSimChart failed', e);
     }
   }
   document.addEventListener('DOMContentLoaded', initSimChart);
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(initSimChart).catch(() => initSimChart());
+    document.fonts.ready.then(initSimChart).catch(function(){ initSimChart(); });
+  }
+
+  function initBaselineIfPossible(){
+    if (!window.__wesh_sim_chart) return;
+    try{
+      if (typeof simulate === 'function' && model && model.initials){
+        var out = simulate({ eff:0, dem:0, delay:0, years:30 });
+        var labels = out.years || (out.baseline ? out.baseline.map(function(_,i){return i;}) : []);
+        baseSim = { years: labels, baseline: out.baseline || out.series || [] };
+        updateChartFromSim(baseSim);
+      } else if (!window.__wesh_sim_chart.data.labels.length){
+        baseSim = {
+          years: Array.from({length:30}, function(_,i){return i;}),
+          baseline: Array.from({length:30}, function(){return 100;})
+        };
+        updateChartFromSim(baseSim);
+      }
+    }catch(e){ console.error('baseline init failed', e); }
   }
 
   function updateChartFromSim(out) {
@@ -338,6 +358,8 @@
     }
     const modelData = data;
     parseModel(modelData);
+    markModelReady();
+    if (__chartReady) initBaselineIfPossible();
 
     const elements = [];
     const groups = modelData.groups || [];
@@ -668,7 +690,7 @@
             cy.elements().remove();
             cy.add(els);
             runLayout('elk');
-            updateSignFilter();
+            updateSignFilter(); // اگر جایی تعریف نشده، می‌توانید بعداً حذف/جایگزین کنید
           } catch (err) {
             console.error('Import JSON failed', err);
           }
@@ -725,216 +747,229 @@
     bindSlider(demInput, demVal);
     bindSlider(delayInput, delayVal);
 
-    initSimChart();
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(initSimChart).catch(() => initSimChart());
-    }
     const scTbody = scTable ? scTable.querySelector('tbody') : null;
     function refreshScenarioTable() {
-        if (!scTbody) return;
-        scTbody.innerHTML = '';
-        const scs = getScenarios();
-        Object.entries(scs).forEach(([name, p]) => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `<td>${name}</td><td>${p.eff}</td><td>${p.dem}</td><td>${p.delay}</td>`;
-          tr.addEventListener('click', () => {
-            selectedScenario = name;
-            Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
-            tr.classList.add('selected');
-          });
-          scTbody.appendChild(tr);
+      if (!scTbody) return;
+      scTbody.innerHTML = '';
+      const scs = getScenarios();
+      Object.entries(scs).forEach(([name, p]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${name}</td><td>${p.eff}</td><td>${p.dem}</td><td>${p.delay}</td>`;
+        tr.addEventListener('click', () => {
+          selectedScenario = name;
+          Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
+          tr.classList.add('selected');
         });
-      }
-      refreshScenarioTable();
-
-      if (scNew) scNew.addEventListener('click', () => {
-        selectedScenario = null;
-        resetScenario();
-        if (scTbody) Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
+        scTbody.appendChild(tr);
       });
+    }
+    refreshScenarioTable();
 
-      if (scSave) scSave.addEventListener('click', () => {
-        const name = prompt('Scenario name', selectedScenario || '');
-        if (!name) return;
-        const scs = getScenarios();
-        scs[name] = {
-          eff: parseFloat(effInput.value),
-          dem: parseFloat(demInput.value),
-          delay: parseInt(delayInput.value)
-        };
-        setScenarios(scs);
-        selectedScenario = name;
-        refreshScenarioTable();
-      });
+    if (scNew) scNew.addEventListener('click', () => {
+      selectedScenario = null;
+      resetScenario();
+      if (scTbody) Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
+    });
 
-      if (scLoad) scLoad.addEventListener('click', () => {
-        const scs = getScenarios();
-        if (!selectedScenario || !scs[selectedScenario]) return;
-        const p = scs[selectedScenario];
-        effInput.value = p.eff;
-        demInput.value = p.dem;
-        delayInput.value = p.delay;
-        effInput.dispatchEvent(new Event('input'));
-        demInput.dispatchEvent(new Event('input'));
-        delayInput.dispatchEvent(new Event('input'));
-        runBtn.click();
-      });
-
-      if (scDelete) scDelete.addEventListener('click', () => {
-        const scs = getScenarios();
-        if (selectedScenario && scs[selectedScenario]) {
-          delete scs[selectedScenario];
-          setScenarios(scs);
-          selectedScenario = null;
-          refreshScenarioTable();
-        }
-      });
-
-      if (exportBtn) exportBtn.addEventListener('click', () => {
-        if (!simChart) return;
-        const years = simChart.data.labels || [];
-        const ds = simChart.data.datasets || [];
-        let csv = 'year,baseline,scenario\n';
-        for (let i = 0; i < years.length; i++) {
-          const row = [years[i]];
-          row.push(ds[0] && ds[0].data ? ds[0].data[i] : '');
-          row.push(ds[1] && ds[1].data ? ds[1].data[i] : '');
-          csv += row.join(',') + '\n';
-        }
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'results.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-
-      worker.onmessage = e => {
-        if (e.data.type === 'progress') {
-          if (sensProgress) sensProgress.textContent = Math.round(e.data.value * 100) + '%';
-        } else if (e.data.type === 'complete') {
-          if (sensProgress) sensProgress.textContent = '';
-          const { years, p10, p50, p90 } = e.data;
-          while (simChart.data.datasets.length > 1) simChart.data.datasets.pop();
-          simChart.data.labels = years;
-          simChart.data.datasets.push({
-            label: 'p90',
-            data: p90,
-            borderColor: 'rgba(0,0,0,0)',
-            fill: false
-          });
-          simChart.data.datasets.push({
-            label: 'p10',
-            data: p10,
-            borderColor: 'rgba(0,0,0,0)',
-            backgroundColor: 'rgba(99,102,241,0.2)',
-            fill: '-1'
-          });
-          simChart.data.datasets.push({
-            label: 'p50',
-            data: p50,
-            borderColor: '#f97316',
-            backgroundColor: 'rgba(249,115,22,0.1)',
-            fill: false
-          });
-          simChart.update();
-          lastSensitivity = { years, p10, p50, p90 };
-        }
+    if (scSave) scSave.addEventListener('click', () => {
+      const name = prompt('Scenario name', selectedScenario || '');
+      if (!name) return;
+      const scs = getScenarios();
+      scs[name] = {
+        eff: parseFloat(effInput.value),
+        dem: parseFloat(demInput.value),
+        delay: parseInt(delayInput.value)
       };
+      setScenarios(scs);
+      selectedScenario = name;
+      refreshScenarioTable();
+    });
 
-      if (sensRun) sensRun.addEventListener('click', (e) => {
-        e.preventDefault();
-        const param = sensParam.value;
-        const range = { min: parseFloat(sensMin.value), max: parseFloat(sensMax.value), step: parseFloat(sensStep.value) };
-        const base = {
-          eff: parseFloat(effInput.value),
-          dem: parseFloat(demInput.value),
-          delay: parseInt(delayInput.value)
-        };
-        if (sensProgress) sensProgress.textContent = '0%';
-        worker.postMessage({ cmd: 'runBatch', param, range, base });
+    if (scLoad) scLoad.addEventListener('click', () => {
+      const scs = getScenarios();
+      if (!selectedScenario || !scs[selectedScenario]) return;
+      const p = scs[selectedScenario];
+      effInput.value = p.eff;
+      demInput.value = p.dem;
+      delayInput.value = p.delay;
+      effInput.dispatchEvent(new Event('input'));
+      demInput.dispatchEvent(new Event('input'));
+      delayInput.dispatchEvent(new Event('input'));
+      runBtn.click();
+    });
+
+    if (scDelete) scDelete.addEventListener('click', () => {
+      const scs = getScenarios();
+      if (selectedScenario && scs[selectedScenario]) {
+        delete scs[selectedScenario];
+        setScenarios(scs);
+        selectedScenario = null;
+        refreshScenarioTable();
+      }
+    });
+
+    if (exportBtn) exportBtn.addEventListener('click', () => {
+      if (!simChart) return;
+      const years = simChart.data.labels || [];
+      const ds = simChart.data.datasets || [];
+      let csv = 'year,baseline,scenario\n';
+      for (let i = 0; i < years.length; i++) {
+        const row = [years[i]];
+        row.push(ds[0] && ds[0].data ? ds[0].data[i] : '');
+        row.push(ds[1] && ds[1].data ? ds[1].data[i] : '');
+        csv += row.join(',') + '\n';
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'results.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    worker.onmessage = e => {
+      if (e.data.type === 'progress') {
+        if (sensProgress) sensProgress.textContent = Math.round(e.data.value * 100) + '%';
+      } else if (e.data.type === 'complete') {
+        if (sensProgress) sensProgress.textContent = '';
+        const { years, p10, p50, p90 } = e.data;
+        while (simChart.data.datasets.length > 1) simChart.data.datasets.pop();
+        simChart.data.labels = years;
+        simChart.data.datasets.push({
+          label: 'p90',
+          data: p90,
+          borderColor: 'rgba(0,0,0,0)',
+          fill: false
+        });
+        simChart.data.datasets.push({
+          label: 'p10',
+          data: p10,
+          borderColor: 'rgba(0,0,0,0)',
+          backgroundColor: 'rgba(99,102,241,0.2)',
+          fill: '-1'
+        });
+        simChart.data.datasets.push({
+          label: 'p50',
+          data: p50,
+          borderColor: '#f97316',
+          backgroundColor: 'rgba(249,115,22,0.1)',
+          fill: false
+        });
+        simChart.update();
+        lastSensitivity = { years, p10, p50, p90 };
+      }
+    };
+
+    if (sensRun) sensRun.addEventListener('click', (e) => {
+      e.preventDefault();
+      const param = sensParam.value;
+      const range = { min: parseFloat(sensMin.value), max: parseFloat(sensMax.value), step: parseFloat(sensStep.value) };
+      const base = {
+        eff: parseFloat(effInput.value),
+        dem: parseFloat(demInput.value),
+        delay: parseInt(delayInput.value)
+      };
+      if (sensProgress) sensProgress.textContent = '0%';
+      worker.postMessage({ cmd: 'runBatch', param, range, base });
+    });
+
+    const tabParam = document.getElementById('tab-param');
+    const tabFormula = document.getElementById('tab-formula');
+    const panelParam = document.getElementById('panel-param');
+    const panelFormula = document.getElementById('panel-formula');
+    if (tabParam && tabFormula && panelParam && panelFormula) {
+      tabParam.addEventListener('click', () => {
+        tabParam.classList.add('active');
+        tabFormula.classList.remove('active');
+        panelParam.style.display = 'block';
+        panelFormula.style.display = 'none';
       });
-
-      const tabParam = document.getElementById('tab-param');
-      const tabFormula = document.getElementById('tab-formula');
-      const panelParam = document.getElementById('panel-param');
-      const panelFormula = document.getElementById('panel-formula');
-      if (tabParam && tabFormula && panelParam && panelFormula) {
-        tabParam.addEventListener('click', () => {
-          tabParam.classList.add('active');
-          tabFormula.classList.remove('active');
-          panelParam.style.display = 'block';
-          panelFormula.style.display = 'none';
-        });
-        tabFormula.addEventListener('click', () => {
-          tabFormula.classList.add('active');
-          tabParam.classList.remove('active');
-          panelParam.style.display = 'none';
-          panelFormula.style.display = 'block';
-        });
-      }
-
-      const formulaNode = document.getElementById('formula-node');
-      const formulaExpr = document.getElementById('formula-expr');
-      const formulaMsg = document.getElementById('formula-msg');
-      if (formulaNode && formulaExpr) {
-        (modelData.nodes || []).forEach(n => {
-          const opt = document.createElement('option');
-          opt.value = n.id;
-          opt.textContent = n.label || n.id;
-          formulaNode.appendChild(opt);
-        });
-        formulaNode.addEventListener('change', () => {
-          const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
-          formulaExpr.value = n && n.expr ? n.expr : '';
-          if (formulaMsg) formulaMsg.textContent = '';
-        });
-        formulaNode.dispatchEvent(new Event('change'));
-      }
-
-      const validateBtn = document.getElementById('btn-validate');
-      if (validateBtn) validateBtn.addEventListener('click', () => {
-        try {
-          new Parser().parse(formulaExpr.value);
-          if (formulaMsg) formulaMsg.textContent = '✅';
-        } catch (err) {
-          if (formulaMsg) formulaMsg.textContent = err.message;
-        }
+      tabFormula.addEventListener('click', () => {
+        tabFormula.classList.add('active');
+        tabParam.classList.remove('active');
+        panelParam.style.display = 'none';
+        panelFormula.style.display = 'block';
       });
+    }
 
-      const saveBtn = document.getElementById('btn-save');
-      if (saveBtn) saveBtn.addEventListener('click', () => {
-        try {
-          new Parser().parse(formulaExpr.value);
-          const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
-          if (n) n.expr = formulaExpr.value;
-          parseModel(modelData);
-          const baseRes = simulate({ eff: 0, dem: 0, delay: 0, years: 30 });
-          baseSim = { years: baseRes.years, baseline: baseRes.series };
-          updateChartFromSim(baseSim);
-          if (formulaMsg) formulaMsg.textContent = 'Saved';
-        } catch (err) {
-          if (formulaMsg) formulaMsg.textContent = err.message;
-        }
+    const formulaNode = document.getElementById('formula-node');
+    const formulaExpr = document.getElementById('formula-expr');
+    const formulaMsg = document.getElementById('formula-msg');
+    if (formulaNode && formulaExpr) {
+      (modelData.nodes || []).forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n.id;
+        opt.textContent = n.label || n.id;
+        formulaNode.appendChild(opt);
       });
+      formulaNode.addEventListener('change', () => {
+        const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
+        formulaExpr.value = n && n.expr ? n.expr : '';
+        if (formulaMsg) formulaMsg.textContent = '';
+      });
+      formulaNode.dispatchEvent(new Event('change'));
+    }
 
-      if (runBtn) {
-        runBtn.addEventListener('click', () => {
-          const params = {
-            eff: parseFloat(effInput.value),
-            dem: parseFloat(demInput.value),
-            delay: parseInt(delayInput.value, 10),
-            years: baseSim && baseSim.years ? baseSim.years.length - 1 : 30
-          };
-          const res = simulate(params);
-          updateChartFromSim({ years: res.years, baseline: baseSim ? baseSim.baseline : [], scenario: res.series });
+    const validateBtn = document.getElementById('btn-validate');
+    if (validateBtn) validateBtn.addEventListener('click', () => {
+      try {
+        new Parser().parse(formulaExpr.value);
+        if (formulaMsg) formulaMsg.textContent = '✅';
+      } catch (err) {
+        if (formulaMsg) formulaMsg.textContent = err.message;
+      }
+    });
+
+    const saveBtn = document.getElementById('btn-save');
+    if (saveBtn) saveBtn.addEventListener('click', function(){
+      try{
+        new Parser().parse(formulaExpr.value);
+        var n = modelData.nodes.find(function(nd){ return nd.id === formulaNode.value; });
+        if (n) n.expr = formulaExpr.value;
+        parseModel(modelData);
+        markModelReady();
+        if (__chartReady) initBaselineIfPossible();
+        whenModelReady(function(){
+          try{
+            var baseRes = simulate({ eff:0, dem:0, delay:0, years:30 });
+            baseSim = { years: baseRes.years, baseline: baseRes.series };
+            updateChartFromSim(baseSim);
+            if (formulaMsg) formulaMsg.textContent = 'Saved';
+          }catch(e){ if (formulaMsg) formulaMsg.textContent = e.message; }
         });
-      }
+      }catch(err){ if (formulaMsg) formulaMsg.textContent = err.message; }
+    });
 
-      if (resetBtn) {
-        resetBtn.addEventListener('click', resetScenario);
-      }
+    if (runBtn) {
+      runBtn.addEventListener('click', function(){
+        whenModelReady(function(){
+          try{
+            var params = {
+              eff: parseFloat(effInput.value),
+              dem: parseFloat(demInput.value),
+              delay: parseInt(delayInput.value,10),
+              years: baseSim && baseSim.years ? baseSim.years.length - 1 : 30
+            };
+            var res = simulate(params);
+            updateChartFromSim({ years: res.years, baseline: baseSim ? baseSim.baseline : [], scenario: res.series });
+            if (window.__wesh_sim_chart) window.__wesh_sim_chart.update();
+          }catch(e){ console.error('simulate failed', e); }
+        });
+      });
+    }
+
+    const resetBtnEl = resetBtn;
+    if (resetBtnEl) {
+      resetBtnEl.addEventListener('click', function(){
+        whenModelReady(function(){
+          try {
+            resetScenario();
+            if (window.__wesh_sim_chart) window.__wesh_sim_chart.update();
+          } catch(e){ console.error(e); }
+        });
+      });
+    }
   });
 
   window.CLDSim = { simulate, runLayout, resetScenario, parseModel, simulateStep };
