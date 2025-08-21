@@ -182,7 +182,12 @@
     if (!container || typeof window.cytoscape === 'undefined') return;
 
     if (window.tippy) {
-      tippy('.hint', { allowHTML:true, theme:'light', delay:[80,0], placement:'bottom', maxWidth: 320, interactive: true });
+      tippy('.hint', {
+        theme: 'light',
+        delay: [80, 0],
+        placement: 'bottom',
+        maxWidth: 320
+      });
     }
 
     const rootStyle = getComputedStyle(document.documentElement);
@@ -215,10 +220,20 @@
         groupSelect.appendChild(opt);
       });
     }
+ codex/update-water-cld.js-to-fix-cytoscape-warnings
 
     function sanitize(s) { return String(s).replace(/\s+/g,'-').replace(/[^\w-]/g,'').toLowerCase(); }
 
     const groupElements = groups.map(g => ({
+
+    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
+    (modelData.nodes || []).forEach(n => elements.push({
+      data: { id: n.id, label: n.label, parent: n.group },
+      classes: 'node',
+      scratch: { tooltip: n.desc || n.label }
+    }));
+    (modelData.edges || []).forEach((e, idx) => elements.push({
+ main
       data: {
         id: g.id,
         label: g.label !== undefined ? g.label : g.id,
@@ -385,7 +400,23 @@
         layout: { name: 'grid' }
       });
 
-    cy.on('ready', () => setTimeout(() => cy.fit(undefined, 24), 0));
+    cy.on('ready', () => {
+      setTimeout(() => cy.fit(undefined, 24), 0);
+      if (window.tippy) {
+        cy.nodes().forEach(n => {
+          const content = n.scratch('tooltip');
+          if (content) {
+            tippy(n.popperRef(), {
+              content,
+              trigger: 'mouseenter',
+              placement: 'top',
+              theme: 'light',
+              arrow: true
+            });
+          }
+        });
+      }
+    });
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
     if (document.fonts && document.fonts.ready) {
