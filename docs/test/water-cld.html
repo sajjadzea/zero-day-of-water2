@@ -32,15 +32,17 @@
     #sc-table tr.selected{background:var(--muted);}
     .hidden{display:none;}
     label.ctrl output{margin-inline-start:8px;font-variant-numeric:tabular-nums;}
+    .hint{ width:18px;height:18px;border-radius:50%;border:1px solid #2b3c39;background:#1a3430;color:#fff; font-weight:700; display:inline-grid; place-items:center; cursor:help; margin-inline-start:6px; }
+    .tippy-box{ background:#0f1f1c; color:#e6f1ef; border:1px solid #21433d; }
   </style>
 </head>
 <body class="rtl">
   <div class="toolbar">
-    <label class="ctrl"><span>حداقل وزن رابطه</span>
+    <label class="ctrl"><span>حداقل وزن رابطه <button class="hint" data-tippy-content="حداقل وزن رابطه: یال‌هایی با وزن کمتر از این مقدار مخفی می‌شوند.">!</button></span>
       <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0" aria-label="حداقل وزن رابطه"/>
       <output id="flt-weight-min-val">0</output>
     </label>
-    <label class="ctrl"><span>حداکثر تاخیر (سال)</span>
+    <label class="ctrl"><span>حداکثر تاخیر (سال) <button class="hint" data-tippy-content="حداکثر تاخیر: روابط با تاخیری بیش از این مقدار پنهان می‌شوند.">!</button></span>
       <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5" aria-label="حداکثر تاخیر (سال)"/>
       <output id="flt-delay-max-val">5</output>
     </label>
@@ -48,9 +50,9 @@
   <div class="board">
     <div class="card">
       <div class="toolbar">
-        <button id="f-pos" class="btn outline">روابط مثبت</button>
-        <button id="f-neg" class="btn outline">روابط منفی</button>
-        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
+        <button id="f-pos" class="btn outline">روابط مثبت</button><button class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">!</button>
+        <button id="f-neg" class="btn outline">روابط منفی</button><button class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">!</button>
+        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select><button class="hint" data-tippy-content="انتخاب گروه: فقط گره‌ها و روابط همان گروه نشان داده می‌شوند.">!</button>
         <input id="q" class="btn outline" placeholder="جستجو"/>
         <label class="btn outline" style="display:flex;align-items:center;gap:4px">
           <input type="checkbox" id="f-delay"/>تاخیر
@@ -62,7 +64,7 @@
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
-        </select>
+        </select><button class="hint" data-tippy-content="Layout: نحوه چیدمان گره‌ها در نمودار را تعیین می‌کند.">!</button>
       </div>
       <details id="panel-loops" style="margin:8px 0">
         <summary>Loops</summary>
@@ -91,7 +93,7 @@
           </div>
         </div>
         <div class="actions">
-          <button id="btn-run" class="btn">اجرای سناریو</button>
+          <button id="btn-run" class="btn">اجرای سناریو</button><button class="hint" data-tippy-content="سناریو/چارت: با اجرای سناریو، نمودار نتایج به‌روزرسانی می‌شود.">!</button>
           <button id="btn-reset" class="btn outline">بازنشانی</button>
           <button id="btn-export" class="btn outline">Export CSV</button>
         </div>
@@ -149,6 +151,8 @@
   <!-- Chart.js محلی -->
   <script src="/vendor/chart.umd.min.js" defer></script>
   <script src="/assets/vendor/expr-eval.min.js" defer></script>
+  <script src="/assets/vendor/popper.min.js" defer></script>
+  <script src="/assets/vendor/tippy.umd.min.js" defer></script>
   <script src="/assets/water-cld.js?v=4" defer></script>
 </body>
 </html>
