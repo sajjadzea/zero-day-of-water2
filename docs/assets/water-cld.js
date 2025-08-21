@@ -226,38 +226,25 @@
   }
   document.addEventListener('DOMContentLoaded', initSimChart);
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(initSimChart).catch(function () { initSimChart(); });
+    document.fonts.ready.then(initSimChart).catch(function(){ initSimChart(); });
   }
 
   function initBaselineIfPossible(){
     if (!window.__wesh_sim_chart) return;
-    try {
-      var out;
+    try{
       if (typeof simulate === 'function' && model && model.initials){
-        out = simulate({ eff: 0, dem: 0, delay: 0, years: 30 });
-        var labels = out.years || (out.baseline ? out.baseline.map(function(_,i){ return i; }) : []);
+        var out = simulate({ eff:0, dem:0, delay:0, years:30 });
+        var labels = out.years || (out.baseline ? out.baseline.map(function(_,i){return i;}) : []);
         baseSim = { years: labels, baseline: out.baseline || out.series || [] };
-        if (typeof updateChartFromSim === 'function') {
-          updateChartFromSim(baseSim);
-        } else {
-          window.__wesh_sim_chart.data.labels = labels;
-          window.__wesh_sim_chart.data.datasets[0].data = baseSim.baseline;
-          window.__wesh_sim_chart.update();
-        }
+        updateChartFromSim(baseSim);
       } else if (!window.__wesh_sim_chart.data.labels.length){
         baseSim = {
-          years: Array.from({ length: 30 }, function(_,i){ return i; }),
-          baseline: Array.from({ length: 30 }, function(){ return 100; })
+          years: Array.from({length:30}, function(_,i){return i;}),
+          baseline: Array.from({length:30}, function(){return 100;})
         };
-        if (typeof updateChartFromSim === 'function') {
-          updateChartFromSim(baseSim);
-        } else {
-          window.__wesh_sim_chart.data.labels = baseSim.years;
-          window.__wesh_sim_chart.data.datasets[0].data = baseSim.baseline;
-          window.__wesh_sim_chart.update();
-        }
+        updateChartFromSim(baseSim);
       }
-    } catch(e){ console.error('baseline init failed', e); }
+    }catch(e){ console.error('baseline init failed', e); }
   }
 
   function updateChartFromSim(out) {
