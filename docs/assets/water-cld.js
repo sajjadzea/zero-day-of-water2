@@ -485,6 +485,7 @@
       ],
       layout: { name: 'grid' }
     });
+    window.cy = cy;
 
     cy.on('ready', () => setTimeout(safeFit, 0));
     cy.on('layoutstop', safeFit);
@@ -496,36 +497,118 @@
 
     runLayout('elk');
 
-    if (window.tippy) {
-      cy.nodes().forEach(n => {
-        const desc = n.data('desc') != null ? String(n.data('desc')) : '';
-        const unit = n.data('unit') != null ? String(n.data('unit')) : '';
-        if (!desc && !unit) return;
-        const tip = tippy(cy.container(), {
-          content: `${desc}${unit ? '<br>' + unit : ''}`,
-          allowHTML: true,
-          theme: 'light-border',
+    // --- [Tooltips for Cytoscape elements using Tippy] ---------------------------
+    (function () {
+      if (!window.tippy) return;
+
+      function esc(s) {
+        return (s == null) ? '' : String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+      }
+
+      function makeClientRectFn(ele, cy) {
+        return function getClientRect() {
+          const bb = ele.renderedBoundingBox({ includeLabels: true });
+          const rect = cy.container().getBoundingClientRect();
+          const w = Math.max(10, bb.w || (bb.x2 - bb.x1));
+          const h = Math.max(10, bb.h || (bb.y2 - bb.y1));
+          const left = rect.left + (bb.x1 || 0);
+          const top  = rect.top  + (bb.y1 || 0);
+          return {
+            width:  w,
+            height: h,
+            top:    top,
+            left:   left,
+            right:  left + w,
+            bottom: top  + h
+          };
+        };
+      }
+
+      function buildContent(ele) {
+        const d = ele.data() || {};
+        const box = document.createElement('div');
+        box.dir = 'rtl';
+        box.style.whiteSpace = 'normal';
+        box.style.maxWidth = '260px';
+
+        const parts = [];
+        if (ele.isNode && ele.isNode()) {
+          parts.push(`<div style="font-weight:600;margin-bottom:4px">${esc(d.label || d.id || '')}</div>`);
+          if (d.desc) parts.push(`<div>${esc(d.desc)}</div>`);
+          const meta = [];
+          if (d.unit)  meta.push(`واحد: ${esc(d.unit)}`);
+          if (d.group) meta.push(`گروه: ${esc(d.group)}`);
+          if (meta.length) parts.push(`<div style="opacity:.8;margin-top:4px">${meta.join(' • ')}</div>`);
+        } else {
+          parts.push(`<div style="font-weight:600;margin-bottom:4px">${esc(d.label || '')}</div>`);
+          const meta = [];
+          if (d.sign) meta.push(`قطبیت: ${d.sign === '+' ? 'مثبت (+)' : 'منفی (−)'}`);
+          if (typeof d.weight === 'number') meta.push(`وزن: ${d.weight}`);
+          if (typeof d.delayYears === 'number') meta.push(`تأخیر: ${d.delayYears} سال`);
+          if (meta.length) parts.push(`<div>${meta.join(' • ')}</div>`);
+        }
+        box.innerHTML = parts.join('');
+        return box;
+      }
+
+      function createTip(ele, cy) {
+        const tip = tippy(document.body, {
           trigger: 'manual',
+          appendTo: () => cy.container(),
+          allowHTML: true,
+          interactive: false,
+          arrow: true,
           placement: 'top',
-          appendTo: document.body,
-          getReferenceClientRect: () => {
-            const bb = n.renderedBoundingBox({ includeLabels: false, includeOverlays: false });
-            const rect = cy.container().getBoundingClientRect();
-            return {
-              width: bb.w,
-              height: bb.h,
-              top: bb.y1 + rect.top,
-              bottom: bb.y2 + rect.top,
-              left: bb.x1 + rect.left,
-              right: bb.x2 + rect.left
-            };
+          getReferenceClientRect: makeClientRectFn(ele, cy),
+          content: buildContent(ele),
+          theme: 'light',
+          hideOnClick: false
+        });
+        return tip;
+      }
+
+      function bindCyTooltips(cy) {
+        cy.on('mouseover', 'node, edge', function (evt) {
+          const ele = evt.target;
+          if (ele.scratch('_tippy')) return;
+          const tip = createTip(ele, cy);
+          ele.scratch('_tippy', tip);
+          tip.show();
+        });
+
+        cy.on('mouseout tap', 'node, edge', function (evt) {
+          const tip = evt.target.scratch('_tippy');
+          if (tip) {
+            tip.destroy();
+            evt.target.scratch('_tippy', null);
           }
         });
-        n.on('mouseover', () => tip.show());
-        n.on('mouseout', () => tip.hide());
-        cy.on('pan zoom', () => tip.hide());
-      });
-    }
+
+        const refreshVisible = () => {
+          cy.$('node, edge').forEach(ele => {
+            const tip = ele.scratch('_tippy');
+            if (tip) {
+              tip.setProps({ getReferenceClientRect: makeClientRectFn(ele, cy) });
+              if (tip.popperInstance && tip.popperInstance.update) tip.popperInstance.update();
+            }
+          });
+        };
+        cy.on('pan zoom drag position', refreshVisible);
+        cy.on('layoutstop', refreshVisible);
+        cy.on('remove', 'node, edge', function (evt) {
+          const tip = evt.target.scratch('_tippy');
+          if (tip) tip.destroy();
+        });
+      }
+
+      if (window.cy && window.cy.ready) {
+        bindCyTooltips(window.cy);
+      } else {
+        document.addEventListener('DOMContentLoaded', function () {
+          if (window.cy) bindCyTooltips(window.cy);
+        });
+      }
+    })();
 
     if (cy) {
       cy.on('dbltap', 'node', n => {
