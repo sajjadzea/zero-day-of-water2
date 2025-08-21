@@ -1,35 +1,78 @@
-function simulate({ eff = 0, dem = 0, delay = 0, years = 30 }) {
-  const inflow = 2;
-  const baseOut = 2.2;
-  let stock = 100;
-  const series = [stock];
-  for (let t = 0; t < years; t++) {
-    let out = baseOut;
-    if (t >= delay) {
-      out = baseOut * (1 + dem * 0.8) * (1 - eff * 0.6);
+(function () {
+  function simulate({ eff = 0, dem = 0, delay = 0, years = 30 }) {
+    const inflow = 2;
+    const baseOut = 2.2;
+    let stock = 100;
+    const series = [stock];
+    for (let t = 0; t < years; t++) {
+      let out = baseOut;
+      if (t >= delay) {
+        out = baseOut * (1 + dem * 0.8) * (1 - eff * 0.6);
+      }
+      stock = Math.max(0, stock + inflow - out);
+      series.push(stock);
     }
-    stock = Math.max(0, stock + inflow - out);
-    series.push(stock);
+    return { years: Array.from({ length: years + 1 }, (_, i) => i), series };
   }
-  return { years: Array.from({ length: years + 1 }, (_, i) => i), series };
-}
 
-window.addEventListener('DOMContentLoaded', async () => {
-  const container = document.getElementById('cy');
-  if (!container || typeof window.cytoscape === 'undefined') return;
+  let cy;
+  let simChart;
+  let baseline = { eff: 0, dem: 0, delay: 0 };
 
-  const dataUrl = "/data/water-cld.json?v=2";
-  try {
-    const res = await fetch(dataUrl, { cache: 'no-store' });
-    if (!res.ok) {
-      console.error("CLD JSON load failed:", dataUrl, res && res.status);
+  function runLayout(name) {
+    if (!cy) return;
+    if (name === 'elk') {
+      try {
+        cy.layout({
+          name: 'elk',
+          elk: { algorithm: 'layered' },
+          nodeDimensionsIncludeLabels: true,
+          fit: true
+        }).run();
+        return;
+      } catch (e) {
+        console.warn('elk layout failed, falling back to dagre', e);
+      }
+    }
+    try {
+      cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
+    } catch (err) {
+      console.error('layout failed', err);
+    }
+  }
+
+  function resetScenario() {
+    if (!simChart) return;
+    while (simChart.data.datasets.length > 1) {
+      simChart.data.datasets.pop();
+    }
+    simChart.update();
+    const effInput = document.getElementById('p-eff');
+    const demInput = document.getElementById('p-dem');
+    const delayInput = document.getElementById('p-delay');
+    if (effInput && demInput && delayInput) {
+      effInput.value = baseline.eff;
+      demInput.value = baseline.dem;
+      delayInput.value = baseline.delay;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async function () {
+    const container = document.getElementById('cy');
+    if (!container || typeof window.cytoscape === 'undefined') return;
+
+    const dataUrl = '/data/water-cld.json?v=2';
+    let data;
+    try {
+      const res = await fetch(dataUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error(res.status);
+      data = await res.json();
+    } catch (err) {
+      console.error('CLD JSON load failed:', dataUrl, err);
       return;
     }
-    const data = await res.json();
 
     const elements = [];
-
-    // group (compound) nodes
     const groups = data.groups || [];
     const groupSelect = document.getElementById('f-group');
     if (groupSelect) {
@@ -40,41 +83,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         groupSelect.appendChild(opt);
       });
     }
-    groups.forEach(g => {
-      elements.push({
-        data: { id: g.id, color: g.color },
-        classes: 'group'
-      });
-    });
+    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+    (data.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+    (data.edges || []).forEach((e, idx) => elements.push({
+      data: {
+        id: `e${idx}`,
+        source: e.source,
+        target: e.target,
+        label: e.label,
+        sign: e.sign,
+        weight: e.weight || 0,
+        delayYears: e.delayYears || 0
+      },
+      classes: e.sign === '+' ? 'positive pos' : 'negative neg'
+    }));
 
-    // variable nodes
-    (data.nodes || []).forEach(n => {
-      elements.push({
-        data: {
-          id: n.id,
-          label: n.label,
-          parent: n.group
-        }
-      });
-    });
-
-    // edges
-    (data.edges || []).forEach((e, idx) => {
-      elements.push({
-        data: {
-          id: `e${idx}`,
-          source: e.source,
-          target: e.target,
-          label: e.label,
-          sign: e.sign,
-          weight: e.weight || 0,
-          delayYears: e.delayYears || 0
-        },
-        classes: e.sign === '+' ? 'positive pos' : 'negative neg'
-      });
-    });
-
-    const cy = cytoscape({
+    cy = cytoscape({
       container,
       elements,
       style: [
@@ -155,14 +179,6 @@ window.addEventListener('DOMContentLoaded', async () => {
           }
         },
         {
-          selector: 'edge.highlighted',
-          style: {
-            'line-color': '#facc15',
-            'target-arrow-color': '#facc15',
-            'width': 3
-          }
-        },
-        {
           selector: '.hide',
           style: { 'display': 'none' }
         },
@@ -174,120 +190,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       layout: { name: 'grid' }
     });
 
- codex/add-export/import-buttons-for-images-and-json
-    // layout using elk, fallback to dagre
-    const runLayout = () => {
-      try {
-        cy.layout({
-          name: 'elk',
-          elk: { algorithm: 'layered' },
-          nodeDimensionsIncludeLabels: true,
-          fit: true
-        }).run();
-      } catch (err) {
-        try {
-          cy.layout({ name: 'dagre', rankDir: 'LR' }).run();
-        } catch (e2) {
-          console.error('layout failed', e2);
-
-    function runLayout(name) {
-      if (name === 'elk') {
-        try {
-          cy.layout({
-            name: 'elk',
-            elk: { algorithm: 'layered' },
-            nodeDimensionsIncludeLabels: true,
-            fit: true
-          }).run();
-        } catch (err) {
-          try {
-            cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
-          } catch (e2) {
-            console.error('layout failed', e2);
-          }
-        }
-      } else {
-        try {
-          cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
-        } catch (err) {
-          console.error('layout failed', err);
- main
-        }
-      }
-    };
-    runLayout();
-
     runLayout('elk');
 
     const layoutSel = document.getElementById('layout');
-    if (layoutSel) {
-      layoutSel.addEventListener('change', e => runLayout(e.target.value));
-    }
+    if (layoutSel) layoutSel.addEventListener('change', e => runLayout(e.target.value));
 
-    // minimap (optional)
-      if (typeof cy.minimap === 'function') {
-        cy.minimap({
-          position: 'bottom-right',
-          width: 150,
-          height: 100,
-          padding: 5
-        });
-      }
-
-      // edge tooltip
-      let tip;
-      cy.on('tap', 'edge', evt => {
-        const edge = evt.target;
-        if (tip) tip.destroy();
-        const signText = edge.data('sign') === '+' ? 'مثبت' : 'منفی';
-        const content = `اثر: ${signText} | وزن: ${edge.data('weight')} | تاخیر: ${edge.data('delayYears')} سال`;
-        if (window.tippy && edge.popperRef) {
-          tip = window.tippy(edge.popperRef(), {
-            content,
-            trigger: 'manual',
-            placement: 'bottom',
-            hideOnClick: true,
-            onHidden(inst) { inst.destroy(); }
-          });
-          tip.show();
-        } else {
-          alert(content);
-        }
-      });
-
-    let tappedNode;
-    cy.on('tap', 'node', evt => {
-      const n = evt.target;
-      if (tappedNode && tappedNode === n) {
-        if (n.locked()) {
-          n.unlock();
-        } else {
-          n.lock();
-        }
-        tappedNode = null;
-      } else {
-        tappedNode = n;
-        setTimeout(() => { tappedNode = null; }, 300);
-      }
-    });
-
- codex/add-layout-switch-and-pin-functionality
-
-    // ESC to clear highlight
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') cy.elements().removeClass('highlighted');
-    });
-
-    // filter controls
     const fPos = document.getElementById('f-pos');
     const fNeg = document.getElementById('f-neg');
     const fGroup = document.getElementById('f-group');
     const qInput = document.getElementById('q');
 
-    const updateSignFilter = () => {
+    function updateSignFilter() {
       if (fPos) cy.edges('.pos').toggleClass('hide', !fPos.checked);
       if (fNeg) cy.edges('.neg').toggleClass('hide', !fNeg.checked);
-    };
+    }
     if (fPos) fPos.addEventListener('change', updateSignFilter);
     if (fNeg) fNeg.addEventListener('change', updateSignFilter);
     updateSignFilter();
@@ -298,9 +214,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const val = fGroup.value;
         if (val) {
           cy.nodes().filter(n => n.data('parent') !== val && n.id() !== val).addClass('faded');
-          cy.edges().filter(e => {
-            return e.source().data('parent') !== val || e.target().data('parent') !== val;
-          }).addClass('faded');
+          cy.edges().filter(e => e.source().data('parent') !== val || e.target().data('parent') !== val).addClass('faded');
         }
       });
     }
@@ -326,20 +240,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
- main
-    // legend
-    const legend = document.getElementById('legend');
-    if (legend) {
-      const items = [];
-      items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#16a34a;display:inline-block;margin-left:4px"></span>اثر مثبت</div>`);
-      items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#dc2626;display:inline-block;margin-left:4px"></span>اثر منفی</div>`);
-      groups.forEach(g => {
-        items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px"></span>${g.id}</div>`);
-      });
-      legend.innerHTML = items.join('');
-    }
-
-    // export / import controls
     const exportPngBtn = document.getElementById('btn-export-png');
     if (exportPngBtn) {
       exportPngBtn.addEventListener('click', () => {
@@ -353,45 +253,35 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const exportSvgBtn = document.getElementById('btn-export-svg');
     if (exportSvgBtn) {
-      exportSvgBtn.addEventListener('click', () => {
-        const svg = typeof cy.svg === 'function' ? cy.svg({ full: true }) : container.innerHTML;
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'water-cld.svg';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+      exportSvgBtn.disabled = true;
+      exportSvgBtn.title = 'SVG export requires cytoscape-svg plugin';
     }
 
     const exportJsonBtn = document.getElementById('btn-export-json');
     if (exportJsonBtn) {
       exportJsonBtn.addEventListener('click', () => {
-        const groups = [];
-        const nodes = [];
-        const edges = [];
-        cy.elements().jsons().forEach(ele => {
-          if (ele.group === 'nodes') {
-            const el = cy.getElementById(ele.data.id);
-            if (el.hasClass('group')) {
-              groups.push({ id: ele.data.id, color: ele.data.color });
+        const g = [];
+        const n = [];
+        const e = [];
+        cy.elements().forEach(ele => {
+          if (ele.isNode()) {
+            if (ele.hasClass('group')) {
+              g.push({ id: ele.id(), color: ele.data('color') });
             } else {
-              nodes.push({ id: ele.data.id, label: ele.data.label, group: ele.data.parent });
+              n.push({ id: ele.id(), label: ele.data('label'), group: ele.data('parent') });
             }
-          } else if (ele.group === 'edges') {
-            edges.push({
-              source: ele.data.source,
-              target: ele.data.target,
-              label: ele.data.label,
-              sign: ele.data.sign,
-              weight: ele.data.weight,
-              delayYears: ele.data.delayYears
+          } else if (ele.isEdge()) {
+            e.push({
+              source: ele.data('source'),
+              target: ele.data('target'),
+              label: ele.data('label'),
+              sign: ele.data('sign'),
+              weight: ele.data('weight'),
+              delayYears: ele.data('delayYears')
             });
           }
         });
-        const json = { groups, nodes, edges };
-        const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify({ groups: g, nodes: n, edges: e }, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -420,40 +310,25 @@ window.addEventListener('DOMContentLoaded', async () => {
                 groupSelect.appendChild(opt);
               });
             }
-            const elements = [];
-            groups.forEach(g => {
-              elements.push({ data: { id: g.id, color: g.color }, classes: 'group' });
-            });
-            (data.nodes || []).forEach(n => {
-              elements.push({ data: { id: n.id, label: n.label, parent: n.group } });
-            });
-            (data.edges || []).forEach((e, idx) => {
-              elements.push({
-                data: {
-                  id: `e${idx}`,
-                  source: e.source,
-                  target: e.target,
-                  label: e.label,
-                  sign: e.sign,
-                  weight: e.weight || 0,
-                  delayYears: e.delayYears || 0
-                },
-                classes: e.sign === '+' ? 'positive pos' : 'negative neg'
-              });
-            });
+            const els = [];
+            groups.forEach(g => els.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+            (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+            (data.edges || []).forEach((e, idx) => els.push({
+              data: {
+                id: `e${idx}`,
+                source: e.source,
+                target: e.target,
+                label: e.label,
+                sign: e.sign,
+                weight: e.weight || 0,
+                delayYears: e.delayYears || 0
+              },
+              classes: e.sign === '+' ? 'positive pos' : 'negative neg'
+            }));
             cy.elements().remove();
-            cy.add(elements);
-            if (legend) {
-              const items = [];
-              items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#16a34a;display:inline-block;margin-left:4px"></span>اثر مثبت</div>`);
-              items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#dc2626;display:inline-block;margin-left:4px"></span>اثر منفی</div>`);
-              groups.forEach(g => {
-                items.push(`<div style=\"display:flex;align-items:center;margin:2px\"><span style=\"width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px\"></span>${g.id}</div>`);
-              });
-              legend.innerHTML = items.join('');
-            }
-            runLayout();
-            updateSignFilter && updateSignFilter();
+            cy.add(els);
+            runLayout('elk');
+            updateSignFilter();
           } catch (err) {
             console.error('Import JSON failed', err);
           }
@@ -462,22 +337,32 @@ window.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    // scenario simulation panel
+    const legend = document.getElementById('legend');
+    if (legend) {
+      const items = [
+        '<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#16a34a;display:inline-block;margin-left:4px"></span>اثر مثبت</div>',
+        '<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#dc2626;display:inline-block;margin-left:4px"></span>اثر منفی</div>'
+      ];
+      groups.forEach(g => items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px"></span>${g.id}</div>`));
+      legend.innerHTML = items.join('');
+    }
+
+    const chartCanvas = document.getElementById('sim-chart');
     const effInput = document.getElementById('p-eff');
     const demInput = document.getElementById('p-dem');
     const delayInput = document.getElementById('p-delay');
     const runBtn = document.getElementById('btn-run');
     const resetBtn = document.getElementById('btn-reset');
-    const chartCanvas = document.getElementById('sim-chart');
+
     if (chartCanvas && typeof Chart !== 'undefined') {
       Chart.defaults.font.family = 'Vazirmatn, sans-serif';
-      const baseline = {
+      baseline = {
         eff: parseFloat(effInput.value),
         dem: parseFloat(demInput.value),
         delay: parseInt(delayInput.value)
       };
       const baseRes = simulate(baseline);
-      const simChart = new Chart(chartCanvas, {
+      simChart = new Chart(chartCanvas, {
         type: 'line',
         data: {
           labels: baseRes.years,
@@ -499,39 +384,34 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       });
 
-      runBtn.addEventListener('click', () => {
-        const params = {
-          eff: parseFloat(effInput.value),
-          dem: parseFloat(demInput.value),
-          delay: parseInt(delayInput.value)
-        };
-        const res = simulate(params);
-        if (simChart.data.datasets.length < 2) {
-          simChart.data.datasets.push({
-            label: 'سناریو',
-            data: res.series,
-            borderColor: '#dc2626',
-            backgroundColor: 'rgba(220,38,38,0.1)',
-            fill: true
-          });
-        } else {
-          simChart.data.datasets[1].data = res.series;
-        }
-        simChart.update();
-      });
-
-      resetBtn.addEventListener('click', () => {
-        if (simChart.data.datasets.length > 1) {
-          simChart.data.datasets.pop();
+      if (runBtn) {
+        runBtn.addEventListener('click', () => {
+          const params = {
+            eff: parseFloat(effInput.value),
+            dem: parseFloat(demInput.value),
+            delay: parseInt(delayInput.value)
+          };
+          const res = simulate(params);
+          if (simChart.data.datasets.length < 2) {
+            simChart.data.datasets.push({
+              label: 'سناریو',
+              data: res.series,
+              borderColor: '#dc2626',
+              backgroundColor: 'rgba(220,38,38,0.1)',
+              fill: true
+            });
+          } else {
+            simChart.data.datasets[1].data = res.series;
+          }
           simChart.update();
-        }
-        effInput.value = baseline.eff;
-        demInput.value = baseline.dem;
-        delayInput.value = baseline.delay;
-      });
-    }
-  } catch (err) {
-    console.error("CLD JSON load failed:", dataUrl, err);
-  }
-});
+        });
+      }
 
+      if (resetBtn) {
+        resetBtn.addEventListener('click', resetScenario);
+      }
+    }
+  });
+
+  window.CLDSim = { simulate, runLayout, resetScenario };
+})();
