@@ -40,11 +40,22 @@
         <button id="f-neg" class="btn outline">روابط منفی</button>
         <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
         <input id="q" class="btn outline" placeholder="جستجو"/>
+        <label class="btn outline" style="display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="f-delay"/>تاخیر
+        </label>
+        <div id="f-weight" class="btn outline" style="display:flex;align-items:center;gap:4px">
+          <input id="f-wmin" type="range" min="0" max="1" step="0.1" value="0"/>
+          <input id="f-wmax" type="range" min="0" max="1" step="0.1" value="1"/>
+        </div>
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
         </select>
       </div>
+      <details id="panel-loops" style="margin:8px 0">
+        <summary>Loops</summary>
+        <ul id="loops-list"></ul>
+      </details>
       <div id="cy"></div>
     </div>
     <div class="card">

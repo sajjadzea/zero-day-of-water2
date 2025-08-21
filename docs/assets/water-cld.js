@@ -223,6 +223,20 @@
       classes: e.sign === '+' ? 'positive pos' : 'negative neg'
     }));
 
+    const wVals = (modelData.edges || []).map(e => e.weight || 0);
+    const wMinInput = document.getElementById('f-wmin');
+    const wMaxInput = document.getElementById('f-wmax');
+    if (wVals.length && wMinInput && wMaxInput) {
+      const wMin = Math.min(...wVals);
+      const wMax = Math.max(...wVals);
+      wMinInput.min = wMin;
+      wMinInput.max = wMax;
+      wMinInput.value = wMin;
+      wMaxInput.min = wMin;
+      wMaxInput.max = wMax;
+      wMaxInput.value = wMax;
+    }
+
     cy = cytoscape({
       container,
       elements,
@@ -310,7 +324,8 @@
         { selector: '.hidden', style: { 'display': 'none' } },
         { selector: '.faded', style: { 'opacity': 0.1 } },
         { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
-        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } }
+        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
+        { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
       ],
       layout: { name: 'grid' }
     });
@@ -338,29 +353,44 @@
     const fPos = document.getElementById('f-pos');
     const fNeg = document.getElementById('f-neg');
     const fGroup = document.getElementById('f-group');
+    const fDelay = document.getElementById('f-delay');
+    const fWMin = document.getElementById('f-wmin');
+    const fWMax = document.getElementById('f-wmax');
     const qInput = document.getElementById('q');
+    const loopsList = document.getElementById('loops-list');
 
-    function updateSignFilter() {
-      if (fPos) cy.edges('.pos').toggleClass('hidden', fPos.classList.contains('off'));
-      if (fNeg) cy.edges('.neg').toggleClass('hidden', fNeg.classList.contains('off'));
+    function applyFilters() {
+      cy.elements().removeClass('hidden');
+      const showPos = !(fPos && fPos.classList.contains('off'));
+      const showNeg = !(fNeg && fNeg.classList.contains('off'));
+      const groupVal = fGroup ? fGroup.value : '';
+      const delayOnly = fDelay ? fDelay.checked : false;
+      const wMin = fWMin ? parseFloat(fWMin.value) : -Infinity;
+      const wMax = fWMax ? parseFloat(fWMax.value) : Infinity;
+
+      cy.edges().forEach(e => {
+        const signOk = e.data('sign') === '+' ? showPos : showNeg;
+        const groupOk = !groupVal || (e.source().data('parent') === groupVal && e.target().data('parent') === groupVal);
+        const delayOk = !delayOnly || e.data('delayYears') > 0;
+        const w = e.data('weight') || 0;
+        const weightOk = w >= wMin && w <= wMax;
+        if (!(signOk && groupOk && delayOk && weightOk)) e.addClass('hidden');
+      });
+
+      cy.nodes().forEach(n => {
+        if (groupVal && n.data('parent') !== groupVal && n.id() !== groupVal) n.addClass('hidden');
+      });
+
       safeFit();
     }
-    if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); updateSignFilter(); });
-    if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); updateSignFilter(); });
-    updateSignFilter();
 
-    if (fGroup) {
-      fGroup.addEventListener('change', () => {
-        cy.elements().removeClass('hidden');
-        cy.elements().removeClass('faded');
-        const val = fGroup.value;
-        if (val) {
-          cy.nodes().filter(n => n.data('parent') !== val && n.id() !== val).addClass('hidden');
-          cy.edges().filter(e => e.source().data('parent') !== val || e.target().data('parent') !== val).addClass('hidden');
-        }
-        safeFit();
-      });
-    }
+    if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); applyFilters(); });
+    if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); applyFilters(); });
+    if (fGroup) fGroup.addEventListener('change', applyFilters);
+    if (fDelay) fDelay.addEventListener('change', applyFilters);
+    if (fWMin) fWMin.addEventListener('input', () => { if (parseFloat(fWMin.value) > parseFloat(fWMax.value)) fWMax.value = fWMin.value; applyFilters(); });
+    if (fWMax) fWMax.addEventListener('input', () => { if (parseFloat(fWMax.value) < parseFloat(fWMin.value)) fWMin.value = fWMax.value; applyFilters(); });
+    applyFilters();
 
     if (qInput) {
       qInput.addEventListener('input', () => {
@@ -382,6 +412,68 @@
         }
       });
     }
+
+    function canonicalCycle(nodes) {
+      const n = nodes.length - 1;
+      let minIdx = 0;
+      for (let i = 0; i < n; i++) if (nodes[i] < nodes[minIdx]) minIdx = i;
+      const rot = [];
+      for (let i = 0; i < n; i++) rot.push(nodes[(minIdx + i) % n]);
+      const rotRev = rot.slice().reverse();
+      const s1 = rot.join('->');
+      const s2 = rotRev.join('->');
+      return s1 < s2 ? s1 : s2;
+    }
+
+    function findLoops(maxLen = 6) {
+      const loops = [];
+      const seen = new Set();
+      const nodes = cy.nodes().filter(n => !n.hasClass('group'));
+
+      function dfs(curr, start, pathNodes, pathEdges, negCount) {
+        if (pathEdges.length >= maxLen) return;
+        curr.outgoers('edge').forEach(edge => {
+          const tgt = edge.target();
+          if (tgt.id() === start.id()) {
+            const nodesCycle = pathNodes.slice();
+            const edgesCycle = pathEdges.concat(edge.id());
+            const canon = canonicalCycle(nodesCycle.concat(start.id()));
+            if (!seen.has(canon)) {
+              seen.add(canon);
+              const sign = (negCount + (edge.data('sign') === '-' ? 1 : 0)) % 2 === 0 ? '+' : '-';
+              loops.push({ nodes: nodesCycle, edges: edgesCycle, sign });
+            }
+          } else if (!pathNodes.includes(tgt.id())) {
+            dfs(tgt, start, pathNodes.concat(tgt.id()), pathEdges.concat(edge.id()), negCount + (edge.data('sign') === '-' ? 1 : 0));
+          }
+        });
+      }
+
+      nodes.forEach(n => dfs(n, n, [n.id()], [], 0));
+      return loops;
+    }
+
+    function populateLoops() {
+      if (!loopsList) return;
+      loopsList.innerHTML = '';
+      const loops = findLoops();
+      loops.forEach(loop => {
+        const li = document.createElement('li');
+        const labels = loop.nodes.map(id => cy.getElementById(id).data('label') || id);
+        li.textContent = `${loop.sign}: ${labels.join(' \u2192 ')}`;
+        li.style.cursor = 'pointer';
+        li.addEventListener('click', () => {
+          cy.elements().removeClass('highlight');
+          const col = cy.collection();
+          loop.nodes.forEach(id => { const n = cy.getElementById(id); n.addClass('highlight'); col.merge(n); });
+          loop.edges.forEach(id => { const e = cy.getElementById(id); e.addClass('highlight'); col.merge(e); });
+          cy.fit(col, 50);
+        });
+        loopsList.appendChild(li);
+      });
+    }
+
+    populateLoops();
 
     const exportPngBtn = document.getElementById('btn-export-png');
     if (exportPngBtn) {
