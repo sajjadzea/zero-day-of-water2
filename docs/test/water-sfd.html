@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>نمودار ذخیره و جریان آب</title>
+  <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
+  <style>
+    :root{--bg:#0b1d1a;--card:#122825;--muted:#1a3430;--text:#e6f1ef;--accent:#58a79a;}
+    body{background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;}
+    .rtl{direction:rtl;}
+    .board{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:12px;}
+    .card{background:var(--card);border:1px solid var(--muted);border-radius:16px;padding:12px;}
+    #cy-sfd{width:100%;height:100%;min-height:400px;border:1px solid var(--muted);border-radius:14px;position:relative;}
+    label.ctrl{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+    .btn{min-height:36px;padding:8px 12px;border-radius:10px;border:1px solid var(--muted);background:var(--muted);color:var(--text);cursor:pointer;}
+  </style>
+</head>
+<body class="rtl">
+  <div class="board">
+    <section class="card" id="graph-panel">
+      <div id="cy-sfd"></div>
+    </section>
+    <section class="card" id="param-panel">
+      <h3 style="margin-top:0">پارامترها</h3>
+      <label class="ctrl"><span>نرخ ورودی</span><input type="range" min="0" max="10" step="1" value="5"></label>
+      <label class="ctrl"><span>نرخ خروجی</span><input type="range" min="0" max="10" step="1" value="3"></label>
+      <button class="btn">اجرا</button>
+    </section>
+  </div>
+  <script defer src="/assets/vendor/cytoscape.min.js"></script>
+  <script defer src="/assets/vendor/elk.bundled.js"></script>
+  <script defer src="/assets/vendor/cytoscape-elk.js"></script>
+  <script defer src="/assets/vendor/dagre.min.js"></script>
+  <script defer src="/assets/vendor/cytoscape-dagre.js"></script>
+  <script defer src="/vendor/chart.umd.min.js"></script>
+  <script defer src="/assets/vendor/popper.min.js"></script>
+  <script defer src="/assets/vendor/tippy.umd.min.js"></script>
+  <script defer src="/assets/vendor/expr-eval.min.js"></script>
+  <script defer src="/assets/water-sfd.js"></script>
+</body>
+</html>
