@@ -57,7 +57,9 @@ window.addEventListener('DOMContentLoaded', async () => {
           source: e.source,
           target: e.target,
           label: e.label,
-          sign: e.sign
+          sign: e.sign,
+          weight: e.weight || 0,
+          delayYears: e.delayYears || 0
         },
         classes: e.sign === '+' ? 'positive' : 'negative'
       });
@@ -99,8 +101,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         {
           selector: 'edge',
           style: {
-            'width': 2,
+            'width': ele => 1 + (ele.data('weight') * 4),
             'curve-style': 'bezier',
+            'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
             'target-arrow-shape': 'triangle',
             'line-color': '#94a3b8',
             'target-arrow-color': '#94a3b8',
@@ -178,7 +181,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       cy.on('tap', 'edge', evt => {
         const edge = evt.target;
         if (tip) tip.destroy();
-        const content = `${edge.data('label')} (${edge.data('sign')})`;
+        const signText = edge.data('sign') === '+' ? 'مثبت' : 'منفی';
+        const content = `اثر: ${signText} | وزن: ${edge.data('weight')} | تاخیر: ${edge.data('delayYears')} سال`;
         if (window.tippy && edge.popperRef) {
           tip = window.tippy(edge.popperRef(), {
             content,
