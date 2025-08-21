@@ -83,7 +83,7 @@
         <div class="actions">
           <button id="btn-run" class="btn">اجرای سناریو</button><span class="hint" data-tippy-content="سناریو/چارت: با اجرای سناریو، نمودار نتایج به‌روزرسانی می‌شود.">❔</span>
           <button id="btn-reset" class="btn outline">بازنشانی</button>
-          <button id="btn-export" class="btn outline">Export CSV</button>
+          <button id="btn-export-csv" class="btn outline">Export CSV</button>
         </div>
         <div id="sim-panel" style="margin-top:12px">
           <canvas id="sim-chart"></canvas>
@@ -145,18 +145,10 @@
         <button id="f-pos" class="btn outline">روابط مثبت</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">❔</span>
         <button id="f-neg" class="btn outline">روابط منفی</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">❔</span>
         <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select><span class="hint" data-tippy-content="نمایش گروه خاصی از متغیرها">❔</span>
-        <input id="q" class="btn outline" placeholder="جستجو"/><span class="hint" data-tippy-content="جست‌وجوی نام گره‌ها">❔</span>
+        <input id="q" class="btn outline" placeholder="جست‌وجو" value=""/><span class="hint" data-tippy-content="جست‌وجوی نام گره‌ها">❔</span>
         <label class="btn outline" style="display:flex;align-items:center;gap:4px">
           <input type="checkbox" id="f-delay"/>تاخیر
- codex/add-tooltips-using-tippy.js-to-ui-controls
         </label><span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
-        <div id="f-weight" class="btn outline" style="display:flex;align-items:center;gap:4px">
-          <input id="f-wmin" type="range" min="0" max="1" step="0.1" value="0"/>
-          <input id="f-wmax" type="range" min="0" max="1" step="0.1" value="1"/>
-        </div><span class="hint" data-tippy-content="فیلتر بازه وزن یال‌ها">❔</span>
-
-        </label>
- main
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
@@ -169,17 +161,17 @@
       <div id="cy-wrap"><div id="cy"></div></div>
     </section>
   </div>
-  <script src="/assets/vendor/cytoscape.min.js" defer></script>
-  <script src="/assets/vendor/elk.bundled.js" defer></script>
-  <script src="/assets/vendor/cytoscape-elk.js" defer></script>
-  <script src="/assets/vendor/dagre.min.js" defer></script>
-  <script src="/assets/vendor/cytoscape-dagre.js" defer></script>
+  <script defer src="/assets/vendor/cytoscape.min.js"></script>
+  <script defer src="/assets/vendor/elk.bundled.js"></script>
+  <script defer src="/assets/vendor/cytoscape-elk.js"></script>
+  <script defer src="/assets/vendor/dagre.min.js"></script>
+  <script defer src="/assets/vendor/cytoscape-dagre.js"></script>
   <!-- Chart.js محلی -->
-  <script src="/vendor/chart.umd.min.js" defer></script>
-  <script src="/assets/vendor/expr-eval.min.js" defer></script>
-  <script src="/assets/vendor/popper.min.js" defer></script>
-  <script src="/assets/vendor/tippy.umd.min.js" defer></script>
-  <script src="/assets/water-cld.js?v=4" defer></script>
+  <script defer src="/vendor/chart.umd.min.js"></script>
+  <script defer src="/assets/vendor/popper.min.js"></script>
+  <script defer src="/assets/vendor/tippy.umd.min.js"></script>
+  <script defer src="/assets/vendor/expr-eval.min.js"></script>
+  <script defer src="/assets/water-cld.js"></script>
 </body>
 </html>
 
