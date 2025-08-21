@@ -1,0 +1,158 @@
+{
+  "groups": [
+    {"id":"نوآوری","color":"#fef3c7"},
+    {"id":"تقاضا","color":"#e0f2fe"},
+    {"id":"منابع","color":"#e7f5e9"},
+    {"id":"تولید","color":"#f3e8ff"},
+    {"id":"بازار","color":"#fff7ed"},
+    {"id":"حکمرانی","color":"#e5e7eb"},
+    {"id":"پس از برداشت","color":"#fde68a"},
+    {"id":"اقلیم و محیط","color":"#fee2e2"},
+    {"id":"داده","color":"#e0e7ff"}
+  ],
+  "nodes": [
+    {"id":"eff_irrig","label":"بهره‌وری آبیاری","group":"نوآوری"},
+    {"id":"water_use","label":"مصرف آب","group":"تقاضا"},
+    {"id":"gw_stock","label":"منابع آب زیرزمینی","group":"منابع"},
+    {"id":"ag_output","label":"محصولات کشاورزی","group":"تولید"},
+    {"id":"farmer_income","label":"درآمد کشاورز","group":"بازار"},
+    {"id":"invest_innov","label":"سرمایه‌گذاری نوآوری","group":"نوآوری"},
+    {"id":"rnd","label":"پژوهش و توسعه","group":"نوآوری"},
+    {"id":"extension","label":"آموزش و ترویج","group":"نوآوری"},
+    {"id":"soil_health","label":"سلامت خاک","group":"اقلیم و محیط"},
+    {"id":"fert_eff","label":"کارایی کود و سم","group":"نوآوری"},
+    {"id":"prod_cost","label":"هزینه تولید","group":"تولید"},
+    {"id":"risk","label":"ریسک تولید","group":"تولید"},
+    {"id":"quality","label":"کیفیت محصول","group":"بازار"},
+    {"id":"market_access","label":"دسترسی به بازار","group":"بازار"},
+    {"id":"price_prod","label":"قیمت محصولات","group":"بازار"},
+    {"id":"consumer_demand","label":"تقاضای مصرف‌کننده","group":"بازار"},
+    {"id":"diversify","label":"تنوع‌بخشی محصولات","group":"تولید"},
+    {"id":"resilience","label":"تاب‌آوری تولید","group":"تولید"},
+    {"id":"postharvest_losses","label":"ضایعات پس از برداشت","group":"پس از برداشت"},
+    {"id":"cold_chain","label":"زنجیرهٔ سرد/انبارش","group":"پس از برداشت"},
+    {"id":"processing","label":"فرآوری و بسته‌بندی","group":"پس از برداشت"},
+    {"id":"water_price","label":"قیمت آب","group":"حکمرانی"},
+    {"id":"energy_price","label":"قیمت انرژی آبیاری","group":"حکمرانی"},
+    {"id":"targeted_support","label":"حمایت هدفمند","group":"حکمرانی"},
+    {"id":"finance_access","label":"دسترسی به منابع مالی","group":"حکمرانی"},
+    {"id":"data_transparency","label":"داده و شفافیت","group":"داده"},
+    {"id":"governance","label":"حکمرانی کارا","group":"حکمرانی"},
+    {"id":"smart_irrig","label":"آبیاری هوشمند/IoT","group":"نوآوری"},
+    {"id":"reuse","label":"بازچرخانی/تصویه مجدد","group":"نوآوری"},
+    {"id":"climate_stress","label":"تنش‌های اقلیمی","group":"اقلیم و محیط"},
+    {"id":"rainfall","label":"بارش مؤثر","group":"اقلیم و محیط"},
+    {"id":"groundwater_recharge","label":"تغذیه مصنوعی/نفوذ","group":"منابع"},
+    {"id":"policy_effectiveness","label":"کارایی سیاست‌ها","group":"حکمرانی"},
+    {"id":"supply_chain","label":"زنجیرهٔ تأمین و لجستیک","group":"بازار"},
+    {"id":"trust","label":"اعتماد و اطلاعات بازار","group":"بازار"},
+    {"id":"food_safety","label":"سلامت و ایمنی غذایی","group":"بازار"},
+    {"id":"labor_skill","label":"مهارت نیروی انسانی","group":"نوآوری"},
+    {"id":"yield","label":"عملکرد در هکتار","group":"تولید"},
+    {"id":"export_access","label":"دسترسی به صادرات","group":"بازار"},
+    {"id":"water_efficiency_policy","label":"سیاست‌های کارایی آب","group":"حکمرانی"},
+    {"id":"energy_efficiency","label":"کارایی انرژی مزرعه","group":"نوآوری"}
+  ],
+  "edges": [
+    {"source":"eff_irrig","target":"water_use","sign":"-","label":"−","weight":0.7,"delayYears":0},
+    {"source":"water_use","target":"gw_stock","sign":"-","label":"−","weight":0.8,"delayYears":1},
+    {"source":"gw_stock","target":"ag_output","sign":"+","label":"+","weight":0.6,"delayYears":1},
+    {"source":"ag_output","target":"farmer_income","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"farmer_income","target":"invest_innov","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"invest_innov","target":"rnd","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"rnd","target":"extension","sign":"+","label":"+","weight":0.5,"delayYears":0},
+    {"source":"extension","target":"eff_irrig","sign":"+","label":"+","weight":0.6,"delayYears":0},
+
+    {"source":"soil_health","target":"yield","sign":"+","label":"+","weight":0.6,"delayYears":1},
+    {"source":"yield","target":"ag_output","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"fert_eff","target":"soil_health","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"eff_irrig","target":"soil_health","sign":"+","label":"+","weight":0.3,"delayYears":1},
+
+    {"source":"quality","target":"price_prod","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"market_access","target":"price_prod","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"price_prod","target":"farmer_income","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"supply_chain","target":"market_access","sign":"+","label":"+","weight":0.5,"delayYears":0},
+    {"source":"trust","target":"market_access","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"food_safety","target":"price_prod","sign":"+","label":"+","weight":0.3,"delayYears":0},
+
+    {"source":"postharvest_losses","target":"farmer_income","sign":"-","label":"−","weight":0.6,"delayYears":0},
+    {"source":"cold_chain","target":"postharvest_losses","sign":"-","label":"−","weight":0.7,"delayYears":0},
+    {"source":"processing","target":"postharvest_losses","sign":"-","label":"−","weight":0.5,"delayYears":0},
+
+    {"source":"diversify","target":"resilience","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"resilience","target":"risk","sign":"-","label":"−","weight":0.5,"delayYears":0},
+    {"source":"risk","target":"ag_output","sign":"-","label":"−","weight":0.4,"delayYears":0},
+    {"source":"resilience","target":"farmer_income","sign":"+","label":"+","weight":0.4,"delayYears":0},
+
+    {"source":"water_price","target":"water_use","sign":"-","label":"−","weight":0.6,"delayYears":0},
+    {"source":"energy_price","target":"water_use","sign":"-","label":"−","weight":0.4,"delayYears":0},
+    {"source":"targeted_support","target":"invest_innov","sign":"+","label":"+","weight":0.5,"delayYears":0},
+    {"source":"finance_access","target":"invest_innov","sign":"+","label":"+","weight":0.5,"delayYears":0},
+    {"source":"data_transparency","target":"governance","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"governance","target":"policy_effectiveness","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"policy_effectiveness","target":"water_efficiency_policy","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"water_efficiency_policy","target":"eff_irrig","sign":"+","label":"+","weight":0.5,"delayYears":0},
+
+    {"source":"smart_irrig","target":"eff_irrig","sign":"+","label":"+","weight":0.6,"delayYears":0},
+    {"source":"reuse","target":"gw_stock","sign":"+","label":"+","weight":0.5,"delayYears":1},
+    {"source":"energy_efficiency","target":"prod_cost","sign":"-","label":"−","weight":0.4,"delayYears":0},
+    {"source":"prod_cost","target":"farmer_income","sign":"-","label":"−","weight":0.6,"delayYears":0},
+
+    {"source":"climate_stress","target":"water_use","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"climate_stress","target":"gw_stock","sign":"-","label":"−","weight":0.5,"delayYears":2},
+    {"source":"rainfall","target":"gw_stock","sign":"+","label":"+","weight":0.5,"delayYears":1},
+    {"source":"groundwater_recharge","target":"gw_stock","sign":"+","label":"+","weight":0.5,"delayYears":1},
+
+    {"source":"labor_skill","target":"extension","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"invest_innov","target":"quality","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"consumer_demand","target":"price_prod","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"export_access","target":"price_prod","sign":"+","label":"+","weight":0.4,"delayYears":0},
+
+    {"source":"farmer_income","target":"labor_skill","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"farmer_income","target":"energy_efficiency","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"farmer_income","target":"smart_irrig","sign":"+","label":"+","weight":0.4,"delayYears":0},
+
+    {"source":"data_transparency","target":"trust","sign":"+","label":"+","weight":0.4,"delayYears":0},
+    {"source":"trust","target":"price_prod","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"supply_chain","target":"postharvest_losses","sign":"-","label":"−","weight":0.3,"delayYears":0},
+
+    {"source":"governance","target":"water_price","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"governance","target":"targeted_support","sign":"+","label":"+","weight":0.3,"delayYears":0},
+    {"source":"policy_effectiveness","target":"finance_access","sign":"+","label":"+","weight":0.3,"delayYears":0}
+  ],
+  "loops": [
+    {"id":"R1","type":"R","name":"حلقه بهره‌وری","members":[
+      "eff_irrig->water_use-","water_use->gw_stock-","gw_stock->ag_output+",
+      "ag_output->farmer_income+","farmer_income->invest_innov+","invest_innov->eff_irrig+"
+    ]},
+    {"id":"R2","type":"R","name":"حلقه نوآوری","members":[
+      "farmer_income->invest_innov+","invest_innov->rnd+","rnd->extension+","extension->eff_irrig+",
+      "eff_irrig->yield+","yield->ag_output+","ag_output->farmer_income+"
+    ]},
+    {"id":"R3","type":"R","name":"کیفیت–بازار","members":[
+      "invest_innov->quality+","quality->price_prod+","price_prod->farmer_income+","farmer_income->invest_innov+"
+    ]},
+    {"id":"B1","type":"B","name":"قیمت آب و مصرف","members":[
+      "gw_stock->governance+","governance->water_price+","water_price->water_use-","water_use->gw_stock-"
+    ]},
+    {"id":"R4","type":"R","name":"داده–حکمرانی","members":[
+      "data_transparency->governance+","governance->policy_effectiveness+","policy_effectiveness->water_efficiency_policy+",
+      "water_efficiency_policy->eff_irrig+","eff_irrig->data_transparency+"
+    ]},
+    {"id":"B2","type":"B","name":"ضایعات–درآمد","members":[
+      "cold_chain->postharvest_losses-","postharvest_losses->farmer_income-","farmer_income->cold_chain+"
+    ]},
+    {"id":"R5","type":"R","name":"تاب‌آوری","members":[
+      "diversify->resilience+","resilience->farmer_income+","farmer_income->diversify+"
+    ]},
+    {"id":"B3","type":"B","name":"تنش اقلیم","members":[
+      "climate_stress->gw_stock-","gw_stock->ag_output+","ag_output->farmer_income+","farmer_income->water_use-","water_use->gw_stock-"
+    ]},
+    {"id":"R6","type":"R","name":"مهارت–عملکرد","members":[
+      "farmer_income->labor_skill+","labor_skill->extension+","extension->yield+","yield->ag_output+","ag_output->farmer_income+"
+    ]},
+    {"id":"R7","type":"R","name":"زنجیره ارزش","members":[
+      "supply_chain->market_access+","market_access->price_prod+","price_prod->farmer_income+","farmer_income->supply_chain+"
+    ]}
+  ]
+}

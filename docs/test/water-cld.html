@@ -150,6 +150,10 @@
         <label class="btn outline" style="display:flex;align-items:center;gap:4px">
           <input type="checkbox" id="f-delay"/>تاخیر
         </label><span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
+        <select id="model-switch" aria-label="انتخاب مدل">
+          <option value="/data/water-cld.json?v=2">Simple</option>
+          <option value="/data/water-cld-poster.json?v=1" selected>Poster</option>
+        </select>
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>

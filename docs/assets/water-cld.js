@@ -21,6 +21,7 @@
   window.addEventListener('orientationchange', () => { setTimeout(setVhVar, 100); });
 
   let model;
+  let modelData;
   let simParams = {};
   const SC_KEY = 'cld-scenarios';
 
@@ -281,6 +282,63 @@
     }
   };
 
+  // --- load model from URL and rebuild graph (non-module) ---
+  window.loadModelFromUrl = function(url){
+    fetch(url, {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(model){
+      modelData = model;
+      parseModel(model);
+      markModelReady();
+      if (__chartReady) initBaselineIfPossible();
+      var C = window.cy; if (!C || !model) return;
+      // update group select
+      var groupSelect = document.getElementById('f-group');
+      if (groupSelect){
+        groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
+        (model.groups||[]).forEach(function(g){
+          var opt = document.createElement('option');
+          opt.value = g.id;
+          opt.textContent = g.id;
+          groupSelect.appendChild(opt);
+        });
+      }
+      C.startBatch();
+      C.elements().remove();
+      // nodes
+      (model.nodes||[]).forEach(function(n){
+        C.add({ data:{
+          id: n.id, label: n.label, group: n.group, unit: n.unit, desc: n.desc
+        }});
+      });
+      // compounds from groups
+      (model.groups||[]).forEach(function(g){
+        if (!C.getElementById(g.id).nonempty) {
+          C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+        }
+        C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
+        var pn = C.getElementById(g.id);
+        if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
+      });
+      // edges
+      (model.edges||[]).forEach(function(e){
+        C.add({ group:'edges', data:{
+          id: (e.id || (e.source+'__'+e.target+'__'+(e.sign||''))),
+          source: e.source, target: e.target,
+          sign: e.sign, label: e.label || (e.sign==='-'?'−':'+'),
+          weight: (typeof e.weight==='number') ? e.weight : undefined,
+          delayYears: (typeof e.delayYears==='number') ? e.delayYears : 0
+        }}).addClass(e.sign === '-' ? 'neg' : 'pos');
+      });
+
+      C.endBatch();
+
+      if (window.populateLoops) window.populateLoops(C, model.loops || []);
+      if (window.measureAndResizeNodes) window.measureAndResizeNodes(C);
+      if (window.safeFit) window.safeFit();
+
+      try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
+    });
+  };
+
   function resetScenario() {
     if (!baseSim) return;
     updateChartFromSim(baseSim);
@@ -307,51 +365,9 @@
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
-
-    const dataUrl = '/data/water-cld.json?v=2';
-    let data;
-    try {
-      const res = await fetch(dataUrl, { cache: 'no-store' });
-      if (!res.ok) throw new Error(res.status);
-      data = await res.json();
-    } catch (err) {
-      console.error('CLD JSON load failed:', dataUrl, err);
-      return;
-    }
-    const modelData = data;
-    parseModel(modelData);
-    markModelReady();
-    if (__chartReady) initBaselineIfPossible();
-
-    const elements = [];
-    const groups = modelData.groups || [];
-    const groupSelect = document.getElementById('f-group');
-    if (groupSelect) {
-      groups.forEach(g => {
-        const opt = document.createElement('option');
-        opt.value = g.id;
-        opt.textContent = g.id;
-        groupSelect.appendChild(opt);
-      });
-    }
-    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
-    (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group, desc: n.desc, unit: n.unit } }));
-    (modelData.edges || []).forEach((e, idx) => elements.push({
-      data: {
-        id: `e${idx}`,
-        source: e.source,
-        target: e.target,
-        label: e.label || e.sign || '',
-        sign: e.sign || '',
-        weight: e.weight || 0,
-        delayYears: e.delayYears || 0
-      },
-      classes: e.sign === '-' ? 'neg' : 'pos'
-    }));
-
     cy = cytoscape({
       container,
-      elements,
+      elements: [],
       style: [
         {
           selector: 'node',
@@ -1236,6 +1252,26 @@
       });
     }
   });
+
+  (function(){
+    function initSwitcher(){
+      var sw = document.getElementById('model-switch');
+      if (!sw) return;
+      try {
+        var last = localStorage.getItem('waterCLD.activeModel');
+        if (last) sw.value = last;
+      } catch(e){}
+      sw.addEventListener('change', function(){
+        window.loadModelFromUrl(sw.value);
+      });
+      if (sw.value) window.loadModelFromUrl(sw.value);
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSwitcher);
+    } else {
+      initSwitcher();
+    }
+  })();
 
   window.CLDSim = { simulate, runLayout: function(name, dir){ return window.runLayout(name, dir); }, resetScenario, parseModel, simulateStep };
 })();
