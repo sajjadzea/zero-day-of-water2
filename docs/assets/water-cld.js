@@ -1,18 +1,98 @@
 (function () {
-  function simulate({ eff = 0, dem = 0, delay = 0, years = 30 }) {
-    const inflow = 2;
-    const baseOut = 2.2;
-    let stock = 100;
-    const series = [stock];
-    for (let t = 0; t < years; t++) {
-      let out = baseOut;
-      if (t >= delay) {
-        out = baseOut * (1 + dem * 0.8) * (1 - eff * 0.6);
+  const Parser = window.exprEval.Parser;
+
+  let model;
+  let simParams = {};
+
+  function parseModel(json) {
+    const parser = new Parser();
+    model = { nodes: {}, edges: [], order: [], initials: {} };
+    (json.nodes || []).forEach(n => {
+      const node = { ...n, deps: [] };
+      if (n.expr) {
+        try { node.fn = parser.parse(n.expr); } catch (e) { console.error('node parse', n.id, e); }
       }
-      stock = Math.max(0, stock + inflow - out);
-      series.push(stock);
+      if (n.type === 'init') {
+        node.value = node.fn ? node.fn.evaluate({}) : parseFloat(n.expr) || 0;
+        model.initials[n.id] = node.value;
+      }
+      if (typeof n.init !== 'undefined') model.initials[n.id] = n.init;
+      model.nodes[n.id] = node;
+    });
+    (json.edges || []).forEach(e => {
+      const edge = { ...e };
+      if (e.expr) {
+        try { edge.fn = parser.parse(e.expr); } catch (err) { console.error('edge parse', e.source, e.target, err); }
+      }
+      model.edges.push(edge);
+    });
+    Object.values(model.nodes).forEach(n => {
+      if (n.type === 'expr' && n.fn) {
+        n.deps = n.fn.variables().filter(v => model.nodes[v]);
+      }
+    });
+    const inDeg = {};
+    Object.keys(model.nodes).forEach(id => inDeg[id] = 0);
+    Object.values(model.nodes).forEach(n => n.deps.forEach(d => inDeg[n.id]++));
+    const q = [];
+    Object.keys(inDeg).forEach(id => { if (inDeg[id] === 0) q.push(id); });
+    const order = [];
+    while (q.length) {
+      const id = q.shift();
+      order.push(id);
+      Object.values(model.nodes).forEach(n => {
+        if (n.deps.includes(id)) {
+          inDeg[n.id]--;
+          if (inDeg[n.id] === 0) q.push(n.id);
+        }
+      });
     }
-    return { years: Array.from({ length: years + 1 }, (_, i) => i), series };
+    Object.keys(model.nodes).forEach(id => { if (!order.includes(id)) order.push(id); });
+    model.order = order;
+    return model;
+  }
+
+  function simulateStep(state, t) {
+    const prev = state[t - 1] || {};
+    const cur = {};
+    const tol = 1e-6, maxIter = 8;
+    let iter = 0, changed = true;
+    while (changed && iter < maxIter) {
+      changed = false;
+      for (const id of model.order) {
+        const n = model.nodes[id];
+        if (n.type === 'init') {
+          cur[id] = model.initials[id];
+          continue;
+        }
+        const ctx = Object.assign({}, simParams, prev, cur, {
+          delay: (name, d = 1) => {
+            const tt = t - d;
+            if (tt < 0) return model.initials[name] || 0;
+            const st = state[tt];
+            return st && st[name] != null ? st[name] : model.initials[name] || 0;
+          }
+        });
+        let val = 0;
+        try { val = n.fn ? n.fn.evaluate(ctx) : 0; } catch (e) { console.error('eval', id, e); }
+        if (cur[id] === undefined || Math.abs(cur[id] - val) > tol) {
+          cur[id] = val;
+          changed = true;
+        }
+      }
+      iter++;
+    }
+    return cur;
+  }
+
+  function simulate(params) {
+    simParams = params;
+    const years = params.years || 30;
+    const state = [Object.assign({}, model.initials)];
+    for (let t = 1; t <= years; t++) {
+      state[t] = simulateStep(state, t);
+    }
+    return { years: Array.from({ length: years + 1 }, (_, i) => i), series: state.map(s => s.gw_stock) };
   }
 
   let cy;
@@ -87,9 +167,11 @@
       console.error('CLD JSON load failed:', dataUrl, err);
       return;
     }
+    const modelData = data;
+    parseModel(modelData);
 
     const elements = [];
-    const groups = data.groups || [];
+    const groups = modelData.groups || [];
     const groupSelect = document.getElementById('f-group');
     if (groupSelect) {
       groups.forEach(g => {
@@ -100,8 +182,8 @@
       });
     }
     groups.forEach(g => elements.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
-    (data.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
-    (data.edges || []).forEach((e, idx) => elements.push({
+    (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+    (modelData.edges || []).forEach((e, idx) => elements.push({
       data: {
         id: `e${idx}`,
         source: e.source,
@@ -426,6 +508,70 @@
         }
       });
 
+      const tabParam = document.getElementById('tab-param');
+      const tabFormula = document.getElementById('tab-formula');
+      const panelParam = document.getElementById('panel-param');
+      const panelFormula = document.getElementById('panel-formula');
+      if (tabParam && tabFormula && panelParam && panelFormula) {
+        tabParam.addEventListener('click', () => {
+          tabParam.classList.add('active');
+          tabFormula.classList.remove('active');
+          panelParam.style.display = 'block';
+          panelFormula.style.display = 'none';
+        });
+        tabFormula.addEventListener('click', () => {
+          tabFormula.classList.add('active');
+          tabParam.classList.remove('active');
+          panelParam.style.display = 'none';
+          panelFormula.style.display = 'block';
+        });
+      }
+
+      const formulaNode = document.getElementById('formula-node');
+      const formulaExpr = document.getElementById('formula-expr');
+      const formulaMsg = document.getElementById('formula-msg');
+      if (formulaNode && formulaExpr) {
+        (modelData.nodes || []).forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.id;
+          opt.textContent = n.label || n.id;
+          formulaNode.appendChild(opt);
+        });
+        formulaNode.addEventListener('change', () => {
+          const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
+          formulaExpr.value = n && n.expr ? n.expr : '';
+          if (formulaMsg) formulaMsg.textContent = '';
+        });
+        formulaNode.dispatchEvent(new Event('change'));
+      }
+
+      const validateBtn = document.getElementById('btn-validate');
+      if (validateBtn) validateBtn.addEventListener('click', () => {
+        try {
+          new Parser().parse(formulaExpr.value);
+          if (formulaMsg) formulaMsg.textContent = '✅';
+        } catch (err) {
+          if (formulaMsg) formulaMsg.textContent = err.message;
+        }
+      });
+
+      const saveBtn = document.getElementById('btn-save');
+      if (saveBtn) saveBtn.addEventListener('click', () => {
+        try {
+          new Parser().parse(formulaExpr.value);
+          const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
+          if (n) n.expr = formulaExpr.value;
+          parseModel(modelData);
+          const baseRes = simulate(baseline);
+          simChart.data.labels = baseRes.years;
+          simChart.data.datasets[0].data = baseRes.series;
+          simChart.update();
+          if (formulaMsg) formulaMsg.textContent = 'Saved';
+        } catch (err) {
+          if (formulaMsg) formulaMsg.textContent = err.message;
+        }
+      });
+
       if (runBtn) {
         runBtn.addEventListener('click', () => {
           const params = {
@@ -457,5 +603,5 @@
     }
   });
 
-  window.CLDSim = { simulate, runLayout, resetScenario };
+  window.CLDSim = { simulate, runLayout, resetScenario, parseModel, simulateStep };
 })();

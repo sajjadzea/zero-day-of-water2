@@ -1,20 +1,21 @@
 {
   "nodes": [
-    {"id":"efficiency","label":"بهره‌وری آبیاری","group":"نوآوری"},
-    {"id":"water_use","label":"مصرف آب","group":"تقاضا"},
-    {"id":"gw_stock","label":"منابع آب زیرزمینی","group":"منابع"},
-    {"id":"ag_output","label":"محصولات کشاورزی","group":"تولید"}
+    {"id": "efficiency", "label": "بهره‌وری آبیاری", "group": "نوآوری", "type": "expr", "expr": "eff"},
+    {"id": "ag_output", "label": "محصولات کشاورزی", "group": "تولید", "type": "expr", "expr": "50*(1+dem)"},
+    {"id": "water_use", "label": "مصرف آب", "group": "تقاضا", "type": "expr", "expr": "ag_output*(1-efficiency)"},
+    {"id": "inflow", "label": "ورودی", "group": "منابع", "type": "expr", "expr": "2"},
+    {"id": "gw_stock", "label": "منابع آب زیرزمینی", "group": "منابع", "type": "expr", "expr": "max(0, delay('gw_stock', delay) + inflow - water_use)", "init": 100}
   ],
   "edges": [
-    {"source":"gw_stock","target":"ag_output","sign":"+","label":"+","weight":0.5,"delayYears":0,"curved":true},
-    {"source":"ag_output","target":"water_use","sign":"+","label":"+","weight":0.6,"delayYears":0,"curved":true},
-    {"source":"water_use","target":"gw_stock","sign":"-","label":"−","weight":0.9,"delayYears":2,"curved":true},
-    {"source":"efficiency","target":"water_use","sign":"-","label":"−","weight":0.7,"delayYears":1,"curved":true}
+    {"source": "efficiency", "target": "water_use", "sign": "-", "label": "−", "expr": "-efficiency"},
+    {"source": "ag_output", "target": "water_use", "sign": "+", "label": "+", "expr": "ag_output"},
+    {"source": "water_use", "target": "gw_stock", "sign": "-", "label": "−", "expr": "-water_use"},
+    {"source": "inflow", "target": "gw_stock", "sign": "+", "label": "+", "expr": "inflow"}
   ],
   "groups": [
-    {"id":"نوآوری","color":"#fef3c7"},
-    {"id":"تقاضا","color":"#e0f2fe"},
-    {"id":"منابع","color":"#e7f5e9"},
-    {"id":"تولید","color":"#f3e8ff"}
+    {"id": "نوآوری", "color": "#fef3c7"},
+    {"id": "تقاضا", "color": "#e0f2fe"},
+    {"id": "منابع", "color": "#e7f5e9"},
+    {"id": "تولید", "color": "#f3e8ff"}
   ]
 }
