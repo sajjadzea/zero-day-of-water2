@@ -26,13 +26,21 @@
     } catch (e) {}
   }
 
-  function runLayout(name) {
+  function runLayout(name, dir = 'LR') {
     if (!cy) return;
+    const horizontal = dir === 'LR';
     if (name === 'elk') {
       try {
         cy.layout({
           name: 'elk',
-          elk: { algorithm: 'layered' },
+          elk: {
+            algorithm: 'layered',
+            nodeSpacing: 80,
+            padding: 50,
+            direction: horizontal ? 'RIGHT' : 'DOWN'
+          },
+          nodeSpacing: 80,
+          padding: 50,
           nodeDimensionsIncludeLabels: true,
           fit: true
         }).run();
@@ -43,7 +51,15 @@
       }
     }
     try {
-      cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
+      cy.layout({
+        name: 'dagre',
+        rankDir: dir,
+        nodeSep: 80,
+        rankSep: 80,
+        padding: 50,
+        nodeDimensionsIncludeLabels: true,
+        fit: true
+      }).run();
       safeFit();
     } catch (err) {
       console.error('layout failed', err);
@@ -76,6 +92,8 @@
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
+    const colorNodeBg = rootStyle.getPropertyValue('--card').trim() || '#1e2b2b';
+    const colorNodeBorder = colorText + '33';
 
     const dataUrl = '/data/water-cld.json?v=2';
     let data;
@@ -121,19 +139,25 @@
         {
           selector: 'node',
           style: {
-            'background-color': colorAccent,
-            'border-width': 2,
-            'border-color': colorLine,
             'label': 'data(label)',
-            'color': colorText,
             'text-valign': 'center',
             'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'text-max-width': 100,
+            'font-size': '14px',
             'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 14,
+            'color': colorText,
+            'background-color': colorNodeBg,
             'shape': 'round-rectangle',
-            'text-background-color': 'rgba(0,0,0,0.25)',
-            'text-background-opacity': 1,
-            'text-background-padding': 2
+            'padding': '12px',
+            'width': 'label',
+            'height': 'label',
+            'border-width': 2,
+            'border-color': colorNodeBorder,
+            'shadow-blur': 6,
+            'shadow-color': '#00000055',
+            'shadow-offset-x': 2,
+            'shadow-offset-y': 2
           }
         },
         {
@@ -155,11 +179,12 @@
         {
           selector: 'edge',
           style: {
-            'width': 2,
             'curve-style': 'bezier',
+            'width': ele => 2 + (ele.data('weight') || 0),
             'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
             'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0],
             'target-arrow-shape': 'triangle',
+            'arrow-scale': 1.2,
             'line-color': colorLine,
             'target-arrow-color': colorLine,
             'source-arrow-color': colorLine,
@@ -169,6 +194,7 @@
             'text-background-opacity': 1,
             'text-background-padding': 1,
             'text-wrap': 'wrap',
+            'text-max-width': 100,
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 12,
             'color': colorText
