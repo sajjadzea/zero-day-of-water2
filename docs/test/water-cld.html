@@ -15,17 +15,16 @@
     .board{display:grid;grid-template-columns:360px 1fr;gap:16px;}
     @media (max-width:1024px){ .board{ grid-template-columns:1fr; } }
     .card{background:var(--card, #122825);border:1px solid var(--muted, #1a3430);border-radius:16px;padding:12px;}
-    /* ظرف گراف */
-    #cy-wrap{min-height:520px;height:calc(100vh - 260px);}
-    #cy{width:100%;height:100%;border:1px solid var(--muted, #1a3430);border-radius:14px;background:transparent;}
-    @media (max-width:640px){ .controls, .filters{ gap:10px; } }
-    /* هدر کنترل‌های بالای گراف sticky شود */
-    .toolbar{
-      position:sticky; top:0; z-index:10;
-      background:linear-gradient(to bottom, rgba(0,0,0,0.25), transparent);
-      padding-bottom:6px; margin-bottom:6px;
-      display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    /* ظرف گراف امن */
+    #cy-wrap{min-height:560px;height:calc(100dvh - 280px);}
+    #cy{width:100%;height:100%;border:1px solid var(--muted, #1a3430);border-radius:14px;}
+    @media (max-width:640px){
+      .controls, .filters{ gap:10px; }
+      #cy-wrap{min-height:420px;height:calc(var(--vh,1dvh)*65);}
+      .row-nums .num{width:84px;}
     }
+    /* هدر کنترل‌های بالای گراف */
+    .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;position:sticky;top:0;z-index:10;background:linear-gradient(to bottom, rgba(0,0,0,0.25), transparent);padding-bottom:6px;margin-bottom:6px;}
     /* اسلایدرها و دکمه‌ها لمسی‌تر */
     .controls input[type="range"]{accent-color:var(--accent);}
     input[type="range"]{height:30px;touch-action:pan-y;}
@@ -33,6 +32,11 @@
     .btn.outline{background:transparent;}
     .btn.off{opacity:.5;}
     .select, select{min-height:36px;}
+    label.ctrl{display:flex;align-items:center;gap:8px;}
+    label.ctrl span{opacity:.9;font-size:.92rem;}
+    label.ctrl output{min-width:36px;text-align:center;font-variant-numeric:tabular-nums;}
+    .row-nums{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;}
+    .row-nums .num{width:88px;height:36px;padding:6px 8px;border-radius:10px;border:1px solid var(--muted,#1a3430);background:#0f2421;color:#e6f1ef;}
     .tabs{display:flex;gap:8px;margin-bottom:10px;}
     .tab.active{background:var(--accent);}
     #panel-formula textarea{width:100%;height:80px;margin-top:8px;background:var(--bg);color:var(--text);border:1px solid var(--muted);border-radius:8px;padding:6px;font-family:monospace;}
@@ -44,7 +48,6 @@
     #sc-table th,#sc-table td{border:1px solid var(--muted);padding:4px;text-align:center;}
     #sc-table tr.selected{background:var(--muted);}
     .hidden{display:none;}
-    label.ctrl output{margin-inline-start:8px;font-variant-numeric:tabular-nums;}
     #right-panel{overflow:hidden;}
     #sim-panel{min-height:260px;}
     #sim-panel canvas{width:100%;height:100%;}
@@ -102,16 +105,11 @@
               <option value="dem">dem</option>
             </select>
           </div>
-          <div class="slider" style="display:flex;gap:4px;align-items:center">
-            <label style="flex:1">min</label>
-            <input id="sens-min" type="number" value="0" step="0.05" class="btn outline" style="flex:1"/>
-            <label style="flex:1">max</label>
-            <input id="sens-max" type="number" value="1" step="0.05" class="btn outline" style="flex:1"/>
-            <label style="flex:1">step</label>
-            <input id="sens-step" type="number" value="0.1" step="0.05" class="btn outline" style="flex:1"/>
-          </div>
-          <div class="actions">
-            <button id="sens-run" class="btn">Batch</button>
+          <div id="sensitivity-row" class="row-nums">
+            <label>step <input id="sens-step" class="num" type="number" step="0.01" min="0" value="0.1"></label>
+            <label>max  <input id="sens-max"  class="num" type="number" step="0.1"  min="0" value="1"></label>
+            <label>min  <input id="sens-min"  class="num" type="number" step="0.1"  min="0" value="0"></label>
+            <button id="sens-run" class="btn outline">Batch</button>
             <span id="sens-progress"></span>
           </div>
         </div>
@@ -128,14 +126,17 @@
     </section>
     <section class="card" id="right-panel">
       <div class="toolbar filters">
-        <label class="ctrl"><span>حداقل وزن رابطه <button class="hint" data-tippy-content="حداقل وزن رابطه: یال‌هایی با وزن کمتر از این مقدار مخفی می‌شوند.">!</button></span>
-          <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0" aria-label="حداقل وزن رابطه"/>
+        <label class="ctrl">
+          <span>حداقل وزن رابطه</span>
+          <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0">
           <output id="flt-weight-min-val">0</output>
         </label>
-        <label class="ctrl"><span>حداکثر تاخیر (سال) <button class="hint" data-tippy-content="حداکثر تاخیر: روابط با تاخیری بیش از این مقدار پنهان می‌شوند.">!</button></span>
-          <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5" aria-label="حداکثر تاخیر (سال)"/>
+        <label class="ctrl">
+          <span>حداکثر تاخیر (سال)</span>
+          <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5">
           <output id="flt-delay-max-val">5</output>
         </label>
+        <!-- باقی کنترل‌ها (جستجو/گروه‌ها/Layout/Loops) -->
         <button id="f-pos" class="btn outline">روابط مثبت</button><button class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">!</button>
         <button id="f-neg" class="btn outline">روابط منفی</button><button class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">!</button>
         <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select><button class="hint" data-tippy-content="انتخاب گروه: فقط گره‌ها و روابط همان گروه نشان داده می‌شوند.">!</button>

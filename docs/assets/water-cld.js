@@ -222,12 +222,12 @@
         id: `e${idx}`,
         source: e.source,
         target: e.target,
-        label: e.label,
-        sign: e.sign,
+        label: e.label || e.sign || '',
+        sign: e.sign || '',
         weight: e.weight || 0,
         delayYears: e.delayYears || 0
       },
-      classes: e.sign === '+' ? 'positive pos' : 'negative neg'
+      classes: e.sign === '-' ? 'neg' : 'pos'
     }));
 
     const wVals = (modelData.edges || []).map(e => e.weight || 0);
@@ -253,22 +253,23 @@
           style: {
             'label': 'data(label)',
             'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 14,
+            'font-size': 15,
+            'font-weight': 500,
             'color': '#0a0f0e',
+            'text-wrap': 'wrap',
+            'text-max-width': 180,
             'text-valign': 'center',
             'text-halign': 'center',
-            'text-wrap': 'wrap',
-            'text-max-width': 140,
+            'text-margin-y': 0,
+            'text-outline-width': 0,
             'background-color': '#eaf3f1',
             'shape': 'round-rectangle',
-            'padding': '10px',
+            'padding': '12px 16px',
             'width': 'label',
             'height': 'label',
             'border-width': 3,
             'border-color': '#ffffff',
-            'min-zoomed-font-size': 8,
-            'text-outline-width': 2,
-            'text-outline-color': 'rgba(10,15,14,0)'
+            'min-zoomed-font-size': 8
           }
         },
         {
@@ -336,8 +337,10 @@
       layout: { name: 'grid' }
     });
 
-    cy.on('ready', safeFit);
+    cy.on('ready', () => setTimeout(safeFit, 0));
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
+    window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(safeFit,0));
 
     runLayout('elk');
 
@@ -362,12 +365,10 @@
     const fWMax = document.getElementById('f-wmax');
     const qInput = document.getElementById('q');
     const loopsList = document.getElementById('loops-list');
-    const rWeightMin = document.getElementById('flt-weight-min');
-    const rDelayMax  = document.getElementById('flt-delay-max');
-    const oWeightMin = document.getElementById('flt-weight-min-val');
-    const oDelayMax  = document.getElementById('flt-delay-max-val');
-    if (oWeightMin && rWeightMin) oWeightMin.textContent = rWeightMin.value;
-    if (oDelayMax && rDelayMax) oDelayMax.textContent = rDelayMax.value;
+    const rW = document.getElementById('flt-weight-min');
+    const rD = document.getElementById('flt-delay-max');
+    const oW = document.getElementById('flt-weight-min-val');
+    const oD = document.getElementById('flt-delay-max-val');
 
     function applyFilters() {
       cy.elements().removeClass('hidden');
@@ -394,41 +395,21 @@
       safeFit();
     }
 
-    function applyEdgeFilters() {
-      if (!cy) return;
-      const weightMin = rWeightMin ? parseFloat(rWeightMin.value) : -Infinity;
-      const delayMax = rDelayMax ? parseFloat(rDelayMax.value) : Infinity;
+    function applyEdgeFilters(){
+      const w = rW ? Number(rW.value) : 0;
+      const d = rD ? Number(rD.value) : 99;
+      if(oW) oW.textContent = w.toFixed(2);
+      if(oD) oD.textContent = d.toString();
       cy.edges().forEach(e => {
-        const wOk = (e.data('weight') || 0) >= weightMin;
-        const dOk = ((e.data('delayYears') || 0) <= delayMax);
-        if (wOk && dOk) {
-          e.removeClass('hidden');
-        } else {
-          e.addClass('hidden');
-        }
+        const weight = Number(e.data('weight') || 0);
+        const delay  = Number(e.data('delayYears') || 0);
+        if (weight >= w && delay <= d) e.removeClass('hidden');
+        else e.addClass('hidden');
       });
       safeFit();
     }
-
-    function debounce(fn, delay) {
-      let t;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), delay);
-      };
-    }
-    const debouncedEdgeFilters = debounce(applyEdgeFilters, 50);
-
-    if (rWeightMin) rWeightMin.addEventListener('input', () => {
-      if (oWeightMin) oWeightMin.textContent = rWeightMin.value;
-      debouncedEdgeFilters();
-    });
-    if (rDelayMax) rDelayMax.addEventListener('input', () => {
-      if (oDelayMax) oDelayMax.textContent = rDelayMax.value;
-      debouncedEdgeFilters();
-    });
-
-    if (cy) cy.on('ready', applyEdgeFilters);
+    if (rW) rW.addEventListener('input', applyEdgeFilters, {passive:true});
+    if (rD) rD.addEventListener('input', applyEdgeFilters, {passive:true});
 
     if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); applyFilters(); });
     if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); applyFilters(); });
@@ -437,6 +418,7 @@
     if (fWMin) fWMin.addEventListener('input', () => { if (parseFloat(fWMin.value) > parseFloat(fWMax.value)) fWMax.value = fWMin.value; applyFilters(); });
     if (fWMax) fWMax.addEventListener('input', () => { if (parseFloat(fWMax.value) < parseFloat(fWMin.value)) fWMin.value = fWMax.value; applyFilters(); });
     applyFilters();
+    applyEdgeFilters();
 
     if (qInput) {
       qInput.addEventListener('input', () => {
@@ -815,7 +797,8 @@
         }
       };
 
-      if (sensRun) sensRun.addEventListener('click', () => {
+      if (sensRun) sensRun.addEventListener('click', (e) => {
+        e.preventDefault();
         const param = sensParam.value;
         const range = { min: parseFloat(sensMin.value), max: parseFloat(sensMax.value), step: parseFloat(sensStep.value) };
         const base = {
