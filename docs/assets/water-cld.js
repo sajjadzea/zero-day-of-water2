@@ -281,44 +281,6 @@
     }
   };
 
-  function runLayout(name, dir = 'LR') {
-    if (!cy) return;
-    const horizontal = dir === 'LR';
-    if (name === 'elk') {
-      try {
-        cy.layout({
-          name: 'elk',
-          elk: {
-            algorithm: 'layered',
-            nodeSpacing: 80,
-            padding: 50,
-            direction: horizontal ? 'RIGHT' : 'DOWN'
-          },
-          nodeSpacing: 80,
-          padding: 50,
-          nodeDimensionsIncludeLabels: true,
-          fit: true
-        }).run();
-        return;
-      } catch (e) {
-        console.warn('elk layout failed, falling back to dagre', e);
-      }
-    }
-    try {
-      cy.layout({
-        name: 'dagre',
-        rankDir: dir,
-        nodeSep: 80,
-        rankSep: 80,
-        padding: 50,
-        nodeDimensionsIncludeLabels: true,
-        fit: true
-      }).run();
-    } catch (err) {
-      console.error('layout failed', err);
-    }
-  }
-
   function resetScenario() {
     if (!baseSim) return;
     updateChartFromSim(baseSim);
@@ -495,8 +457,6 @@
       document.fonts.ready.then(() => setTimeout(safeFit, 60));
     }
 
-    runLayout('elk');
-
     // --- [Tooltips for Cytoscape elements using Tippy] ---------------------------
     (function () {
       if (!window.tippy) return;
@@ -621,7 +581,6 @@
     }
 
     const layoutSel = document.getElementById('layout');
-    if (layoutSel) layoutSel.addEventListener('change', e => runLayout(e.target.value));
 
     const layoutPresetSel = document.getElementById('layout-preset');
     if (layoutPresetSel) layoutPresetSel.addEventListener('change', () => {
@@ -1052,6 +1011,219 @@
       });
     }
 
+    // ===== Layout Direction Control + UI State (non-module, CSP-safe) =====
+    (function () {
+      var LS_KEY = 'waterCLD.ui.v1';
+
+      // ---------- helpers: LocalStorage
+      function loadState() {
+        try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
+        catch(e){ return {}; }
+      }
+      function saveState(patch) {
+        var s = loadState();
+        for (var k in patch) s[k] = patch[k];
+        localStorage.setItem(LS_KEY, JSON.stringify(s));
+      }
+
+      // ---------- inject layout-dir control next to #layout
+      function ensureLayoutDirControl() {
+        var layoutSel = document.getElementById('layout');
+        if (!layoutSel) return null;
+        var exists = document.getElementById('layout-dir');
+        if (exists) return exists;
+
+        var dirSel = document.createElement('select');
+        dirSel.id = 'layout-dir';
+        dirSel.setAttribute('aria-label','جهت چیدمان');
+
+        var optLR = document.createElement('option');
+        optLR.value = 'LR'; optLR.textContent = 'چپ→راست';
+        var optTB = document.createElement('option');
+        optTB.value = 'TB'; optTB.textContent = 'بالا→پایین';
+        dirSel.appendChild(optLR); dirSel.appendChild(optTB);
+
+        // قرار دادن بلافاصله بعد از #layout
+        layoutSel.insertAdjacentElement('afterend', dirSel);
+
+        // رویداد تغییر جهت
+        dirSel.addEventListener('change', function () {
+          var algo = (document.getElementById('layout')||{}).value || 'elk';
+          saveState({ dir: dirSel.value, layout: algo });
+          if (window.runLayout) window.runLayout(algo, dirSel.value);
+        });
+
+        // تغییر الگوریتم نیز جهت را حفظ کند
+        layoutSel.addEventListener('change', function () {
+          var algo = layoutSel.value;
+          var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
+          saveState({ dir: dir, layout: algo });
+          if (window.runLayout) window.runLayout(algo, dir);
+        });
+
+        return dirSel;
+      }
+
+      // ---------- patch/define runLayout(name, dir) with direction support
+      var runLayoutOrig = window.runLayout;
+      window.runLayout = function(name, dir) {
+        name = (name || 'elk').toLowerCase();
+        dir  = (dir  || (document.getElementById('layout-dir') ? document.getElementById('layout-dir').value : 'LR'));
+
+        // اگر cy global نیست، از this یا window استفاده کن
+        var cyInst = (window.cy || (this && this.cy));
+        if (!cyInst) return;
+
+        var opts;
+        if (name === 'elk') {
+          // map LR->RIGHT, TB->DOWN
+          var elkDir = (dir === 'TB' ? 'DOWN' : 'RIGHT');
+          opts = {
+            name: 'elk',
+            nodeDimensionsIncludeLabels: true,
+            fit: true,
+            animate: 'end',
+            animationDuration: 300,
+            elk: {
+              algorithm: 'layered',
+              'elk.direction': elkDir,
+              'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+              'elk.spacing.nodeNode': 40,
+              'elk.layered.spacing.nodeNodeBetweenLayers': 50
+            }
+          };
+        } else { // dagre
+          var rankDir = (dir === 'TB' ? 'TB' : 'LR');
+          opts = {
+            name: 'dagre',
+            rankDir: rankDir,
+            nodeSep: 50,
+            rankSep: 60,
+            fit: true,
+            animate: 'end',
+            animationDuration: 300
+          };
+        }
+
+        cyInst.layout(opts).run();
+
+        // پس از اتمام چیدمان، اگر state قبلی view داشت اعمال کن
+        var st = loadState();
+        if (st && typeof st.zoom === 'number' && st.pan && typeof st.pan.x === 'number') {
+          cyInst.once('layoutstop', function(){
+            cyInst.zoom(st.zoom);
+            cyInst.pan(st.pan);
+          });
+        }
+      };
+
+      // ---------- persist & restore UI controls + cy view
+      function bindPersistence() {
+        var st = loadState();
+
+        // controls
+        var layoutSel = document.getElementById('layout');
+        var dirSel    = document.getElementById('layout-dir') || ensureLayoutDirControl();
+        var wMin      = document.getElementById('flt-weight-min');
+        var dMax      = document.getElementById('flt-delay-max');
+        var q         = document.getElementById('q');
+        var fGroup    = document.getElementById('f-group');
+        var posCbs    = document.querySelectorAll('input[type=checkbox].pos');
+        var negCbs    = document.querySelectorAll('input[type=checkbox].neg');
+        var posBtn    = document.getElementById('f-pos');
+        var negBtn    = document.getElementById('f-neg');
+
+        // --- restore
+        if (st.layout && layoutSel) layoutSel.value = st.layout;
+        if (st.dir    && dirSel)    dirSel.value    = st.dir;
+
+        if (st.flt) {
+          if (wMin && typeof st.flt.weightMin !== 'undefined') wMin.value = st.flt.weightMin;
+          if (dMax && typeof st.flt.delayMax  !== 'undefined') dMax.value = st.flt.delayMax;
+          if (typeof st.flt.pos === 'boolean') {
+            if (posCbs.length) posCbs.forEach(function(cb){ cb.checked = st.flt.pos; });
+            if (posBtn) posBtn.classList.toggle('off', !st.flt.pos);
+          }
+          if (typeof st.flt.neg === 'boolean') {
+            if (negCbs.length) negCbs.forEach(function(cb){ cb.checked = st.flt.neg; });
+            if (negBtn) negBtn.classList.toggle('off', !st.flt.neg);
+          }
+          if (fGroup && typeof st.flt.group !== 'undefined') fGroup.value = st.flt.group;
+          if (posBtn || negBtn) applyFilters();
+        }
+        if (q && typeof st.q === 'string') q.value = st.q;
+
+        // trigger existing handlers (اگر در کد اصلی listen شده)
+        ['change','input'].forEach(function(ev){
+          if (wMin)  wMin.dispatchEvent(new Event(ev));
+          if (dMax)  dMax.dispatchEvent(new Event(ev));
+          if (q)     q.dispatchEvent(new Event(ev));
+          if (fGroup)fGroup.dispatchEvent(new Event(ev));
+          if (layoutSel) layoutSel.dispatchEvent(new Event('change'));
+          if (dirSel)    dirSel.dispatchEvent(new Event('change'));
+          posCbs.forEach(function(cb){ cb.dispatchEvent(new Event('change')); });
+          negCbs.forEach(function(cb){ cb.dispatchEvent(new Event('change')); });
+        });
+
+        // --- save on changes
+        function syncFilters() {
+          saveState({
+            flt: {
+              weightMin: wMin ? Number(wMin.value) : undefined,
+              delayMax:  dMax ? Number(dMax.value)  : undefined,
+              pos:  posCbs.length ? posCbs[0].checked : !(posBtn && posBtn.classList.contains('off')),
+              neg:  negCbs.length ? negCbs[0].checked : !(negBtn && negBtn.classList.contains('off')),
+              group: fGroup ? fGroup.value : ''
+            }
+          });
+        }
+        if (wMin)  wMin.addEventListener('input', syncFilters);
+        if (dMax)  dMax.addEventListener('input', syncFilters);
+        posCbs.forEach(function(cb){ cb.addEventListener('change', syncFilters); });
+        negCbs.forEach(function(cb){ cb.addEventListener('change', syncFilters); });
+        if (posBtn) posBtn.addEventListener('click', syncFilters);
+        if (negBtn) negBtn.addEventListener('click', syncFilters);
+        if (fGroup) fGroup.addEventListener('change', syncFilters);
+        if (q) q.addEventListener('input', function(){ saveState({ q: q.value }); });
+
+        // persist layout/dir (در صورت تغییر از بیرون)
+        if (layoutSel) layoutSel.addEventListener('change', function(){
+          saveState({ layout: layoutSel.value });
+        });
+        if (dirSel) dirSel.addEventListener('change', function(){
+          saveState({ dir: dirSel.value });
+        });
+
+        // --- persist cy view (zoom/pan)
+        var cyInst = window.cy;
+        if (cyInst) {
+          var saveViewThrottled;
+          function commitView() {
+            var z = cyInst.zoom();
+            var p = cyInst.pan();
+            saveState({ zoom: z, pan: {x:p.x, y:p.y} });
+            saveViewThrottled = null;
+          }
+          function scheduleSave() {
+            if (saveViewThrottled) return;
+            saveViewThrottled = setTimeout(commitView, 200);
+          }
+          cyInst.on('zoom pan', scheduleSave);
+        }
+      }
+
+      // init after DOM & cy
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function(){
+          ensureLayoutDirControl();
+          bindPersistence();
+        });
+      } else {
+        ensureLayoutDirControl();
+        bindPersistence();
+      }
+    })();
+
     const resetBtnEl = resetBtn;
     if (resetBtnEl) {
       resetBtnEl.addEventListener('click', function(){
@@ -1065,5 +1237,5 @@
     }
   });
 
-  window.CLDSim = { simulate, runLayout, resetScenario, parseModel, simulateStep };
+  window.CLDSim = { simulate, runLayout: function(name, dir){ return window.runLayout(name, dir); }, resetScenario, parseModel, simulateStep };
 })();
