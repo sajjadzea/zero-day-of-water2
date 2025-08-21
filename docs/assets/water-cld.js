@@ -1,3 +1,4 @@
+// Fix: avoid Cytoscape mapping warnings by limiting data-driven style selectors to elements that actually carry the data fields (e.g. node[label], edge[weight]). Also ensure elements have safe defaults.
 (function () {
   const Parser = window.exprEval.Parser;
 
@@ -249,7 +250,12 @@
     if (!container || typeof window.cytoscape === 'undefined') return;
 
     if (window.tippy) {
-      tippy('.hint', { allowHTML:true, theme:'light', delay:[80,0], placement:'bottom', maxWidth: 320, interactive: true });
+      tippy('.hint', {
+        theme: 'light',
+        delay: [80, 0],
+        placement: 'bottom',
+        maxWidth: 320
+      });
     }
 
     const rootStyle = getComputedStyle(document.documentElement);
@@ -272,7 +278,6 @@
     const modelData = data;
     parseModel(modelData);
 
-    const elements = [];
     const groups = modelData.groups || [];
     const groupSelect = document.getElementById('f-group');
     if (groupSelect) {
@@ -283,22 +288,62 @@
         groupSelect.appendChild(opt);
       });
     }
+ codex/implement-precise-node-sizing-for-labels
     groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
     (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+
+ codex/update-water-cld.js-to-fix-cytoscape-warnings
+
+    function sanitize(s) { return String(s).replace(/\s+/g,'-').replace(/[^\w-]/g,'').toLowerCase(); }
+
+    const groupElements = groups.map(g => ({
+
+    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
+    (modelData.nodes || []).forEach(n => elements.push({
+      data: { id: n.id, label: n.label, parent: n.group },
+      classes: 'node',
+      scratch: { tooltip: n.desc || n.label }
+    }));
+ main
     (modelData.edges || []).forEach((e, idx) => elements.push({
+ main
       data: {
-        id: `e${idx}`,
-        source: e.source,
-        target: e.target,
-        label: e.label || e.sign || '',
-        sign: e.sign || '',
-        weight: e.weight || 0,
-        delayYears: e.delayYears || 0
+        id: g.id,
+        label: g.label !== undefined ? g.label : g.id,
+        color: g.color,
+        isGroup: true
       },
-      classes: e.sign === '-' ? 'neg' : 'pos'
+      classes: 'group'
     }));
 
-    const wVals = (modelData.edges || []).map(e => e.weight || 0);
+    const nodes = (modelData.nodes || []).map(n => {
+      const safe = {
+        id: n.id,
+        label: n.label !== undefined ? n.label : (n.id || ''),
+        group: n.group || '',
+        desc: n.desc || '',
+        parent: n.group || undefined
+      };
+      return { data: safe, classes: n.group ? `group-${sanitize(n.group)}` : '' };
+    });
+
+    const edges = (modelData.edges || []).map(e => {
+      const safe = {
+        id: e.id || `${e.source}-${e.target}`,
+        source: e.source,
+        target: e.target,
+        label: e.label !== undefined ? e.label : (e.sign || ''),
+        sign: e.sign || '',
+        weight: (typeof e.weight === 'number') ? e.weight : null,
+        delayYears: (typeof e.delayYears === 'number') ? e.delayYears : null
+      };
+      const classes = (safe.delayYears && safe.delayYears > 0) ? 'delayed' : '';
+      return { data: safe, classes };
+    });
+
+    const elements = [...groupElements, ...nodes, ...edges];
+
+    const wVals = edges.map(e => typeof e.data.weight === 'number' ? e.data.weight : 0);
     const wMinInput = document.getElementById('f-wmin');
     const wMaxInput = document.getElementById('f-wmax');
     if (wVals.length && wMinInput && wMaxInput) {
@@ -312,6 +357,7 @@
       wMaxInput.value = wMax;
     }
 
+ codex/implement-precise-node-sizing-for-labels
     cy = cytoscape({
       container,
       elements,
@@ -400,19 +446,147 @@
             'line-color': colorNeg,
             'target-arrow-color': colorNeg,
             'source-arrow-color': colorNeg
+
+      cy = cytoscape({
+        container,
+        elements,
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#eaf3f1',
+              'shape': 'round-rectangle',
+              'width': 'label',
+              'height': 'label',
+              'padding': '12px 18px',
+              'border-width': 3,
+              'border-color': '#ffffff',
+              'min-zoomed-font-size': 8
+            }
+          },
+          {
+            selector: 'node[label]',
+            style: {
+              'label': 'data(label)',
+              'font-family': 'Vazirmatn, sans-serif',
+              'text-wrap': 'wrap',
+              'text-max-width': 200,
+              'font-size': 15,
+              'font-weight': 500,
+              'color': '#0a0f0e',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'text-margin-y': 0,
+              'text-outline-width': 0
+            }
+          },
+          {
+            selector: 'node[isGroup]',
+            style: {
+              'shape': 'round-rectangle',
+              'background-color': '#ffffff',
+              'background-opacity': 0.15,
+              'border-color': '#2b3c39',
+              'border-width': 1.5,
+              'label': 'data(label)',
+              'text-valign': 'top',
+              'text-halign': 'center',
+              'font-size': 12,
+              'color': '#cfe7e2',
+              'padding': '20px',
+              'font-family': 'Vazirmatn, sans-serif'
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'curve-style': 'bezier',
+              'width': 2,
+              'line-style': 'solid',
+              'target-arrow-shape': 'triangle',
+              'arrow-scale': 1.2,
+              'line-color': colorLine,
+              'target-arrow-color': colorLine,
+              'source-arrow-color': colorLine
+            }
+          },
+          {
+            selector: 'edge[label]',
+            style: {
+              'label': 'data(label)',
+              'text-rotation': 'autorotate',
+              'text-background-color': 'rgba(0,0,0,0.35)',
+              'text-background-opacity': 1,
+              'text-background-padding': 1,
+              'text-wrap': 'wrap',
+              'text-max-width': 100,
+              'font-family': 'Vazirmatn, sans-serif',
+              'font-size': 12,
+              'color': colorText
+            }
+          },
+          {
+            selector: 'edge[weight]',
+            style: {
+              'width': 'mapData(weight, 0, 1, 1, 5)'
+            }
+          },
+          {
+            selector: 'edge.delayed',
+            style: {
+              'line-style': 'dashed',
+              'line-dash-pattern': [8,6]
+            }
+          },
+          {
+            selector: 'edge[sign = "+"]',
+            style: {
+              'line-color': colorPos,
+              'target-arrow-color': colorPos,
+              'source-arrow-color': colorPos
+            }
+          },
+          {
+            selector: 'edge[sign = "-"]',
+            style: {
+              'line-color': colorNeg,
+              'target-arrow-color': colorNeg,
+              'source-arrow-color': colorNeg
+            }
+          },
+          { selector: '.hidden', style: { 'display': 'none' } },
+          { selector: '.faded', style: { 'opacity': 0.1 } },
+          { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
+          { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
+          { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
+        ],
+        layout: { name: 'grid' }
+      });
+
+    cy.on('ready', () => {
+      setTimeout(() => cy.fit(undefined, 24), 0);
+      if (window.tippy) {
+        cy.nodes().forEach(n => {
+          const content = n.scratch('tooltip');
+          if (content) {
+            tippy(n.popperRef(), {
+              content,
+              trigger: 'mouseenter',
+              placement: 'top',
+              theme: 'light',
+              arrow: true
+            });
+ main
           }
-        },
-        { selector: '.hidden', style: { 'display': 'none' } },
-        { selector: '.faded', style: { 'opacity': 0.1 } },
-        { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
-        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
-        { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
-      ],
-      layout: { name: 'grid' }
+        });
+      }
     });
+ codex/implement-precise-node-sizing-for-labels
 
     cy.on('ready', () => setTimeout(safeFit, 0));
     cy.on('layoutstop', safeFit);
+
+ main
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
     if (document.fonts && document.fonts.ready) {
