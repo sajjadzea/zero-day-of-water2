@@ -1,10 +1,10 @@
 {
   "nodes": [
-    {"id": "efficiency", "label": "بهره‌وری آبیاری", "group": "نوآوری", "type": "expr", "expr": "eff"},
-    {"id": "ag_output", "label": "محصولات کشاورزی", "group": "تولید", "type": "expr", "expr": "50*(1+dem)"},
-    {"id": "water_use", "label": "مصرف آب", "group": "تقاضا", "type": "expr", "expr": "ag_output*(1-efficiency)"},
-    {"id": "inflow", "label": "ورودی", "group": "منابع", "type": "expr", "expr": "2"},
-    {"id": "gw_stock", "label": "منابع آب زیرزمینی", "group": "منابع", "type": "expr", "expr": "max(0, delay('gw_stock', delay) + inflow - water_use)", "init": 100}
+    {"id": "efficiency", "label": "بهره‌وری آبیاری", "group": "نوآوری", "type": "expr", "expr": "eff", "desc": "کارایی استفاده از آب در آبیاری", "unit": "شاخص"},
+    {"id": "ag_output", "label": "محصولات کشاورزی", "group": "تولید", "type": "expr", "expr": "50*(1+dem)", "desc": "حجم محصولات کشاورزی تولیدشده", "unit": "تن/سال"},
+    {"id": "water_use", "label": "مصرف آب", "group": "تقاضا", "type": "expr", "expr": "ag_output*(1-efficiency)", "desc": "میزان آب مصرفی در بخش کشاورزی", "unit": "میلی‌متر/سال"},
+    {"id": "inflow", "label": "ورودی", "group": "منابع", "type": "expr", "expr": "2", "desc": "مقدار آب ورودی به سیستم", "unit": "میلی‌متر/سال"},
+    {"id": "gw_stock", "label": "منابع آب زیرزمینی", "group": "منابع", "type": "expr", "expr": "max(0, delay('gw_stock', delay)\n+ inflow - water_use)", "init": 100, "desc": "ذخیره قابل استفاده آب‌های زیرزمینی", "unit": "میلی‌متر"}
   ],
   "edges": [
     {"source": "efficiency", "target": "water_use", "sign": "-", "label": "−", "expr": "-efficiency"},
