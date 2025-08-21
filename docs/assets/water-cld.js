@@ -498,11 +498,17 @@
 
     if (window.tippy) {
       cy.nodes().forEach(n => {
-        const desc = n.data('desc');
-        const unit = n.data('unit');
+        const desc = n.data('desc') != null ? String(n.data('desc')) : '';
+        const unit = n.data('unit') != null ? String(n.data('unit')) : '';
         if (!desc && !unit) return;
-        const ref = {
-          getBoundingClientRect: () => {
+        const tip = tippy(cy.container(), {
+          content: `${desc}${unit ? '<br>' + unit : ''}`,
+          allowHTML: true,
+          theme: 'light-border',
+          trigger: 'manual',
+          placement: 'top',
+          appendTo: document.body,
+          getReferenceClientRect: () => {
             const bb = n.renderedBoundingBox({ includeLabels: false, includeOverlays: false });
             const rect = cy.container().getBoundingClientRect();
             return {
@@ -514,13 +520,6 @@
               right: bb.x2 + rect.left
             };
           }
-        };
-        const tip = tippy(ref, {
-          content: `${desc || ''}${unit ? '<br>' + unit : ''}`,
-          trigger: 'manual',
-          placement: 'top',
-          appendTo: document.body,
-          theme: 'light'
         });
         n.on('mouseover', () => tip.show());
         n.on('mouseout', () => tip.hide());
