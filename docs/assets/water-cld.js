@@ -31,6 +31,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // group (compound) nodes
     const groups = data.groups || [];
+    const groupSelect = document.getElementById('f-group');
+    if (groupSelect) {
+      groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.id;
+        groupSelect.appendChild(opt);
+      });
+    }
     groups.forEach(g => {
       elements.push({
         data: { id: g.id, color: g.color },
@@ -61,7 +70,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           weight: e.weight || 0,
           delayYears: e.delayYears || 0
         },
-        classes: e.sign === '+' ? 'positive' : 'negative'
+        classes: e.sign === '+' ? 'positive pos' : 'negative neg'
       });
     });
 
@@ -145,6 +154,14 @@ window.addEventListener('DOMContentLoaded', async () => {
             'target-arrow-color': '#facc15',
             'width': 3
           }
+        },
+        {
+          selector: '.hide',
+          style: { 'display': 'none' }
+        },
+        {
+          selector: '.faded',
+          style: { 'opacity': 0.1 }
         }
       ],
       layout: { name: 'grid' }
@@ -215,6 +232,54 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') cy.elements().removeClass('highlighted');
     });
+
+    // filter controls
+    const fPos = document.getElementById('f-pos');
+    const fNeg = document.getElementById('f-neg');
+    const fGroup = document.getElementById('f-group');
+    const qInput = document.getElementById('q');
+
+    const updateSignFilter = () => {
+      if (fPos) cy.edges('.pos').toggleClass('hide', !fPos.checked);
+      if (fNeg) cy.edges('.neg').toggleClass('hide', !fNeg.checked);
+    };
+    if (fPos) fPos.addEventListener('change', updateSignFilter);
+    if (fNeg) fNeg.addEventListener('change', updateSignFilter);
+    updateSignFilter();
+
+    if (fGroup) {
+      fGroup.addEventListener('change', () => {
+        cy.elements().removeClass('faded');
+        const val = fGroup.value;
+        if (val) {
+          cy.nodes().filter(n => n.data('parent') !== val && n.id() !== val).addClass('faded');
+          cy.edges().filter(e => {
+            return e.source().data('parent') !== val || e.target().data('parent') !== val;
+          }).addClass('faded');
+        }
+      });
+    }
+
+    if (qInput) {
+      qInput.addEventListener('input', () => {
+        cy.elements().removeClass('faded');
+        cy.nodes().removeClass('highlighted');
+        const val = qInput.value.trim();
+        if (val) {
+          let re;
+          try {
+            re = new RegExp(val, 'i');
+          } catch (err) {
+            return;
+          }
+          cy.nodes().addClass('faded');
+          cy.edges().addClass('faded');
+          const matches = cy.nodes().filter(n => re.test(n.data('label')));
+          matches.removeClass('faded').addClass('highlighted');
+          matches.connectedEdges().removeClass('faded');
+        }
+      });
+    }
 
     // legend
     const legend = document.getElementById('legend');
