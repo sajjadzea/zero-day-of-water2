@@ -1,6 +1,9 @@
-// Fix: avoid Cytoscape mapping warnings by limiting data-driven style selectors to elements that actually carry the data fields (e.g. node[label], edge[weight]). Also ensure elements have safe defaults.
 (function () {
-  const Parser = window.exprEval.Parser;
+  const Parser = (window.exprEval && window.exprEval.Parser) || function () {
+    this.parse = function () {
+      return { evaluate: function () { return 0; }, variables: function () { return []; } };
+    };
+  };
 
   function setVhVar(){
     const vh = window.innerHeight * 0.01;
@@ -118,7 +121,9 @@
     const ctx = canvas.getContext('2d');
     return {
       setFont: function(fontFamily) { ctx.font = fontSizePx + 'px ' + fontFamily; },
-      measure: function(text) { return ctx.measureText(text).width; },
+      measure: function(text) {
+        return (ctx && typeof ctx.measureText === 'function') ? ctx.measureText(text).width : 0;
+      },
       wrapLines: function(text, maxWidth) {
         if (!text) return [''];
         const words = text.split(/\s+/);
@@ -181,14 +186,79 @@
 
   let cy;
   let simChart;
-  let baseline = { eff: 0, dem: 0, delay: 0 };
+  let baseSim;
+
+  function initSimChart() {
+    try {
+      const el = document.getElementById('sim-chart');
+      if (!el) return console.warn('sim-chart not found');
+      if (!window.Chart) return console.warn('Chart.js not loaded');
+      const ctx = el.getContext('2d');
+      if (!window.__wesh_sim_chart) {
+        Chart.defaults.font.family = 'Vazirmatn, sans-serif';
+        window.__wesh_sim_chart = new Chart(ctx, {
+          type: 'line',
+          data: { labels: [], datasets: [{ label: 'پایه', data: [], borderWidth: 2, fill: false }] },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+      if (typeof simulate === 'function') {
+        try {
+          const base = simulate({ eff: 0, dem: 0, delay: 0, years: 30 });
+          baseSim = { years: base.years, baseline: base.baseline || base.series || [] };
+          updateChartFromSim(baseSim);
+        } catch (err) {
+          console.error('simulate failed', err);
+        }
+      } else if (!window.__wesh_sim_chart.data.labels.length) {
+        baseSim = {
+          years: Array.from({ length: 30 }, (_, i) => i),
+          baseline: Array.from({ length: 30 }, () => 100)
+        };
+        updateChartFromSim(baseSim);
+      }
+      simChart = window.__wesh_sim_chart;
+    } catch (e) {
+      console.error('initSimChart failed', e);
+    }
+  }
+  document.addEventListener('DOMContentLoaded', initSimChart);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(initSimChart).catch(() => initSimChart());
+  }
+
+  function updateChartFromSim(out) {
+    if (!window.__wesh_sim_chart || !out) return;
+    const labels = out.years || Array.from({ length: out.baseline ? out.baseline.length : (out.series ? out.series.length : 0) }, (_, i) => i);
+    window.__wesh_sim_chart.data.labels = labels;
+    const datasets = [{
+      label: 'پایه',
+      data: out.baseline || out.series || [],
+      borderWidth: 2,
+      borderColor: '#0ea5e9',
+      backgroundColor: 'rgba(14,165,233,0.1)',
+      fill: false
+    }];
+    if (out.scenario) datasets.push({
+      label: 'سناریو',
+      data: out.scenario,
+      borderWidth: 2,
+      borderColor: 'rgb(220,38,38)',
+      backgroundColor: 'rgba(220,38,38,0.1)',
+      fill: false
+    });
+    window.__wesh_sim_chart.data.datasets = datasets;
+    window.__wesh_sim_chart.update();
+  }
 
   const safeFit = () => {
     try {
       measureAndResizeNodes(cy, { fontSize: 15, padding: 18, maxTextWidth: 260 });
       cy.resize();
       cy.fit(undefined, 48);
-    } catch(e){}
+    } catch(e){
+      console.error('measureAndResizeNodes failed', e);
+    }
   };
 
   function runLayout(name, dir = 'LR') {
@@ -230,32 +300,23 @@
   }
 
   function resetScenario() {
-    if (!simChart) return;
-    while (simChart.data.datasets.length > 1) {
-      simChart.data.datasets.pop();
-    }
-    simChart.update();
+    if (!baseSim) return;
+    updateChartFromSim(baseSim);
     const effInput = document.getElementById('p-eff');
     const demInput = document.getElementById('p-dem');
     const delayInput = document.getElementById('p-delay');
-    if (effInput && demInput && delayInput) {
-      effInput.value = baseline.eff;
-      demInput.value = baseline.dem;
-      delayInput.value = baseline.delay;
-    }
+    if (effInput) { effInput.value = 0; effInput.dispatchEvent(new Event('input')); }
+    if (demInput) { demInput.value = 0; demInput.dispatchEvent(new Event('input')); }
+    if (delayInput) { delayInput.value = 0; delayInput.dispatchEvent(new Event('input')); }
   }
 
   document.addEventListener('DOMContentLoaded', async function () {
     const container = document.getElementById('cy');
-    if (!container || typeof window.cytoscape === 'undefined') return;
+    if (!container) { console.warn('cy container not found'); return; }
+    if (typeof window.cytoscape === 'undefined') { console.warn('cytoscape not loaded'); return; }
 
     if (window.tippy) {
-      tippy('.hint', {
-        theme: 'light',
-        delay: [80, 0],
-        placement: 'bottom',
-        maxWidth: 320
-      });
+      tippy('.hint', { allowHTML:true, theme:'light', delay:[80,0], placement:'bottom', maxWidth: 320, interactive: true });
     }
 
     const rootStyle = getComputedStyle(document.documentElement);
@@ -278,6 +339,7 @@
     const modelData = data;
     parseModel(modelData);
 
+    const elements = [];
     const groups = modelData.groups || [];
     const groupSelect = document.getElementById('f-group');
     if (groupSelect) {
@@ -288,76 +350,21 @@
         groupSelect.appendChild(opt);
       });
     }
- codex/implement-precise-node-sizing-for-labels
     groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
     (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
-
- codex/update-water-cld.js-to-fix-cytoscape-warnings
-
-    function sanitize(s) { return String(s).replace(/\s+/g,'-').replace(/[^\w-]/g,'').toLowerCase(); }
-
-    const groupElements = groups.map(g => ({
-
-    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
-    (modelData.nodes || []).forEach(n => elements.push({
-      data: { id: n.id, label: n.label, parent: n.group },
-      classes: 'node',
-      scratch: { tooltip: n.desc || n.label }
-    }));
- main
     (modelData.edges || []).forEach((e, idx) => elements.push({
- main
       data: {
-        id: g.id,
-        label: g.label !== undefined ? g.label : g.id,
-        color: g.color,
-        isGroup: true
-      },
-      classes: 'group'
-    }));
-
-    const nodes = (modelData.nodes || []).map(n => {
-      const safe = {
-        id: n.id,
-        label: n.label !== undefined ? n.label : (n.id || ''),
-        group: n.group || '',
-        desc: n.desc || '',
-        parent: n.group || undefined
-      };
-      return { data: safe, classes: n.group ? `group-${sanitize(n.group)}` : '' };
-    });
-
-    const edges = (modelData.edges || []).map(e => {
-      const safe = {
-        id: e.id || `${e.source}-${e.target}`,
+        id: `e${idx}`,
         source: e.source,
         target: e.target,
-        label: e.label !== undefined ? e.label : (e.sign || ''),
+        label: e.label || e.sign || '',
         sign: e.sign || '',
-        weight: (typeof e.weight === 'number') ? e.weight : null,
-        delayYears: (typeof e.delayYears === 'number') ? e.delayYears : null
-      };
-      const classes = (safe.delayYears && safe.delayYears > 0) ? 'delayed' : '';
-      return { data: safe, classes };
-    });
+        weight: e.weight || 0,
+        delayYears: e.delayYears || 0
+      },
+      classes: e.sign === '-' ? 'neg' : 'pos'
+    }));
 
-    const elements = [...groupElements, ...nodes, ...edges];
-
-    const wVals = edges.map(e => typeof e.data.weight === 'number' ? e.data.weight : 0);
-    const wMinInput = document.getElementById('f-wmin');
-    const wMaxInput = document.getElementById('f-wmax');
-    if (wVals.length && wMinInput && wMaxInput) {
-      const wMin = Math.min(...wVals);
-      const wMax = Math.max(...wVals);
-      wMinInput.min = wMin;
-      wMinInput.max = wMax;
-      wMinInput.value = wMin;
-      wMaxInput.min = wMin;
-      wMaxInput.max = wMax;
-      wMaxInput.value = wMax;
-    }
-
- codex/implement-precise-node-sizing-for-labels
     cy = cytoscape({
       container,
       elements,
@@ -446,147 +453,19 @@
             'line-color': colorNeg,
             'target-arrow-color': colorNeg,
             'source-arrow-color': colorNeg
-
-      cy = cytoscape({
-        container,
-        elements,
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'background-color': '#eaf3f1',
-              'shape': 'round-rectangle',
-              'width': 'label',
-              'height': 'label',
-              'padding': '12px 18px',
-              'border-width': 3,
-              'border-color': '#ffffff',
-              'min-zoomed-font-size': 8
-            }
-          },
-          {
-            selector: 'node[label]',
-            style: {
-              'label': 'data(label)',
-              'font-family': 'Vazirmatn, sans-serif',
-              'text-wrap': 'wrap',
-              'text-max-width': 200,
-              'font-size': 15,
-              'font-weight': 500,
-              'color': '#0a0f0e',
-              'text-valign': 'center',
-              'text-halign': 'center',
-              'text-margin-y': 0,
-              'text-outline-width': 0
-            }
-          },
-          {
-            selector: 'node[isGroup]',
-            style: {
-              'shape': 'round-rectangle',
-              'background-color': '#ffffff',
-              'background-opacity': 0.15,
-              'border-color': '#2b3c39',
-              'border-width': 1.5,
-              'label': 'data(label)',
-              'text-valign': 'top',
-              'text-halign': 'center',
-              'font-size': 12,
-              'color': '#cfe7e2',
-              'padding': '20px',
-              'font-family': 'Vazirmatn, sans-serif'
-            }
-          },
-          {
-            selector: 'edge',
-            style: {
-              'curve-style': 'bezier',
-              'width': 2,
-              'line-style': 'solid',
-              'target-arrow-shape': 'triangle',
-              'arrow-scale': 1.2,
-              'line-color': colorLine,
-              'target-arrow-color': colorLine,
-              'source-arrow-color': colorLine
-            }
-          },
-          {
-            selector: 'edge[label]',
-            style: {
-              'label': 'data(label)',
-              'text-rotation': 'autorotate',
-              'text-background-color': 'rgba(0,0,0,0.35)',
-              'text-background-opacity': 1,
-              'text-background-padding': 1,
-              'text-wrap': 'wrap',
-              'text-max-width': 100,
-              'font-family': 'Vazirmatn, sans-serif',
-              'font-size': 12,
-              'color': colorText
-            }
-          },
-          {
-            selector: 'edge[weight]',
-            style: {
-              'width': 'mapData(weight, 0, 1, 1, 5)'
-            }
-          },
-          {
-            selector: 'edge.delayed',
-            style: {
-              'line-style': 'dashed',
-              'line-dash-pattern': [8,6]
-            }
-          },
-          {
-            selector: 'edge[sign = "+"]',
-            style: {
-              'line-color': colorPos,
-              'target-arrow-color': colorPos,
-              'source-arrow-color': colorPos
-            }
-          },
-          {
-            selector: 'edge[sign = "-"]',
-            style: {
-              'line-color': colorNeg,
-              'target-arrow-color': colorNeg,
-              'source-arrow-color': colorNeg
-            }
-          },
-          { selector: '.hidden', style: { 'display': 'none' } },
-          { selector: '.faded', style: { 'opacity': 0.1 } },
-          { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
-          { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
-          { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
-        ],
-        layout: { name: 'grid' }
-      });
-
-    cy.on('ready', () => {
-      setTimeout(() => cy.fit(undefined, 24), 0);
-      if (window.tippy) {
-        cy.nodes().forEach(n => {
-          const content = n.scratch('tooltip');
-          if (content) {
-            tippy(n.popperRef(), {
-              content,
-              trigger: 'mouseenter',
-              placement: 'top',
-              theme: 'light',
-              arrow: true
-            });
- main
           }
-        });
-      }
+        },
+        { selector: '.hidden', style: { 'display': 'none' } },
+        { selector: '.faded', style: { 'opacity': 0.1 } },
+        { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
+        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
+        { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
+      ],
+      layout: { name: 'grid' }
     });
- codex/implement-precise-node-sizing-for-labels
 
     cy.on('ready', () => setTimeout(safeFit, 0));
     cy.on('layoutstop', safeFit);
-
- main
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
     if (document.fonts && document.fonts.ready) {
@@ -612,14 +491,12 @@
     const fNeg = document.getElementById('f-neg');
     const fGroup = document.getElementById('f-group');
     const fDelay = document.getElementById('f-delay');
-    const fWMin = document.getElementById('f-wmin');
-    const fWMax = document.getElementById('f-wmax');
     const qInput = document.getElementById('q');
     const loopsList = document.getElementById('loops-list');
-    const rW = document.getElementById('flt-weight-min');
-    const rD = document.getElementById('flt-delay-max');
-    const oW = document.getElementById('flt-weight-min-val');
-    const oD = document.getElementById('flt-delay-max-val');
+    const wMin = document.getElementById('flt-weight-min');
+    const dMax = document.getElementById('flt-delay-max');
+    const wMinOut = document.getElementById('flt-weight-min-val');
+    const dMaxOut = document.getElementById('flt-delay-max-val');
 
     function applyFilters() {
       cy.elements().removeClass('hidden');
@@ -627,16 +504,12 @@
       const showNeg = !(fNeg && fNeg.classList.contains('off'));
       const groupVal = fGroup ? fGroup.value : '';
       const delayOnly = fDelay ? fDelay.checked : false;
-      const wMin = fWMin ? parseFloat(fWMin.value) : -Infinity;
-      const wMax = fWMax ? parseFloat(fWMax.value) : Infinity;
 
       cy.edges().forEach(e => {
         const signOk = e.data('sign') === '+' ? showPos : showNeg;
         const groupOk = !groupVal || (e.source().data('parent') === groupVal && e.target().data('parent') === groupVal);
         const delayOk = !delayOnly || e.data('delayYears') > 0;
-        const w = e.data('weight') || 0;
-        const weightOk = w >= wMin && w <= wMax;
-        if (!(signOk && groupOk && delayOk && weightOk)) e.addClass('hidden');
+        if (!(signOk && groupOk && delayOk)) e.addClass('hidden');
       });
 
       cy.nodes().forEach(n => {
@@ -646,28 +519,32 @@
       safeFit();
     }
 
+    function bindOut(inp, out){
+      if (inp && out){
+        out.textContent = String(inp.value);
+        inp.addEventListener('input', () => { out.textContent = String(inp.value); });
+      }
+    }
+    bindOut(wMin, wMinOut);
+    bindOut(dMax, dMaxOut);
     function applyEdgeFilters(){
-      const w = rW ? Number(rW.value) : 0;
-      const d = rD ? Number(rD.value) : 99;
-      if(oW) oW.textContent = w.toFixed(2);
-      if(oD) oD.textContent = d.toString();
+      cy.edges().removeClass('hidden');
+      const w = wMin ? Number(wMin.value) : 0;
+      const d = dMax ? Number(dMax.value) : 0;
       cy.edges().forEach(e => {
-        const weight = Number(e.data('weight') || 0);
-        const delay  = Number(e.data('delayYears') || 0);
-        if (weight >= w && delay <= d) e.removeClass('hidden');
-        else e.addClass('hidden');
+        if (e.data('weight') < w || e.data('delayYears') > d) {
+          e.addClass('hidden');
+        }
       });
       safeFit();
     }
-    if (rW) rW.addEventListener('input', applyEdgeFilters, {passive:true});
-    if (rD) rD.addEventListener('input', applyEdgeFilters, {passive:true});
+    if (wMin) wMin.addEventListener('input', applyEdgeFilters, {passive:true});
+    if (dMax) dMax.addEventListener('input', applyEdgeFilters, {passive:true});
 
     if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); applyFilters(); });
     if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); applyFilters(); });
     if (fGroup) fGroup.addEventListener('change', applyFilters);
     if (fDelay) fDelay.addEventListener('change', applyFilters);
-    if (fWMin) fWMin.addEventListener('input', () => { if (parseFloat(fWMin.value) > parseFloat(fWMax.value)) fWMax.value = fWMin.value; applyFilters(); });
-    if (fWMax) fWMax.addEventListener('input', () => { if (parseFloat(fWMax.value) < parseFloat(fWMin.value)) fWMin.value = fWMax.value; applyFilters(); });
     applyFilters();
     applyEdgeFilters();
 
@@ -754,57 +631,6 @@
 
     populateLoops();
 
-    const exportPngBtn = document.getElementById('btn-export-png');
-    if (exportPngBtn) {
-      exportPngBtn.addEventListener('click', () => {
-        const png = cy.png({ full: true, scale: 2 });
-        const a = document.createElement('a');
-        a.href = png;
-        a.download = 'water-cld.png';
-        a.click();
-      });
-    }
-
-    const exportSvgBtn = document.getElementById('btn-export-svg');
-    if (exportSvgBtn) {
-      exportSvgBtn.disabled = true;
-      exportSvgBtn.title = 'SVG export requires cytoscape-svg plugin';
-    }
-
-    const exportJsonBtn = document.getElementById('btn-export-json');
-    if (exportJsonBtn) {
-      exportJsonBtn.addEventListener('click', () => {
-        const g = [];
-        const n = [];
-        const e = [];
-        cy.elements().forEach(ele => {
-          if (ele.isNode()) {
-            if (ele.hasClass('group')) {
-              g.push({ id: ele.id(), color: ele.data('color') });
-            } else {
-              n.push({ id: ele.id(), label: ele.data('label'), group: ele.data('parent') });
-            }
-          } else if (ele.isEdge()) {
-            e.push({
-              source: ele.data('source'),
-              target: ele.data('target'),
-              label: ele.data('label'),
-              sign: ele.data('sign'),
-              weight: ele.data('weight'),
-              delayYears: ele.data('delayYears')
-            });
-          }
-        });
-        const blob = new Blob([JSON.stringify({ groups: g, nodes: n, edges: e }, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'water-cld.json';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-    }
-
     const importInput = document.getElementById('import-json');
     if (importInput) {
       importInput.addEventListener('change', e => {
@@ -862,13 +688,12 @@
       legend.innerHTML = items.join('');
     }
 
-    const chartCanvas = document.getElementById('sim-chart');
     const effInput = document.getElementById('p-eff');
     const demInput = document.getElementById('p-dem');
     const delayInput = document.getElementById('p-delay');
     const runBtn = document.getElementById('btn-run');
     const resetBtn = document.getElementById('btn-reset');
-    const exportBtn = document.getElementById('btn-export');
+    const exportBtn = document.getElementById('btn-export-csv');
     const scNew = document.getElementById('sc-new');
     const scSave = document.getElementById('sc-save');
     const scLoad = document.getElementById('sc-load');
@@ -900,43 +725,12 @@
     bindSlider(demInput, demVal);
     bindSlider(delayInput, delayVal);
 
-    if (chartCanvas && window.Chart) {
-      Chart.defaults.font.family = 'Vazirmatn, sans-serif';
-      baseline = {
-        eff: parseFloat(effInput.value),
-        dem: parseFloat(demInput.value),
-        delay: parseInt(delayInput.value)
-      };
-      const baseRes = simulate(baseline);
-      simChart = new Chart(chartCanvas, {
-        type: 'line',
-        data: {
-          labels: baseRes.years,
-          datasets: [{
-            label: 'پایه',
-            data: baseRes.series,
-            borderColor: '#0ea5e9',
-            backgroundColor: 'rgba(14,165,233,0.1)',
-            fill: true
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: true } },
-          scales: {
-            x: { title: { display: true, text: 'سال' } },
-            y: { title: { display: true, text: 'ذخیره' } }
-          }
-        }
-      });
-      const chartWrap = document.getElementById('sim-panel');
-      if ('ResizeObserver' in window && simChart && simChart.resize) {
-        new ResizeObserver(() => simChart.resize()).observe(chartWrap);
-      }
-
-      const scTbody = scTable ? scTable.querySelector('tbody') : null;
-      function refreshScenarioTable() {
+    initSimChart();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(initSimChart).catch(() => initSimChart());
+    }
+    const scTbody = scTable ? scTable.querySelector('tbody') : null;
+    function refreshScenarioTable() {
         if (!scTbody) return;
         scTbody.innerHTML = '';
         const scs = getScenarios();
@@ -998,14 +792,15 @@
 
       if (exportBtn) exportBtn.addEventListener('click', () => {
         if (!simChart) return;
-        const labels = simChart.data.labels;
-        const datasets = simChart.data.datasets;
-        let csv = 'year,' + datasets.map(ds => ds.label).join(',') + '\n';
-        labels.forEach((lab, i) => {
-          const row = [lab];
-          datasets.forEach(ds => row.push(ds.data[i] != null ? ds.data[i] : ''));
+        const years = simChart.data.labels || [];
+        const ds = simChart.data.datasets || [];
+        let csv = 'year,baseline,scenario\n';
+        for (let i = 0; i < years.length; i++) {
+          const row = [years[i]];
+          row.push(ds[0] && ds[0].data ? ds[0].data[i] : '');
+          row.push(ds[1] && ds[1].data ? ds[1].data[i] : '');
           csv += row.join(',') + '\n';
-        });
+        }
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1115,10 +910,9 @@
           const n = modelData.nodes.find(nd => nd.id === formulaNode.value);
           if (n) n.expr = formulaExpr.value;
           parseModel(modelData);
-          const baseRes = simulate(baseline);
-          simChart.data.labels = baseRes.years;
-          simChart.data.datasets[0].data = baseRes.series;
-          simChart.update();
+          const baseRes = simulate({ eff: 0, dem: 0, delay: 0, years: 30 });
+          baseSim = { years: baseRes.years, baseline: baseRes.series };
+          updateChartFromSim(baseSim);
           if (formulaMsg) formulaMsg.textContent = 'Saved';
         } catch (err) {
           if (formulaMsg) formulaMsg.textContent = err.message;
@@ -1130,30 +924,17 @@
           const params = {
             eff: parseFloat(effInput.value),
             dem: parseFloat(demInput.value),
-            delay: parseInt(delayInput.value)
+            delay: parseInt(delayInput.value, 10),
+            years: baseSim && baseSim.years ? baseSim.years.length - 1 : 30
           };
           const res = simulate(params);
-          if (simChart.data.datasets.length < 2) {
-            simChart.data.datasets.push({
-              label: 'سناریو',
-              data: res.series,
-              borderColor: 'rgb(220,38,38)',
-              backgroundColor: 'rgba(220,38,38,0.1)',
-              fill: true
-            });
-          } else {
-            simChart.data.datasets[1].data = res.series;
-          }
-          simChart.update();
+          updateChartFromSim({ years: res.years, baseline: baseSim ? baseSim.baseline : [], scenario: res.series });
         });
       }
 
       if (resetBtn) {
         resetBtn.addEventListener('click', resetScenario);
       }
-    } else {
-      console.warn('Chart.js not found; rendering CLD only');
-    }
   });
 
   window.CLDSim = { simulate, runLayout, resetScenario, parseModel, simulateStep };
