@@ -107,13 +107,7 @@
   let cy;
   let simChart;
   let baseline = { eff: 0, dem: 0, delay: 0 };
-
-  function safeFit() {
-    try {
-      cy.resize();
-      cy.fit(undefined, 20);
-    } catch (e) {}
-  }
+  let safeFit;
 
   function runLayout(name, dir = 'LR') {
     if (!cy) return;
@@ -181,8 +175,6 @@
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
-    const colorNodeBg = rootStyle.getPropertyValue('--card').trim() || '#1e2b2b';
-    const colorNodeBorder = colorText + '33';
 
     const dataUrl = '/data/water-cld.json?v=2';
     let data;
@@ -208,7 +200,7 @@
         groupSelect.appendChild(opt);
       });
     }
-    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+    groups.forEach(g => elements.push({ data: { id: g.id, label: g.id, color: g.color, isGroup: true } }));
     (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
     (modelData.edges || []).forEach((e, idx) => elements.push({
       data: {
@@ -242,43 +234,41 @@
       elements,
       style: [
         {
-          selector: 'node',
+          selector: 'node[!isGroup]',
           style: {
             'label': 'data(label)',
+            'font-family': 'Vazirmatn, sans-serif',
+            'font-size': 14,
+            'color': '#0a0f0e',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'text-max-width': 100,
-            'font-size': '14px',
-            'font-family': 'Vazirmatn, sans-serif',
-            'color': colorText,
-            'background-color': colorNodeBg,
+            'text-max-width': 140,
+            'background-color': '#eaf3f1',
             'shape': 'round-rectangle',
-            'padding': '12px',
+            'padding': '10px',
             'width': 'label',
             'height': 'label',
-            'border-width': 2,
-            'border-color': colorNodeBorder,
-            'shadow-blur': 6,
-            'shadow-color': '#00000055',
-            'shadow-offset-x': 2,
-            'shadow-offset-y': 2
+            'border-width': 3,
+            'border-color': '#ffffff',
+            'min-zoomed-font-size': 8,
+            'text-outline-width': 2,
+            'text-outline-color': 'rgba(10,15,14,0)'
           }
         },
         {
-          selector: 'node.group',
+          selector: 'node[?isGroup]',
           style: {
             'shape': 'round-rectangle',
             'background-color': 'rgba(255,255,255,0.06)',
             'border-color': '#2b3c39',
-            'border-width': 2,
-            'label': 'data(id)',
-            'color': '#cde6e1',
-            'text-halign': 'center',
+            'border-width': 1.5,
+            'label': 'data(label)',
             'text-valign': 'top',
-            'padding': '10px',
-            'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 12
+            'text-halign': 'center',
+            'font-size': 12,
+            'color': '#cfe7e2',
+            'padding': '20px'
           }
         },
         {
@@ -330,8 +320,8 @@
       layout: { name: 'grid' }
     });
 
+    safeFit = () => { try { cy.resize(); cy.fit(undefined, 24); } catch (e) {} };
     cy.on('ready', safeFit);
-    setTimeout(safeFit, 0);
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     document.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => requestAnimationFrame(safeFit)));
 
@@ -471,7 +461,7 @@
     function findLoops(maxLen = 6) {
       const loops = [];
       const seen = new Set();
-      const nodes = cy.nodes().filter(n => !n.hasClass('group'));
+      const nodes = cy.nodes().filter(n => !n.data('isGroup'));
 
       function dfs(curr, start, pathNodes, pathEdges, negCount) {
         if (pathEdges.length >= maxLen) return;
@@ -543,7 +533,7 @@
         const e = [];
         cy.elements().forEach(ele => {
           if (ele.isNode()) {
-            if (ele.hasClass('group')) {
+            if (ele.data('isGroup')) {
               g.push({ id: ele.id(), color: ele.data('color') });
             } else {
               n.push({ id: ele.id(), label: ele.data('label'), group: ele.data('parent') });
@@ -589,7 +579,7 @@
               });
             }
             const els = [];
-            groups.forEach(g => els.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+            groups.forEach(g => els.push({ data: { id: g.id, label: g.id, color: g.color, isGroup: true } }));
             (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group } }));
             (data.edges || []).forEach((e, idx) => els.push({
               data: {
