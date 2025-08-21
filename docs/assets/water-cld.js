@@ -9,20 +9,8 @@
   var __modelReady = false;
   var __chartReady = false;
   var __modelReadyQueue = [];
-  function whenModelReady(fn){
-    if (__modelReady){
-      try{ fn(); } catch(e){ console.error(e); }
-    } else {
-      __modelReadyQueue.push(fn);
-    }
-  }
-  function markModelReady(){
-    __modelReady = true;
-    for (var i=0;i<__modelReadyQueue.length;i++){
-      try{ __modelReadyQueue[i](); }catch(e){ console.error(e); }
-    }
-    __modelReadyQueue = [];
-  }
+  function whenModelReady(fn){ if(__modelReady){ try{ fn(); }catch(e){ console.error(e);} } else { __modelReadyQueue.push(fn); } }
+  function markModelReady(){ __modelReady = true; for(var i=0;i<__modelReadyQueue.length;i++){ try{ __modelReadyQueue[i](); }catch(e){ console.error(e);} } __modelReadyQueue = []; }
 
   function setVhVar(){
     const vh = window.innerHeight * 0.01;
