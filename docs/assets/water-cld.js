@@ -112,12 +112,82 @@
     return { years: Array.from({ length: years + 1 }, (_, i) => i), series: state.map(s => s.gw_stock) };
   }
 
+  function createTextMeasurer(fontSizePx) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    return {
+      setFont: function(fontFamily) { ctx.font = fontSizePx + 'px ' + fontFamily; },
+      measure: function(text) { return ctx.measureText(text).width; },
+      wrapLines: function(text, maxWidth) {
+        if (!text) return [''];
+        const words = text.split(/\s+/);
+        const lines = [];
+        let line = words[0] || '';
+        for (let i = 1; i < words.length; i++) {
+          const word = words[i];
+          const test = line + ' ' + word;
+          if (this.measure(test) <= maxWidth) {
+            line = test;
+          } else {
+            lines.push(line);
+            line = word;
+          }
+        }
+        lines.push(line);
+        return lines;
+      }
+    };
+  }
+
+  function measureAndResizeNodes(cy, opts = {}) {
+    const fontSize = opts.fontSize || 15;
+    const padding = typeof opts.padding === 'number' ? opts.padding : 18;
+    const maxTextWidth = opts.maxTextWidth || 260;
+    const minWidth = opts.minWidth || 100;
+    const minHeight = opts.minHeight || 48;
+    const container = cy.container();
+    const comp = window.getComputedStyle(container);
+    const fontFamily = comp && comp.fontFamily ? comp.fontFamily : 'sans-serif';
+    const measurer = createTextMeasurer(fontSize);
+    measurer.setFont(fontFamily);
+
+    cy.batch(() => {
+      cy.nodes().forEach(node => {
+        if (node.isParent && node.isParent()) return;
+        const rawLabel = (node.data('label') !== undefined) ? String(node.data('label')) : (node.id() || '');
+        const normalized = rawLabel.replace(/\s+/g, ' ').trim();
+        const lines = measurer.wrapLines(normalized, maxTextWidth);
+        let maxLineWidth = 0;
+        lines.forEach(ln => {
+          const w = measurer.measure(ln);
+          if (w > maxLineWidth) maxLineWidth = w;
+        });
+        const lineHeight = Math.ceil(fontSize * 1.3);
+        const textHeight = lines.length * lineHeight;
+        const newWidth = Math.max(minWidth, Math.ceil(maxLineWidth + padding * 2));
+        const newHeight = Math.max(minHeight, Math.ceil(textHeight + padding * 2));
+        const multiLabel = lines.join('\n');
+        node.data('label', multiLabel);
+        node.style({
+          'width': newWidth + 'px',
+          'height': newHeight + 'px',
+          'text-valign': 'center',
+          'text-halign': 'center'
+        });
+      });
+    });
+  }
+
   let cy;
   let simChart;
   let baseline = { eff: 0, dem: 0, delay: 0 };
 
   const safeFit = () => {
-    try { cy.resize(); cy.fit(undefined, 24); } catch(e){}
+    try {
+      measureAndResizeNodes(cy, { fontSize: 15, padding: 18, maxTextWidth: 260 });
+      cy.resize();
+      cy.fit(undefined, 48);
+    } catch(e){}
   };
 
   function runLayout(name, dir = 'LR') {
@@ -138,7 +208,6 @@
           nodeDimensionsIncludeLabels: true,
           fit: true
         }).run();
-        safeFit();
         return;
       } catch (e) {
         console.warn('elk layout failed, falling back to dagre', e);
@@ -154,7 +223,6 @@
         nodeDimensionsIncludeLabels: true,
         fit: true
       }).run();
-      safeFit();
     } catch (err) {
       console.error('layout failed', err);
     }
@@ -215,7 +283,7 @@
         groupSelect.appendChild(opt);
       });
     }
-    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
+    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
     (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
     (modelData.edges || []).forEach((e, idx) => elements.push({
       data: {
@@ -249,12 +317,19 @@
       elements,
       style: [
         {
-          selector: 'node[!isGroup]',
+          selector: 'node',
+          style: {
+            'background-color': '#f8faf9',
+            'border-width': 2
+          }
+        },
+        {
+          selector: 'node[label][!isGroup]',
           style: {
             'label': 'data(label)',
             'font-family': 'Vazirmatn, sans-serif',
             'text-wrap': 'wrap',
-            'text-max-width': 200,
+            'text-max-width': 260,
             'font-size': 15,
             'font-weight': 500,
             'color': '#0a0f0e',
@@ -264,8 +339,6 @@
             'text-outline-width': 0,
             'background-color': '#eaf3f1',
             'shape': 'round-rectangle',
-            'width': 'label',
-            'height': 'label',
             'padding': '12px 18px',
             'border-width': 3,
             'border-color': '#ffffff',
@@ -273,11 +346,11 @@
           }
         },
         {
-          selector: 'node[?isGroup]',
+          selector: 'node.compound',
           style: {
             'shape': 'round-rectangle',
             'background-color': '#ffffff',
-            'background-opacity': 0.15,
+            'background-opacity': 0.12,
             'border-color': '#2b3c39',
             'border-width': 1.5,
             'label': 'data(label)',
@@ -285,7 +358,7 @@
             'text-halign': 'center',
             'font-size': 12,
             'color': '#cfe7e2',
-            'padding': '20px',
+            'padding': 24,
             'font-family': 'Vazirmatn, sans-serif'
           }
         },
@@ -338,11 +411,12 @@
       layout: { name: 'grid' }
     });
 
-    cy.on('ready', () => setTimeout(() => cy.fit(undefined, 24), 0));
+    cy.on('ready', () => setTimeout(safeFit, 0));
+    cy.on('layoutstop', safeFit);
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(() => cy.fit(undefined, 24), 0));
+      document.fonts.ready.then(() => setTimeout(safeFit, 60));
     }
 
     runLayout('elk');
@@ -577,7 +651,7 @@
               });
             }
             const els = [];
-            groups.forEach(g => els.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+            groups.forEach(g => els.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
             (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group } }));
             (data.edges || []).forEach((e, idx) => els.push({
               data: {
