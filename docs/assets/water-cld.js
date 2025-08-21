@@ -19,6 +19,13 @@
   let simChart;
   let baseline = { eff: 0, dem: 0, delay: 0 };
 
+  function safeFit() {
+    try {
+      cy.resize();
+      cy.fit(undefined, 20);
+    } catch (e) {}
+  }
+
   function runLayout(name) {
     if (!cy) return;
     if (name === 'elk') {
@@ -29,6 +36,7 @@
           nodeDimensionsIncludeLabels: true,
           fit: true
         }).run();
+        safeFit();
         return;
       } catch (e) {
         console.warn('elk layout failed, falling back to dagre', e);
@@ -36,6 +44,7 @@
     }
     try {
       cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
+      safeFit();
     } catch (err) {
       console.error('layout failed', err);
     }
@@ -105,20 +114,19 @@
         {
           selector: 'node',
           style: {
-            'background-color': '#ffffff18',
-            'border-width': 1.4,
-            'border-color': '#ffffffcc',
+            'background-color': 'rgba(88,167,154,0.95)',
+            'border-width': 2,
+            'border-color': '#cbd5e1',
             'label': 'data(label)',
-            'color': '#e8fff3',
+            'color': '#e5e7eb',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 14,
             'shape': 'round-rectangle',
-            'shadow-blur': 8,
-            'shadow-color': '#00000055',
-            'shadow-offset-x': 0,
-            'shadow-offset-y': 2
+            'text-background-color': 'rgba(0,0,0,0.25)',
+            'text-background-opacity': 1,
+            'text-background-padding': 2
           }
         },
         {
@@ -139,39 +147,36 @@
         {
           selector: 'edge',
           style: {
-            'width': 4,
+            'width': 2,
             'curve-style': 'bezier',
             'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
             'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0],
             'target-arrow-shape': 'triangle',
-            'line-color': '#ffffff66',
-            'target-arrow-color': '#ffffff66',
+            'line-color': '#94a3b8',
+            'target-arrow-color': '#94a3b8',
             'label': 'data(label)',
-            'edge-text-rotation': 'autorotate',
+            'text-rotation': 'autorotate',
+            'text-background-color': 'rgba(0,0,0,0.35)',
             'text-background-opacity': 1,
-            'text-background-color': '#142a20',
-            'text-background-padding': '2px',
+            'text-background-padding': 1,
             'text-wrap': 'wrap',
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 12,
-            'color': '#e8fff3'
+            'color': '#e5e7eb'
           }
         },
         {
           selector: 'edge.positive',
           style: {
-            'line-color': '#24c46b',
-            'target-arrow-color': '#24c46b',
-            'line-style': 'solid'
+            'line-color': '#16a34a',
+            'target-arrow-color': '#16a34a'
           }
         },
         {
           selector: 'edge.negative',
           style: {
-            'line-color': '#e76060',
-            'target-arrow-color': '#e76060',
-            'line-style': 'dashed',
-            'line-dash-pattern': [8,6]
+            'line-color': 'rgb(220,38,38)',
+            'target-arrow-color': 'rgb(220,38,38)'
           }
         },
         {
@@ -199,6 +204,11 @@
       ],
       layout: { name: 'grid' }
     });
+
+    cy.on('ready', safeFit);
+    setTimeout(safeFit, 0);
+    window.addEventListener('resize', () => requestAnimationFrame(safeFit));
+    document.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => requestAnimationFrame(safeFit)));
 
     runLayout('elk');
 
@@ -433,7 +443,7 @@
             simChart.data.datasets.push({
               label: 'سناریو',
               data: res.series,
-              borderColor: '#dc2626',
+              borderColor: 'rgb(220,38,38)',
               backgroundColor: 'rgba(220,38,38,0.1)',
               fill: true
             });
