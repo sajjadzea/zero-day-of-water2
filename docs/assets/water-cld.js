@@ -175,6 +175,10 @@
     const container = document.getElementById('cy');
     if (!container || typeof window.cytoscape === 'undefined') return;
 
+    if (window.tippy) {
+      tippy('.hint', { allowHTML:true, theme:'light', delay:[80,0], placement:'bottom', maxWidth: 320, interactive: true });
+    }
+
     const rootStyle = getComputedStyle(document.documentElement);
     const colorPos = rootStyle.getPropertyValue('--pos').trim() || '#16a34a';
     const colorNeg = rootStyle.getPropertyValue('--neg').trim() || '#dc2626';
