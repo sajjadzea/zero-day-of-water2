@@ -192,6 +192,17 @@
 
     runLayout('elk');
 
+    if (cy) {
+      cy.on('dblclick', 'node', e => {
+        const n = e.target;
+        if (n.locked()) {
+          n.unlock();
+        } else {
+          n.lock();
+        }
+      });
+    }
+
     const layoutSel = document.getElementById('layout');
     if (layoutSel) layoutSel.addEventListener('change', e => runLayout(e.target.value));
 
@@ -354,7 +365,7 @@
     const runBtn = document.getElementById('btn-run');
     const resetBtn = document.getElementById('btn-reset');
 
-    if (chartCanvas && typeof Chart !== 'undefined') {
+    if (chartCanvas && window.Chart) {
       Chart.defaults.font.family = 'Vazirmatn, sans-serif';
       baseline = {
         eff: parseFloat(effInput.value),
@@ -410,6 +421,8 @@
       if (resetBtn) {
         resetBtn.addEventListener('click', resetScenario);
       }
+    } else {
+      console.warn('Chart.js not found; rendering CLD only');
     }
   });
 
