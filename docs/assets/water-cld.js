@@ -174,6 +174,22 @@ window.addEventListener('DOMContentLoaded', async () => {
       layout: { name: 'grid' }
     });
 
+ codex/add-export/import-buttons-for-images-and-json
+    // layout using elk, fallback to dagre
+    const runLayout = () => {
+      try {
+        cy.layout({
+          name: 'elk',
+          elk: { algorithm: 'layered' },
+          nodeDimensionsIncludeLabels: true,
+          fit: true
+        }).run();
+      } catch (err) {
+        try {
+          cy.layout({ name: 'dagre', rankDir: 'LR' }).run();
+        } catch (e2) {
+          console.error('layout failed', e2);
+
     function runLayout(name) {
       if (name === 'elk') {
         try {
@@ -195,9 +211,11 @@ window.addEventListener('DOMContentLoaded', async () => {
           cy.layout({ name: 'dagre', rankDir: 'LR', nodeDimensionsIncludeLabels: true, fit: true }).run();
         } catch (err) {
           console.error('layout failed', err);
+ main
         }
       }
-    }
+    };
+    runLayout();
 
     runLayout('elk');
 
@@ -319,6 +337,129 @@ window.addEventListener('DOMContentLoaded', async () => {
         items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px"></span>${g.id}</div>`);
       });
       legend.innerHTML = items.join('');
+    }
+
+    // export / import controls
+    const exportPngBtn = document.getElementById('btn-export-png');
+    if (exportPngBtn) {
+      exportPngBtn.addEventListener('click', () => {
+        const png = cy.png({ full: true, scale: 2 });
+        const a = document.createElement('a');
+        a.href = png;
+        a.download = 'water-cld.png';
+        a.click();
+      });
+    }
+
+    const exportSvgBtn = document.getElementById('btn-export-svg');
+    if (exportSvgBtn) {
+      exportSvgBtn.addEventListener('click', () => {
+        const svg = typeof cy.svg === 'function' ? cy.svg({ full: true }) : container.innerHTML;
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'water-cld.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    const exportJsonBtn = document.getElementById('btn-export-json');
+    if (exportJsonBtn) {
+      exportJsonBtn.addEventListener('click', () => {
+        const groups = [];
+        const nodes = [];
+        const edges = [];
+        cy.elements().jsons().forEach(ele => {
+          if (ele.group === 'nodes') {
+            const el = cy.getElementById(ele.data.id);
+            if (el.hasClass('group')) {
+              groups.push({ id: ele.data.id, color: ele.data.color });
+            } else {
+              nodes.push({ id: ele.data.id, label: ele.data.label, group: ele.data.parent });
+            }
+          } else if (ele.group === 'edges') {
+            edges.push({
+              source: ele.data.source,
+              target: ele.data.target,
+              label: ele.data.label,
+              sign: ele.data.sign,
+              weight: ele.data.weight,
+              delayYears: ele.data.delayYears
+            });
+          }
+        });
+        const json = { groups, nodes, edges };
+        const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'water-cld.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    const importInput = document.getElementById('import-json');
+    if (importInput) {
+      importInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            const groups = data.groups || [];
+            if (groupSelect) {
+              groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
+              groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.id;
+                groupSelect.appendChild(opt);
+              });
+            }
+            const elements = [];
+            groups.forEach(g => {
+              elements.push({ data: { id: g.id, color: g.color }, classes: 'group' });
+            });
+            (data.nodes || []).forEach(n => {
+              elements.push({ data: { id: n.id, label: n.label, parent: n.group } });
+            });
+            (data.edges || []).forEach((e, idx) => {
+              elements.push({
+                data: {
+                  id: `e${idx}`,
+                  source: e.source,
+                  target: e.target,
+                  label: e.label,
+                  sign: e.sign,
+                  weight: e.weight || 0,
+                  delayYears: e.delayYears || 0
+                },
+                classes: e.sign === '+' ? 'positive pos' : 'negative neg'
+              });
+            });
+            cy.elements().remove();
+            cy.add(elements);
+            if (legend) {
+              const items = [];
+              items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#16a34a;display:inline-block;margin-left:4px"></span>اثر مثبت</div>`);
+              items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#dc2626;display:inline-block;margin-left:4px"></span>اثر منفی</div>`);
+              groups.forEach(g => {
+                items.push(`<div style=\"display:flex;align-items:center;margin:2px\"><span style=\"width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px\"></span>${g.id}</div>`);
+              });
+              legend.innerHTML = items.join('');
+            }
+            runLayout();
+            updateSignFilter && updateSignFilter();
+          } catch (err) {
+            console.error('Import JSON failed', err);
+          }
+        };
+        reader.readAsText(file);
+      });
     }
 
     // scenario simulation panel
