@@ -27,6 +27,9 @@
     .slider{margin-bottom:12px;}
     .slider label{display:flex;justify-content:space-between;font-weight:600;}
     .actions{display:flex;gap:8px;margin-top:8px;}
+    #sc-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}
+    #sc-table th,#sc-table td{border:1px solid var(--muted);padding:4px;text-align:center;}
+    #sc-table tr.selected{background:var(--muted);}
   </style>
 </head>
 <body class="rtl">
@@ -67,8 +70,42 @@
         <div class="actions">
           <button id="btn-run" class="btn">اجرای سناریو</button>
           <button id="btn-reset" class="btn outline">بازنشانی</button>
+          <button id="btn-export" class="btn outline">Export CSV</button>
         </div>
         <canvas id="sim-chart" height="160" style="margin-top:12px"></canvas>
+        <div id="scenario-panel" style="margin-top:12px">
+          <div class="actions">
+            <button id="sc-new" class="btn outline">New</button>
+            <button id="sc-save" class="btn outline">Save</button>
+            <button id="sc-load" class="btn outline">Load</button>
+            <button id="sc-delete" class="btn outline">Delete</button>
+          </div>
+          <table id="sc-table">
+            <thead><tr><th>نام</th><th>eff</th><th>dem</th><th>delay</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="sens-panel" style="margin-top:12px">
+          <div class="slider">
+            <label>حساسیت پارامتر</label>
+            <select id="sens-param" class="btn outline" style="flex:1">
+              <option value="eff">eff</option>
+              <option value="dem">dem</option>
+            </select>
+          </div>
+          <div class="slider" style="display:flex;gap:4px;align-items:center">
+            <label style="flex:1">min</label>
+            <input id="sens-min" type="number" value="0" step="0.05" class="btn outline" style="flex:1"/>
+            <label style="flex:1">max</label>
+            <input id="sens-max" type="number" value="1" step="0.05" class="btn outline" style="flex:1"/>
+            <label style="flex:1">step</label>
+            <input id="sens-step" type="number" value="0.1" step="0.05" class="btn outline" style="flex:1"/>
+          </div>
+          <div class="actions">
+            <button id="sens-run" class="btn">Batch</button>
+            <span id="sens-progress"></span>
+          </div>
+        </div>
       </div>
       <div id="panel-formula" style="display:none">
         <select id="formula-node" class="btn outline"></select>
