@@ -2,28 +2,51 @@
 <html lang="fa">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>مدل پویایی بهره‌وری آب در کشاورزی</title>
   <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
   <style>
     :root{
       --bg:#0b1d1a; --card:#122825; --muted:#1a3430; --text:#e6f1ef; --accent:#58a79a; --line:#2f6158;
       --pos:#16a34a; --neg:#dc2626;
+      --gap:16px;
+      --card-bg:var(--card,#122825);
+      --card-br:16px;
     }
     body{background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;}
     .rtl{direction:rtl}
-    .board{display:grid;grid-template-columns:1fr minmax(380px,32%);gap:16px;max-width:1280px;margin:0 auto;padding:16px;}
-    @media(max-width:992px){.board{grid-template-columns:1fr;}}
-    .card{background:var(--card);border:1px solid var(--muted);border-radius:20px;padding:14px;}
-    .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;}
-    .controls input[type="range"]{accent-color:var(--accent);}
-    .btn{padding:6px 10px;border:1px solid var(--muted);border-radius:10px;background:var(--muted);color:var(--text);cursor:pointer;}
+
+    /* گرید اصلی */
+    .board{display:grid;grid-template-columns:360px 1fr;gap:var(--gap);padding:var(--gap);}
+    @media(max-width:1024px){.board{grid-template-columns:1fr;}}
+    .card{background:var(--card-bg);border:1px solid var(--muted);border-radius:var(--card-br);padding:12px;}
+
+    /* ظرف گراف */
+    #cy-wrap{min-height:560px;height:calc(100dvh - 280px);}
+    #cy{width:100%;height:100%;border:1px solid var(--muted);border-radius:14px;}
+
+    /* موبایل: ارتفاع مطمئن */
+    @media(max-width:640px){
+      #cy-wrap{min-height:420px;height:calc(var(--vh,1dvh) * 65);}
+      .controls,.filters{gap:10px;}
+      #sim-panel{min-height:220px;}
+    }
+
+    /* هدر کنترل‌های بالای گراف sticky شود */
+    .toolbar{position:sticky;top:0;z-index:10;background:linear-gradient(to bottom,rgba(0,0,0,0.25),transparent);padding-bottom:6px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+
+    /* اسلایدرها و دکمه‌ها لمسی‌تر */
+    input[type="range"]{height:30px;touch-action:pan-y;}
+    .btn{min-height:36px;padding:8px 12px;border-radius:10px;border:1px solid var(--muted);background:var(--muted);color:var(--text);cursor:pointer;}
     .btn.outline{background:transparent;}
     .btn.off{opacity:.5;}
+    .select,select{min-height:36px;}
+
+    .controls input[type="range"]{accent-color:var(--accent);}
     .tabs{display:flex;gap:8px;margin-bottom:10px;}
     .tab.active{background:var(--accent);}
     #panel-formula textarea{width:100%;height:80px;margin-top:8px;background:var(--bg);color:var(--text);border:1px solid var(--muted);border-radius:8px;padding:6px;font-family:monospace;}
     #panel-formula select{width:100%;}
-    #cy{background:transparent;border:1px solid var(--muted);border-radius:18px;min-height:520px;height:calc(100vh - 260px);}
     .slider{margin-bottom:12px;}
     .slider label{display:flex;justify-content:space-between;font-weight:600;}
     .actions{display:flex;gap:8px;margin-top:8px;}
@@ -32,45 +55,12 @@
     #sc-table tr.selected{background:var(--muted);}
     .hidden{display:none;}
     label.ctrl output{margin-inline-start:8px;font-variant-numeric:tabular-nums;}
+    #right-panel{overflow:hidden;}
   </style>
 </head>
 <body class="rtl">
-  <div class="toolbar">
-    <label class="ctrl"><span>حداقل وزن رابطه</span>
-      <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0" aria-label="حداقل وزن رابطه"/>
-      <output id="flt-weight-min-val">0</output>
-    </label>
-    <label class="ctrl"><span>حداکثر تاخیر (سال)</span>
-      <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5" aria-label="حداکثر تاخیر (سال)"/>
-      <output id="flt-delay-max-val">5</output>
-    </label>
-  </div>
   <div class="board">
-    <div class="card">
-      <div class="toolbar">
-        <button id="f-pos" class="btn outline">روابط مثبت</button>
-        <button id="f-neg" class="btn outline">روابط منفی</button>
-        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
-        <input id="q" class="btn outline" placeholder="جستجو"/>
-        <label class="btn outline" style="display:flex;align-items:center;gap:4px">
-          <input type="checkbox" id="f-delay"/>تاخیر
-        </label>
-        <div id="f-weight" class="btn outline" style="display:flex;align-items:center;gap:4px">
-          <input id="f-wmin" type="range" min="0" max="1" step="0.1" value="0"/>
-          <input id="f-wmax" type="range" min="0" max="1" step="0.1" value="1"/>
-        </div>
-        <select id="layout" class="btn outline">
-          <option value="elk" selected>ELK</option>
-          <option value="dagre">Dagre</option>
-        </select>
-      </div>
-      <details id="panel-loops" style="margin:8px 0">
-        <summary>Loops</summary>
-        <ul id="loops-list"></ul>
-      </details>
-      <div id="cy"></div>
-    </div>
-    <div class="card">
+    <section class="card" id="left-panel">
       <div class="tabs">
         <button id="tab-param" class="btn tab active">پارامتر</button>
         <button id="tab-formula" class="btn tab">فرمول</button>
@@ -95,7 +85,7 @@
           <button id="btn-reset" class="btn outline">بازنشانی</button>
           <button id="btn-export" class="btn outline">Export CSV</button>
         </div>
-        <canvas id="sim-chart" height="160" style="margin-top:12px"></canvas>
+        <div id="sim-panel" style="margin-top:12px;min-height:220px"><canvas id="sim-chart" style="height:100%;width:100%"></canvas></div>
         <div id="scenario-panel" style="margin-top:12px">
           <div class="actions">
             <button id="sc-new" class="btn outline">New</button>
@@ -139,7 +129,39 @@
         </div>
         <div id="formula-msg" style="margin-top:6px;color:#fbbf24"></div>
       </div>
-    </div>
+    </section>
+    <section class="card" id="right-panel">
+      <div class="toolbar filters">
+        <label class="ctrl"><span>حداقل وزن رابطه</span>
+          <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0" aria-label="حداقل وزن رابطه"/>
+          <output id="flt-weight-min-val">0</output>
+        </label>
+        <label class="ctrl"><span>حداکثر تاخیر (سال)</span>
+          <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5" aria-label="حداکثر تاخیر (سال)"/>
+          <output id="flt-delay-max-val">5</output>
+        </label>
+        <button id="f-pos" class="btn outline">روابط مثبت</button>
+        <button id="f-neg" class="btn outline">روابط منفی</button>
+        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
+        <input id="q" class="btn outline" placeholder="جستجو"/>
+        <label class="btn outline" style="display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="f-delay"/>تاخیر
+        </label>
+        <div id="f-weight" class="btn outline" style="display:flex;align-items:center;gap:4px">
+          <input id="f-wmin" type="range" min="0" max="1" step="0.1" value="0"/>
+          <input id="f-wmax" type="range" min="0" max="1" step="0.1" value="1"/>
+        </div>
+        <select id="layout" class="btn outline">
+          <option value="elk" selected>ELK</option>
+          <option value="dagre">Dagre</option>
+        </select>
+      </div>
+      <details id="panel-loops" style="margin:8px 0">
+        <summary>Loops</summary>
+        <ul id="loops-list"></ul>
+      </details>
+      <div id="cy-wrap"><div id="cy"></div></div>
+    </section>
   </div>
   <script src="/assets/vendor/cytoscape.min.js" defer></script>
   <script src="/assets/vendor/elk.bundled.js" defer></script>

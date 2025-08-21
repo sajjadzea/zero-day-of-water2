@@ -1,6 +1,14 @@
 (function () {
   const Parser = window.exprEval.Parser;
 
+  function setVhVar(){
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
+  setVhVar();
+  window.addEventListener('resize', setVhVar);
+  window.addEventListener('orientationchange', () => { setTimeout(setVhVar, 100); });
+
   let model;
   let simParams = {};
   const SC_KEY = 'cld-scenarios';
@@ -108,12 +116,12 @@
   let simChart;
   let baseline = { eff: 0, dem: 0, delay: 0 };
 
-  function safeFit() {
+  const safeFit = () => {
     try {
       cy.resize();
-      cy.fit(undefined, 20);
+      cy.fit(undefined, 24);
     } catch (e) {}
-  }
+  };
 
   function runLayout(name, dir = 'LR') {
     if (!cy) return;
@@ -208,7 +216,7 @@
         groupSelect.appendChild(opt);
       });
     }
-    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+    groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
     (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
     (modelData.edges || []).forEach((e, idx) => elements.push({
       data: {
@@ -242,27 +250,28 @@
       elements,
       style: [
         {
-          selector: 'node',
+          selector: 'node[!isGroup]',
           style: {
             'label': 'data(label)',
+            'text-wrap': 'wrap',
+            'text-max-width': 140,
+            'font-size': 14,
             'text-valign': 'center',
             'text-halign': 'center',
-            'text-wrap': 'wrap',
-            'text-max-width': 100,
-            'font-size': '14px',
+            'width': 'label',
+            'height': 'label',
+            'padding': '10px',
             'font-family': 'Vazirmatn, sans-serif',
             'color': colorText,
             'background-color': colorNodeBg,
             'shape': 'round-rectangle',
-            'padding': '12px',
-            'width': 'label',
-            'height': 'label',
             'border-width': 2,
             'border-color': colorNodeBorder,
             'shadow-blur': 6,
             'shadow-color': '#00000055',
             'shadow-offset-x': 2,
-            'shadow-offset-y': 2
+            'shadow-offset-y': 2,
+            'min-zoomed-font-size': 8
           }
         },
         {
@@ -330,10 +339,13 @@
       layout: { name: 'grid' }
     });
 
-    cy.on('ready', safeFit);
-    setTimeout(safeFit, 0);
+    cy.on('ready', () => { setTimeout(safeFit, 0); });
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
+    window.addEventListener('orientationchange', () => setTimeout(safeFit, 150));
     document.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => requestAnimationFrame(safeFit)));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => setTimeout(safeFit, 0));
+    }
 
     runLayout('elk');
 
@@ -403,8 +415,7 @@
           e.addClass('hidden');
         }
       });
-      cy.resize();
-      cy.fit(undefined, 20);
+      safeFit();
     }
 
     function debounce(fn, delay) {
@@ -589,7 +600,7 @@
               });
             }
             const els = [];
-            groups.forEach(g => els.push({ data: { id: g.id, color: g.color }, classes: 'group' }));
+            groups.forEach(g => els.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'group' }));
             (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group } }));
             (data.edges || []).forEach((e, idx) => els.push({
               data: {
@@ -686,6 +697,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { display: true } },
           scales: {
             x: { title: { display: true, text: 'سال' } },
@@ -693,6 +705,11 @@
           }
         }
       });
+
+      const chartWrap = document.getElementById('sim-panel');
+      if ('ResizeObserver' in window && chartWrap && simChart && simChart.resize) {
+        new ResizeObserver(() => simChart.resize()).observe(chartWrap);
+      }
 
       const scTbody = scTable ? scTable.querySelector('tbody') : null;
       function refreshScenarioTable() {
