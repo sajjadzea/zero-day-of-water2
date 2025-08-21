@@ -105,15 +105,20 @@
         {
           selector: 'node',
           style: {
-            'background-color': '#f9fafb',
-            'border-width': 1,
-            'border-color': '#94a3b8',
+            'background-color': '#ffffff18',
+            'border-width': 1.4,
+            'border-color': '#ffffffcc',
             'label': 'data(label)',
+            'color': '#e8fff3',
             'text-valign': 'center',
             'text-halign': 'center',
             'font-family': 'Vazirmatn, sans-serif',
             'font-size': 14,
-            'shape': 'round-rectangle'
+            'shape': 'round-rectangle',
+            'shadow-blur': 8,
+            'shadow-color': '#00000055',
+            'shadow-offset-x': 0,
+            'shadow-offset-y': 2
           }
         },
         {
@@ -134,34 +139,39 @@
         {
           selector: 'edge',
           style: {
-            'width': ele => 1 + (ele.data('weight') * 4),
+            'width': 4,
             'curve-style': 'bezier',
             'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
+            'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0],
             'target-arrow-shape': 'triangle',
-            'line-color': '#94a3b8',
-            'target-arrow-color': '#94a3b8',
+            'line-color': '#ffffff66',
+            'target-arrow-color': '#ffffff66',
             'label': 'data(label)',
             'edge-text-rotation': 'autorotate',
             'text-background-opacity': 1,
-            'text-background-color': '#fff',
+            'text-background-color': '#142a20',
             'text-background-padding': '2px',
             'text-wrap': 'wrap',
             'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 12
+            'font-size': 12,
+            'color': '#e8fff3'
           }
         },
         {
           selector: 'edge.positive',
           style: {
-            'line-color': '#16a34a',
-            'target-arrow-color': '#16a34a'
+            'line-color': '#24c46b',
+            'target-arrow-color': '#24c46b',
+            'line-style': 'solid'
           }
         },
         {
           selector: 'edge.negative',
           style: {
-            'line-color': '#dc2626',
-            'target-arrow-color': '#dc2626'
+            'line-color': '#e76060',
+            'target-arrow-color': '#e76060',
+            'line-style': 'dashed',
+            'line-dash-pattern': [8,6]
           }
         },
         {
@@ -351,10 +361,11 @@
     const legend = document.getElementById('legend');
     if (legend) {
       const items = [
-        '<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#16a34a;display:inline-block;margin-left:4px"></span>اثر مثبت</div>',
-        '<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:#dc2626;display:inline-block;margin-left:4px"></span>اثر منفی</div>'
+        '<span class="badge pos"><i class="dot" style="background:var(--pos)"></i>مثبت</span>',
+        '<span class="badge neg"><i class="dot" style="background:var(--neg)"></i>منفی</span>',
+        '<span class="badge dashed"><i class="dot" style="border:2px dashed #cbd5e1"></i>تاخیردار/غیرمستقیم</span>'
       ];
-      groups.forEach(g => items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px"></span>${g.id}</div>`));
+      groups.forEach(g => items.push(`<span class="badge" style="border-color:${g.color}"><i class="dot" style="background:${g.color}"></i>${g.id}</span>`));
       legend.innerHTML = items.join('');
     }
 
@@ -364,6 +375,21 @@
     const delayInput = document.getElementById('p-delay');
     const runBtn = document.getElementById('btn-run');
     const resetBtn = document.getElementById('btn-reset');
+    const effVal = document.getElementById('val-eff');
+    const demVal = document.getElementById('val-dem');
+    const delayVal = document.getElementById('val-delay');
+
+    function bindSlider(input, output) {
+      if (input && output) {
+        output.textContent = input.value;
+        input.addEventListener('input', () => {
+          output.textContent = input.value;
+        });
+      }
+    }
+    bindSlider(effInput, effVal);
+    bindSlider(demInput, demVal);
+    bindSlider(delayInput, delayVal);
 
     if (chartCanvas && window.Chart) {
       Chart.defaults.font.family = 'Vazirmatn, sans-serif';
