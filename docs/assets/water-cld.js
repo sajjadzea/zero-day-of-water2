@@ -373,7 +373,7 @@
       });
     }
     groups.forEach(g => elements.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
-    (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+    (modelData.nodes || []).forEach(n => elements.push({ data: { id: n.id, label: n.label, parent: n.group, desc: n.desc, unit: n.unit } }));
     (modelData.edges || []).forEach((e, idx) => elements.push({
       data: {
         id: `e${idx}`,
@@ -496,6 +496,38 @@
 
     runLayout('elk');
 
+    if (window.tippy) {
+      cy.nodes().forEach(n => {
+        const desc = n.data('desc');
+        const unit = n.data('unit');
+        if (!desc && !unit) return;
+        const ref = {
+          getBoundingClientRect: () => {
+            const bb = n.renderedBoundingBox({ includeLabels: false, includeOverlays: false });
+            const rect = cy.container().getBoundingClientRect();
+            return {
+              width: bb.w,
+              height: bb.h,
+              top: bb.y1 + rect.top,
+              bottom: bb.y2 + rect.top,
+              left: bb.x1 + rect.left,
+              right: bb.x2 + rect.left
+            };
+          }
+        };
+        const tip = tippy(ref, {
+          content: `${desc || ''}${unit ? '<br>' + unit : ''}`,
+          trigger: 'manual',
+          placement: 'top',
+          appendTo: document.body,
+          theme: 'light'
+        });
+        n.on('mouseover', () => tip.show());
+        n.on('mouseout', () => tip.hide());
+        cy.on('pan zoom', () => tip.hide());
+      });
+    }
+
     if (cy) {
       cy.on('dbltap', 'node', n => {
         if (n.target.locked()) {
@@ -509,12 +541,29 @@
     const layoutSel = document.getElementById('layout');
     if (layoutSel) layoutSel.addEventListener('change', e => runLayout(e.target.value));
 
+    const layoutPresetSel = document.getElementById('layout-preset');
+    if (layoutPresetSel) layoutPresetSel.addEventListener('change', () => {
+      const val = layoutPresetSel.value;
+      if (!val) {
+        if (layoutSel) runLayout(layoutSel.value);
+        return;
+      }
+      if (window.getLayoutPreset) {
+        const opt = window.getLayoutPreset(val);
+        if (opt) {
+          try { cy.layout(opt).run(); } catch(e) { console.error('layout preset', e); }
+        }
+      }
+    });
+
     const fPos = document.getElementById('f-pos');
     const fNeg = document.getElementById('f-neg');
     const fGroup = document.getElementById('f-group');
     const fDelay = document.getElementById('f-delay');
     const qInput = document.getElementById('q');
     const loopsList = document.getElementById('loops-list');
+    const loopsBtn = document.getElementById('btn-loops');
+    const loopsPanel = document.getElementById('panel-loops');
     const wMin = document.getElementById('flt-weight-min');
     const dMax = document.getElementById('flt-delay-max');
     const wMinOut = document.getElementById('flt-weight-min-val');
@@ -591,67 +640,29 @@
       });
     }
 
-    function canonicalCycle(nodes) {
-      const n = nodes.length - 1;
-      let minIdx = 0;
-      for (let i = 0; i < n; i++) if (nodes[i] < nodes[minIdx]) minIdx = i;
-      const rot = [];
-      for (let i = 0; i < n; i++) rot.push(nodes[(minIdx + i) % n]);
-      const rotRev = rot.slice().reverse();
-      const s1 = rot.join('->');
-      const s2 = rotRev.join('->');
-      return s1 < s2 ? s1 : s2;
-    }
-
-    function findLoops(maxLen = 6) {
-      const loops = [];
-      const seen = new Set();
-      const nodes = cy.nodes().filter(n => !n.hasClass('group'));
-
-      function dfs(curr, start, pathNodes, pathEdges, negCount) {
-        if (pathEdges.length >= maxLen) return;
-        curr.outgoers('edge').forEach(edge => {
-          const tgt = edge.target();
-          if (tgt.id() === start.id()) {
-            const nodesCycle = pathNodes.slice();
-            const edgesCycle = pathEdges.concat(edge.id());
-            const canon = canonicalCycle(nodesCycle.concat(start.id()));
-            if (!seen.has(canon)) {
-              seen.add(canon);
-              const sign = (negCount + (edge.data('sign') === '-' ? 1 : 0)) % 2 === 0 ? '+' : '-';
-              loops.push({ nodes: nodesCycle, edges: edgesCycle, sign });
-            }
-          } else if (!pathNodes.includes(tgt.id())) {
-            dfs(tgt, start, pathNodes.concat(tgt.id()), pathEdges.concat(edge.id()), negCount + (edge.data('sign') === '-' ? 1 : 0));
-          }
-        });
-      }
-
-      nodes.forEach(n => dfs(n, n, [n.id()], [], 0));
-      return loops;
-    }
+    if (loopsBtn) loopsBtn.addEventListener('click', () => { populateLoops(); if (loopsPanel) loopsPanel.open = true; });
 
     function populateLoops() {
-      if (!loopsList) return;
+      if (!loopsList || !window.cydetectLoops) return;
       loopsList.innerHTML = '';
-      const loops = findLoops();
-      loops.forEach(loop => {
+      const cycles = window.cydetectLoops(cy) || [];
+      cycles.forEach(cycle => {
         const li = document.createElement('li');
-        const labels = loop.nodes.map(id => cy.getElementById(id).data('label') || id);
-        li.textContent = `${loop.sign}: ${labels.join(' \u2192 ')}`;
+        const labels = (cycle.nodeIds || []).map(id => cy.getElementById(id).data('label') || id);
+        const negCount = (cycle.edgeIds || []).filter(id => cy.getElementById(id).data('sign') === '-').length;
+        const sign = negCount % 2 === 0 ? '+' : '-';
+        li.textContent = `${sign}: ${labels.join(' \u2192 ')}`;
         li.style.cursor = 'pointer';
         li.addEventListener('click', () => {
           cy.elements().removeClass('highlight');
           const col = cy.collection();
-          loop.nodes.forEach(id => { const n = cy.getElementById(id); n.addClass('highlight'); col.merge(n); });
-          loop.edges.forEach(id => { const e = cy.getElementById(id); e.addClass('highlight'); col.merge(e); });
+          (cycle.nodeIds || []).forEach(id => { const n = cy.getElementById(id); n.addClass('highlight'); col.merge(n); });
+          (cycle.edgeIds || []).forEach(id => { const e = cy.getElementById(id); e.addClass('highlight'); col.merge(e); });
           cy.fit(col, 50);
         });
         loopsList.appendChild(li);
       });
     }
-
-    populateLoops();
 
     const importInput = document.getElementById('import-json');
     if (importInput) {
@@ -674,7 +685,7 @@
             }
             const els = [];
             groups.forEach(g => els.push({ data: { id: g.id, color: g.color, isGroup: true }, classes: 'compound group' }));
-            (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group } }));
+            (data.nodes || []).forEach(n => els.push({ data: { id: n.id, label: n.label, parent: n.group, desc: n.desc, unit: n.unit } }));
             (data.edges || []).forEach((e, idx) => els.push({
               data: {
                 id: `e${idx}`,
@@ -685,7 +696,7 @@
                 weight: e.weight || 0,
                 delayYears: e.delayYears || 0
               },
-              classes: e.sign === '+' ? 'positive pos' : 'negative neg'
+              classes: e.sign === '-' ? 'neg' : 'pos'
             }));
             cy.elements().remove();
             cy.add(els);
