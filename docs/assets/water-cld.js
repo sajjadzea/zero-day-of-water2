@@ -358,6 +358,12 @@
     const fWMax = document.getElementById('f-wmax');
     const qInput = document.getElementById('q');
     const loopsList = document.getElementById('loops-list');
+    const rWeightMin = document.getElementById('flt-weight-min');
+    const rDelayMax  = document.getElementById('flt-delay-max');
+    const oWeightMin = document.getElementById('flt-weight-min-val');
+    const oDelayMax  = document.getElementById('flt-delay-max-val');
+    if (oWeightMin && rWeightMin) oWeightMin.textContent = rWeightMin.value;
+    if (oDelayMax && rDelayMax) oDelayMax.textContent = rDelayMax.value;
 
     function applyFilters() {
       cy.elements().removeClass('hidden');
@@ -383,6 +389,43 @@
 
       safeFit();
     }
+
+    function applyEdgeFilters() {
+      if (!cy) return;
+      const weightMin = rWeightMin ? parseFloat(rWeightMin.value) : -Infinity;
+      const delayMax = rDelayMax ? parseFloat(rDelayMax.value) : Infinity;
+      cy.edges().forEach(e => {
+        const wOk = (e.data('weight') || 0) >= weightMin;
+        const dOk = ((e.data('delayYears') || 0) <= delayMax);
+        if (wOk && dOk) {
+          e.removeClass('hidden');
+        } else {
+          e.addClass('hidden');
+        }
+      });
+      cy.resize();
+      cy.fit(undefined, 20);
+    }
+
+    function debounce(fn, delay) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    }
+    const debouncedEdgeFilters = debounce(applyEdgeFilters, 50);
+
+    if (rWeightMin) rWeightMin.addEventListener('input', () => {
+      if (oWeightMin) oWeightMin.textContent = rWeightMin.value;
+      debouncedEdgeFilters();
+    });
+    if (rDelayMax) rDelayMax.addEventListener('input', () => {
+      if (oDelayMax) oDelayMax.textContent = rDelayMax.value;
+      debouncedEdgeFilters();
+    });
+
+    if (cy) cy.on('ready', applyEdgeFilters);
 
     if (fPos) fPos.addEventListener('click', () => { fPos.classList.toggle('off'); applyFilters(); });
     if (fNeg) fNeg.addEventListener('click', () => { fNeg.classList.toggle('off'); applyFilters(); });

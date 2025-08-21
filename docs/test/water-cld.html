@@ -30,9 +30,21 @@
     #sc-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}
     #sc-table th,#sc-table td{border:1px solid var(--muted);padding:4px;text-align:center;}
     #sc-table tr.selected{background:var(--muted);}
+    .hidden{display:none;}
+    label.ctrl output{margin-inline-start:8px;font-variant-numeric:tabular-nums;}
   </style>
 </head>
 <body class="rtl">
+  <div class="toolbar">
+    <label class="ctrl"><span>حداقل وزن رابطه</span>
+      <input id="flt-weight-min" type="range" min="0" max="1" step="0.05" value="0" aria-label="حداقل وزن رابطه"/>
+      <output id="flt-weight-min-val">0</output>
+    </label>
+    <label class="ctrl"><span>حداکثر تاخیر (سال)</span>
+      <input id="flt-delay-max" type="range" min="0" max="5" step="1" value="5" aria-label="حداکثر تاخیر (سال)"/>
+      <output id="flt-delay-max-val">5</output>
+    </label>
+  </div>
   <div class="board">
     <div class="card">
       <div class="toolbar">
