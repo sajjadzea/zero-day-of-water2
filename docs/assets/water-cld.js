@@ -1,3 +1,19 @@
+function simulate({ eff = 0, dem = 0, delay = 0, years = 30 }) {
+  const inflow = 2;
+  const baseOut = 2.2;
+  let stock = 100;
+  const series = [stock];
+  for (let t = 0; t < years; t++) {
+    let out = baseOut;
+    if (t >= delay) {
+      out = baseOut * (1 + dem * 0.8) * (1 - eff * 0.6);
+    }
+    stock = Math.max(0, stock + inflow - out);
+    series.push(stock);
+  }
+  return { years: Array.from({ length: years + 1 }, (_, i) => i), series };
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   const container = document.getElementById('cy');
   if (!container || typeof window.cytoscape === 'undefined') return;
@@ -157,73 +173,6 @@ window.addEventListener('DOMContentLoaded', async () => {
         });
       }
 
-      // simple stock simulation
-      function simulate(effect, delay, sign) {
-        const years = Array.from({ length: 30 }, (_, i) => i + 1);
-        const inflow = 10;
-        const baseOutflow = 8;
-        let stock = 100;
-        const series = [];
-        years.forEach(y => {
-          let out = baseOutflow;
-          if (y > delay) {
-            out = baseOutflow * (1 + effect * (sign === '+' ? 1 : -1));
-          }
-          stock += inflow - out;
-          series.push(stock);
-        });
-        return { years, series };
-      }
-
-      const simPanel = document.getElementById('sim-panel');
-      const effectInput = document.getElementById('sim-effect');
-      const delayInput = document.getElementById('sim-delay');
-      const simForm = document.getElementById('sim-form');
-      const canvas = document.getElementById('sim-chart');
-      let chart;
-
-      function renderSim(edge) {
-        if (!simPanel || !canvas) return;
-        simPanel.style.display = 'block';
-        if (typeof window.Chart === 'undefined') {
-          canvas.parentElement.innerHTML = '<p>Chart.js بارگذاری نشد</p>';
-          return;
-        }
-
-        const run = () => {
-          const eff = parseFloat(effectInput.value) || 0;
-          const del = parseInt(delayInput.value) || 0;
-          const { years, series } = simulate(eff, del, edge.data('sign'));
-          if (chart) chart.destroy();
-          chart = new Chart(canvas, {
-            type: 'line',
-            data: {
-              labels: years,
-              datasets: [{
-                label: 'ذخیره آب زیرزمینی',
-                data: series,
-                borderColor: '#0284c7',
-                backgroundColor: 'rgba(2,132,199,0.1)',
-                fill: true
-              }]
-            },
-            options: {
-              responsive: true,
-              scales: {
-                x: { title: { display: true, text: 'سال' } },
-                y: { title: { display: true, text: 'ذخیره' } }
-              }
-            }
-          });
-        };
-
-        run();
-        simForm.onsubmit = e => {
-          e.preventDefault();
-          run();
-        };
-      }
-
       // edge tooltip
       let tip;
       cy.on('tap', 'edge', evt => {
@@ -241,10 +190,6 @@ window.addEventListener('DOMContentLoaded', async () => {
           tip.show();
         } else {
           alert(content);
-        }
-
-        if (edge.data('sign') === '+' || edge.data('sign') === '-') {
-          renderSim(edge);
         }
       });
 
@@ -277,6 +222,75 @@ window.addEventListener('DOMContentLoaded', async () => {
         items.push(`<div style="display:flex;align-items:center;margin:2px"><span style="width:12px;height:12px;background:${g.color};display:inline-block;margin-left:4px"></span>${g.id}</div>`);
       });
       legend.innerHTML = items.join('');
+    }
+
+    // scenario simulation panel
+    const effInput = document.getElementById('p-eff');
+    const demInput = document.getElementById('p-dem');
+    const delayInput = document.getElementById('p-delay');
+    const runBtn = document.getElementById('btn-run');
+    const resetBtn = document.getElementById('btn-reset');
+    const chartCanvas = document.getElementById('sim-chart');
+    if (chartCanvas && typeof Chart !== 'undefined') {
+      Chart.defaults.font.family = 'Vazirmatn, sans-serif';
+      const baseline = {
+        eff: parseFloat(effInput.value),
+        dem: parseFloat(demInput.value),
+        delay: parseInt(delayInput.value)
+      };
+      const baseRes = simulate(baseline);
+      const simChart = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+          labels: baseRes.years,
+          datasets: [{
+            label: 'پایه',
+            data: baseRes.series,
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14,165,233,0.1)',
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true } },
+          scales: {
+            x: { title: { display: true, text: 'سال' } },
+            y: { title: { display: true, text: 'ذخیره' } }
+          }
+        }
+      });
+
+      runBtn.addEventListener('click', () => {
+        const params = {
+          eff: parseFloat(effInput.value),
+          dem: parseFloat(demInput.value),
+          delay: parseInt(delayInput.value)
+        };
+        const res = simulate(params);
+        if (simChart.data.datasets.length < 2) {
+          simChart.data.datasets.push({
+            label: 'سناریو',
+            data: res.series,
+            borderColor: '#dc2626',
+            backgroundColor: 'rgba(220,38,38,0.1)',
+            fill: true
+          });
+        } else {
+          simChart.data.datasets[1].data = res.series;
+        }
+        simChart.update();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        if (simChart.data.datasets.length > 1) {
+          simChart.data.datasets.pop();
+          simChart.update();
+        }
+        effInput.value = baseline.eff;
+        demInput.value = baseline.dem;
+        delayInput.value = baseline.delay;
+      });
     }
   } catch (err) {
     console.error("CLD JSON load failed:", dataUrl, err);
