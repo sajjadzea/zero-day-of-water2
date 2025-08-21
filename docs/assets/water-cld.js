@@ -190,8 +190,6 @@
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
-    const colorNodeBg = rootStyle.getPropertyValue('--card').trim() || '#1e2b2b';
-    const colorNodeBorder = colorText + '33';
 
     const dataUrl = '/data/water-cld.json?v=2';
     let data;
@@ -254,41 +252,39 @@
           selector: 'node[!isGroup]',
           style: {
             'label': 'data(label)',
-            'text-wrap': 'wrap',
-            'text-max-width': 140,
+            'font-family': 'Vazirmatn, sans-serif',
             'font-size': 14,
+            'color': '#0a0f0e',
             'text-valign': 'center',
             'text-halign': 'center',
+            'text-wrap': 'wrap',
+            'text-max-width': 140,
+            'background-color': '#eaf3f1',
+            'shape': 'round-rectangle',
+            'padding': '10px',
             'width': 'label',
             'height': 'label',
-            'padding': '10px',
-            'font-family': 'Vazirmatn, sans-serif',
-            'color': colorText,
-            'background-color': colorNodeBg,
-            'shape': 'round-rectangle',
-            'border-width': 2,
-            'border-color': colorNodeBorder,
-            'shadow-blur': 6,
-            'shadow-color': '#00000055',
-            'shadow-offset-x': 2,
-            'shadow-offset-y': 2,
-            'min-zoomed-font-size': 8
+            'border-width': 3,
+            'border-color': '#ffffff',
+            'min-zoomed-font-size': 8,
+            'text-outline-width': 2,
+            'text-outline-color': 'rgba(10,15,14,0)'
           }
         },
         {
-          selector: 'node.group',
+          selector: 'node[?isGroup]',
           style: {
             'shape': 'round-rectangle',
             'background-color': 'rgba(255,255,255,0.06)',
             'border-color': '#2b3c39',
-            'border-width': 2,
-            'label': 'data(id)',
-            'color': '#cde6e1',
-            'text-halign': 'center',
+            'border-width': 1.5,
+            'label': 'data(label)',
             'text-valign': 'top',
-            'padding': '10px',
-            'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 12
+            'text-halign': 'center',
+            'font-size': 12,
+            'color': '#cfe7e2',
+            'padding': '20px',
+            'font-family': 'Vazirmatn, sans-serif'
           }
         },
         {
@@ -340,13 +336,8 @@
       layout: { name: 'grid' }
     });
 
-    cy.on('ready', () => { setTimeout(safeFit, 0); });
+    cy.on('ready', safeFit);
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
-    window.addEventListener('orientationchange', () => setTimeout(safeFit, 150));
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(safeFit, 0));
-    }
-    document.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => requestAnimationFrame(safeFit)));
 
     runLayout('elk');
 
