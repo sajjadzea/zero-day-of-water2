@@ -253,20 +253,20 @@
           style: {
             'label': 'data(label)',
             'font-family': 'Vazirmatn, sans-serif',
+            'text-wrap': 'wrap',
+            'text-max-width': 200,
             'font-size': 15,
             'font-weight': 500,
             'color': '#0a0f0e',
-            'text-wrap': 'wrap',
-            'text-max-width': 180,
             'text-valign': 'center',
             'text-halign': 'center',
             'text-margin-y': 0,
             'text-outline-width': 0,
             'background-color': '#eaf3f1',
             'shape': 'round-rectangle',
-            'padding': '12px 16px',
             'width': 'label',
             'height': 'label',
+            'padding': '12px 18px',
             'border-width': 3,
             'border-color': '#ffffff',
             'min-zoomed-font-size': 8
@@ -276,7 +276,8 @@
           selector: 'node[?isGroup]',
           style: {
             'shape': 'round-rectangle',
-            'background-color': 'rgba(255,255,255,0.06)',
+            'background-color': '#ffffff',
+            'background-opacity': 0.15,
             'border-color': '#2b3c39',
             'border-width': 1.5,
             'label': 'data(label)',
@@ -337,10 +338,12 @@
       layout: { name: 'grid' }
     });
 
-    cy.on('ready', () => setTimeout(safeFit, 0));
+    cy.on('ready', () => setTimeout(() => cy.fit(undefined, 24), 0));
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
     window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(safeFit,0));
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => setTimeout(() => cy.fit(undefined, 24), 0));
+    }
 
     runLayout('elk');
 
