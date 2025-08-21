@@ -3,41 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <title>مدل پویایی بهره‌وری آب در کشاورزی</title>
-  <link rel="icon" type="image/webp" href="/page/landing/logo2.webp" />
+  <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
 </head>
 <body>
   <main dir="rtl">
     <h1>مدل پویایی بهره‌وری آب در کشاورزی</h1>
- codex/add-layout-switch-and-pin-functionality
     <div id="controls" style="margin:10px 0;display:flex;gap:8px;align-items:center">
       <div id="legend"></div>
       <select id="layout">
         <option value="elk" selected>ELK (لایه‌ای)</option>
         <option value="dagre">Dagre (چپ→راست)</option>
       </select>
-
-    <div id="legend" style="margin:10px 0;"></div>
-    <div id="filters" style="margin:8px 16px;display:flex;gap:12px;flex-wrap:wrap">
-      <label><input type="checkbox" id="f-pos" checked> روابط مثبت</label>
-      <label><input type="checkbox" id="f-neg" checked> روابط منفی</label>
-      <select id="f-group"><option value="">همه گروه‌ها</option></select>
-      <input id="q" placeholder="جست‌وجوی گره..." style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px">
- codex/add-export/import-buttons-for-images-and-json
-      <button id="btn-export-png" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export PNG</button>
-      <button id="btn-export-svg" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export SVG</button>
-      <button id="btn-export-json" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export JSON</button>
-      <input type="file" id="import-json" accept="application/json" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">
-
- main
- main
+      <div id="filters" style="margin:8px 16px;display:flex;gap:12px;flex-wrap:wrap">
+        <label><input type="checkbox" id="f-pos" checked> روابط مثبت</label>
+        <label><input type="checkbox" id="f-neg" checked> روابط منفی</label>
+        <select id="f-group"><option value="">همه گروه‌ها</option></select>
+        <input id="q" placeholder="جست‌وجوی گره..." style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:8px"/>
+        <button id="btn-export-png" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export PNG</button>
+        <button id="btn-export-svg" disabled style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export SVG</button>
+        <button id="btn-export-json" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">Export JSON</button>
+        <input type="file" id="import-json" accept="application/json" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px"/>
+      </div>
     </div>
     <div id="cy" style="width:100%;height:72vh;border:1px solid #e5e7eb;"></div>
     <section id="sim-panel" style="margin:12px 16px">
       <h2 style="font-size:16px;margin-bottom:8px">سناریو</h2>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
-        <label>بهره‌وری آبیاری: <input id="p-eff" type="range" min="0" max="1" step="0.05" value="0.3"></label>
-        <label>شدت تقاضا: <input id="p-dem" type="range" min="0" max="1" step="0.05" value="0.6"></label>
-        <label>تاخیر (سال): <input id="p-delay" type="range" min="0" max="5" step="1" value="1"></label>
+        <label>بهره‌وری آبیاری: <input id="p-eff" type="range" min="0" max="1" step="0.05" value="0.3"/></label>
+        <label>شدت تقاضا: <input id="p-dem" type="range" min="0" max="1" step="0.05" value="0.6"/></label>
+        <label>تاخیر (سال): <input id="p-delay" type="range" min="0" max="5" step="1" value="1"/></label>
         <button id="btn-run" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">اجرای سناریو</button>
         <button id="btn-reset" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px">بازنشانی</button>
       </div>
@@ -50,7 +44,11 @@
   <script src="/assets/vendor/cytoscape-elk.js" defer></script>
   <script src="/assets/vendor/dagre.min.js" defer></script>
   <script src="/assets/vendor/cytoscape-dagre.js" defer></script>
+  <!-- Chart.js محلی (یکی از این دو بنا به محل فایل موجود پروژه) -->
   <script src="/vendor/chart.umd.min.js" defer></script>
-  <script src="/assets/water-cld.js?v=2" defer></script>
+  <!-- یا: -->
+  <!-- <script src="/assets/vendor/chart.umd.min.js" defer></script> -->
+  <script src="/assets/water-cld.js?v=3" defer></script>
 </body>
 </html>
+
