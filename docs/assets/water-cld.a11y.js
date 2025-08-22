@@ -1,4 +1,5 @@
 // ===== A11Y & Mobile bootstrap (singleton, CSP-safe, no interference) =====
+/* global graphStore */
 (function(){
   if (window.__A11Y_BOUND__) return; window.__A11Y_BOUND__ = true;
 
@@ -70,24 +71,32 @@
 
   // 5) آرایش دسترس‌پذیر Cytoscape (بی‌تداخل)
   function a11yForCytoscape(){
-    // ظرف‌های رایج
-    const cyEl = $('#cy') || $('.cytoscape-container') || $('.cy-container') || $('#cld-canvas') || (window.cy && window.cy.container && window.cy.container());
-    const container = (cyEl && cyEl.nodeType ? cyEl : null) || (window.cy && window.cy.container && window.cy.container());
-    if (!container || container.__a11y_done) return;
+    var run = function(cy){
+      // ظرف‌های رایج
+      const cyEl = $('#cy') || $('.cytoscape-container') || $('.cy-container') || $('#cld-canvas') || (cy && cy.container && cy.container());
+      const container = (cyEl && cyEl.nodeType ? cyEl : null) || (cy && cy.container && cy.container());
+      if (!container || container.__a11y_done) return;
 
-    container.__a11y_done = true;
-    container.classList.add('cy-a11y-focus');
-    setOnce(container, 'tabindex', '0');                 // فوکوس‌پذیر
-    setOnce(container, 'role', 'application');           // محتوای تعاملی پیچیده
-    const descId = 'cy-a11y-desc';
-    if (!$('#'+descId)){
-      const sr = document.createElement('div');
-      sr.id = descId; sr.className = 'sr-only';
-      sr.textContent = 'بوم تعامل‌پذیر نمودار علّی. برای جابه‌جایی از ماوس/لمس استفاده کنید؛ برای بزرگ‌نمایی از Ctrl+اسکرول. برای خروج از بوم، کلید Tab را فشار دهید.';
-      document.body.appendChild(sr);
+      container.__a11y_done = true;
+      container.classList.add('cy-a11y-focus');
+      setOnce(container, 'tabindex', '0');                 // فوکوس‌پذیر
+      setOnce(container, 'role', 'application');           // محتوای تعاملی پیچیده
+      const descId = 'cy-a11y-desc';
+      if (!$('#'+descId)){
+        const sr = document.createElement('div');
+        sr.id = descId; sr.className = 'sr-only';
+        sr.textContent = 'بوم تعامل‌پذیر نمودار علّی. برای جابه‌جایی از ماوس/لمس استفاده کنید؛ برای بزرگ‌نمایی از Ctrl+اسکرول. برای خروج از بوم، کلید Tab را فشار دهید.';
+        document.body.appendChild(sr);
+      }
+      setOnce(container, 'aria-describedby', descId);
+      setOnce(container, 'aria-label', 'نمودار علّی-حلقه‌ای (CLD)');
+    };
+
+    if (window.graphStore && typeof window.graphStore.run === 'function') {
+      graphStore.run(run);
+    } else if (window.cy && typeof window.cy.container === 'function') {
+      try{ run(window.cy); }catch(_){ }
     }
-    setOnce(container, 'aria-describedby', descId);
-    setOnce(container, 'aria-label', 'نمودار علّی-حلقه‌ای (CLD)');
   }
 
   // 6) کم‌کردن نویز TabOrder: حذف از Tab برای عناصر تزئینی/پنهان
