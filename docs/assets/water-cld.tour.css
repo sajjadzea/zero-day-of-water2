@@ -1,0 +1,39 @@
+/* ===== CLD Coachmarks (RTL + Dark) ===== */
+:root{
+  --tour-z: 9999;
+  --tour-bg: rgba(0,0,0,.55);
+  --tour-card: #16312d;
+  --tour-bd: #1f413c;
+  --tour-fg: #e9f3f0;
+  --tour-accent: #1d776e;
+}
+#cld-tour-backdrop{
+  position: fixed; inset: 0; background: var(--tour-bg);
+  z-index: var(--tour-z); display: none;
+}
+#cld-tour-stage{
+  position: fixed; z-index: calc(var(--tour-z) + 1); pointer-events: none;
+}
+#cld-tour-focus{
+  position: fixed; border: 2px solid #fff; border-radius: 12px;
+  box-shadow: 0 0 0 4px rgba(255,255,255,.25);
+  z-index: calc(var(--tour-z) + 2); pointer-events: none; display: none;
+}
+.cld-tour-pop{
+  position: fixed; max-width: 360px; background: var(--tour-card);
+  border: 1px solid var(--tour-bd); color: var(--tour-fg);
+  border-radius: 12px; padding: 12px 14px; z-index: calc(var(--tour-z) + 3);
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+.cld-tour-pop h4{margin:0 0 6px 0; font-size:15px}
+.cld-tour-pop p{margin:0; font-size:13px; opacity:.9; line-height:1.6}
+.cld-tour-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:10px}
+.cld-tour-btn{
+  background: transparent; color: var(--tour-fg); border:1px solid var(--tour-bd);
+  border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: 12px;
+}
+.cld-tour-btn.primary{ background: var(--tour-accent); border-color: var(--tour-accent); color:#fff }
+.cld-tour-badge{ position: fixed; top: 8px; left: 8px; z-index: calc(var(--tour-z)+4);
+  background: var(--tour-card); border:1px solid var(--tour-bd); color: var(--tour-fg);
+  border-radius: 999px; font-size: 11px; padding: 4px 8px; opacity:.9 }
+@media (max-width: 560px){ .cld-tour-pop{ max-width: 92vw } }
