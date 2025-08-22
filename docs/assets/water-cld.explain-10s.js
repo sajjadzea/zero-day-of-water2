@@ -28,8 +28,7 @@
       el = document.createElement('div');
       el.id = 'explain-10s';
       el.className = 'explain-10s';
-      const hero = document.querySelector('#hero-kpi .hero-left') || document.getElementById('hero-kpi');
-      hero?.appendChild(el);
+      (document.querySelector('#hero-kpi .hero-left') || document.getElementById('hero-kpi') || document.body).appendChild(el);
     }
     el.textContent = sentence();
   }

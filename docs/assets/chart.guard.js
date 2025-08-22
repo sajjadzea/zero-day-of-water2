@@ -1,69 +1,48 @@
-/* singleton */
 (function(){
   if (window.__CHART_GUARD__) return; window.__CHART_GUARD__ = true;
 
-  function safeDestroy(idOrCtx){
+  function getInst(idOrCtx){
     try{
-      if (!window.Chart) return;
-      // Chart v3/v4 compatibility
-      const inst = Chart.getChart(idOrCtx) ||
-        (Chart.instances && Object.values(Chart.instances)
-          .find(ch => ch && ch.canvas && (ch.canvas.id === idOrCtx)));
-      if (inst && typeof inst.destroy === 'function') inst.destroy();
-    }catch(e){}
+      if (!window.Chart) return null;
+      const byApi = (Chart.getChart && Chart.getChart(idOrCtx)) || null;
+      if (byApi) return byApi;
+      const list = Chart.instances ? Object.values(Chart.instances) : [];
+      return list.find(ch => ch && ch.canvas && (ch.canvas === idOrCtx || ch.canvas?.id === idOrCtx)) || null;
+    }catch(_){ return null; }
   }
-
+  function safeDestroy(idOrCtx){
+    try{ const inst = getInst(idOrCtx); if (inst && inst.destroy) inst.destroy(); }catch(_){}}
   function dedupeCanvas(id){
     try{
       const nodes = document.querySelectorAll('#'+CSS.escape(id));
-      if (nodes.length > 1){
-        // keep the first, remove extras to avoid double-locks
-        for (let i=1;i<nodes.length;i++) nodes[i].parentNode?.removeChild(nodes[i]);
-      }
-    }catch(e){}
-  }
+      for (let i=1;i<nodes.length;i++){ nodes[i].parentNode?.removeChild(nodes[i]); }
+    }catch(_){}}
 
-  // Public helper if needed elsewhere
-  window.__ensureSimChart = function(cfgOrOptions){
-    const id = (cfgOrOptions && cfgOrOptions.canvasId) || 'sim-chart';
+  // Public helper (optional usage by app)
+  window.__ensureSimChart = function(config){
+    const id = (config && config.canvasId) || 'sim-chart';
     const cv = document.getElementById(id);
     if (!cv) return null;
-
     dedupeCanvas(id);
     safeDestroy(id);
-
     const ctx = cv.getContext('2d');
     safeDestroy(ctx);
-
-    const options = cfgOrOptions?.options || cfgOrOptions;
-    return new Chart(ctx, options);
+    return new Chart(ctx, config?.options || config);
   };
 
-  // If app has a global initSimChart, wrap it to guarantee destroy-before-create
-  const patchInit = function(){
+  // Patch a global initSimChart if present
+  const patch = function(){
     if (typeof window.initSimChart === 'function' && !window.__CHART_INIT_PATCHED__){
       const orig = window.initSimChart;
       window.initSimChart = function(...args){
         safeDestroy('sim-chart');
-        // also destroy by context if any
         const cv = document.getElementById('sim-chart');
-        if (cv) safeDestroy(cv.getContext('2d'));
+        if (cv) try{ safeDestroy(cv.getContext('2d')); }catch(_){ }
         return orig.apply(this, args);
       };
       window.__CHART_INIT_PATCHED__ = true;
     }
   };
-
-  // Run now and also after scripts signal readiness
-  patchInit();
-  document.addEventListener('model:updated', patchInit, { once:true });
-
-  // Prevent repeated re-inits from multiple listeners
-  if (!window.__SIM_CHART_LISTENER__){
-    window.__SIM_CHART_LISTENER__ = true;
-    document.addEventListener('model:updated', () => {
-      const cv = document.getElementById('sim-chart');
-      if (cv) cv.dataset.modelUpdated = '1';
-    }, { once:true });
-  }
+  patch();
+  document.addEventListener('model:updated', patch, { once:true });
 })();

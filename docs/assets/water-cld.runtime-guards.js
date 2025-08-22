@@ -1,7 +1,7 @@
 (function(){
   if (window.__CLD_RT_GUARD__) return; window.__CLD_RT_GUARD__=true;
 
-  // onCyReady: run callback once Cytoscape instance is ready
+  // Run callback once Cytoscape instance is ready
   if (!window.onCyReady) {
     window.__CLD_READY__ = false;
     window.onCyReady = function(run){
@@ -17,22 +17,13 @@
     };
   }
 
-  // lightweight debounce (global helper)
+  // lightweight debounce
   if (!window.__cldDebounce) {
-    window.__cldDebounce = function(fn, ms=60){
-      let t=0; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); };
-    };
+    window.__cldDebounce = function(fn, ms=60){ let t=0; return function(){ const a=arguments; clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); }; };
   }
 
-  // safe fit (if there are no elements, do nothing)
+  // safe fit
   if (!window.__cldSafeFit) {
-    window.__cldSafeFit = function(cy){
-      try{
-        if (!cy) return;
-        const els = cy.elements();
-        if (!els || els.length===0) return;
-        cy.fit(els, 40);
-      }catch(_){}
-    };
+    window.__cldSafeFit = function(cy){ try{ const els = cy?.elements(); if (!els || els.length===0) return; cy.fit(els, 40);}catch(_){} };
   }
 })();
