@@ -1,0 +1,11 @@
+/* ===== Chart AutoFix: safe defaults (non-invasive) ===== */
+#sim-panel { min-height: 260px }
+#sim-panel canvas#sim-chart {
+  width: 100% !important;
+  height: 260px !important;     /* اگر ارتفاع صفر باشد، Chart.js چیزی نمی‌کشد */
+  display: block;
+}
+@media (max-width: 640px){
+  #sim-panel { min-height: 220px }
+  #sim-panel canvas#sim-chart { height: 220px !important }
+}
