@@ -1,4 +1,5 @@
 // ===== CLD Readability (singleton, CSP-safe, no interference) =====
+/* global graphStore */
 (function(){
   // --- گارد عدم‌تداخل
   if (window.__READABILITY_BOUND__ || window.__CLD_READABILITY_BOUND__) return;
@@ -17,7 +18,7 @@
   const debounce = window.__cldDebounce || ((fn,ms=70)=>{ let t=0; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; });
 
   // --- شروع پس از آماده‌شدن Cytoscape
-  onCyReady((cy)=>{
+  function run(cy){
 
     // 1) یک‌بار استایل‌های پایه (بدون تغییر پالت موجود)
     if (!cy.scratch('_readability_style_applied')){
@@ -152,6 +153,11 @@
       // Legend شناور قبلی را پنهان کن تا دوبل نشود
       if (floatLegend) floatLegend.style.display = 'none';
     })();
+  }
 
-  }); // end onCyReady
+  if (window.graphStore && typeof window.graphStore.run === 'function') {
+    graphStore.run(run);
+  } else {
+    onCyReady(run);
+  }
 })();

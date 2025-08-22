@@ -1,4 +1,5 @@
 // ===== Causal Path Search & Loops Chips (singleton, CSP-safe, no interference) =====
+/* global graphStore */
 (function(){
   if (window.__CLD_PATHS_BOUND__) return; window.__CLD_PATHS_BOUND__ = true;
 
@@ -55,7 +56,7 @@
   }
 
   // -------- Cytoscape logic --------
-  onCyReady((cy)=>{
+  function run(cy){
     buildUI();
 
     // Label helper
@@ -272,6 +273,11 @@
 
     renderLoops();
     cy.one('layoutstop', renderLoops); // بعد از چیدمان، یک‌بار باز-ارزیابی
+  }
 
-  }); // onCyReady
+  if (window.graphStore && typeof window.graphStore.run === 'function') {
+    graphStore.run(run);
+  } else {
+    onCyReady(run);
+  }
 })();
