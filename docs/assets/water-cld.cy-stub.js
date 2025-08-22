@@ -8,30 +8,31 @@
   // Queue operations called before real cy exists
   const queue = [];
   function enqueue(kind, method, args, selector){
-    queue.push({ kind, method, args: toArr(args), selector: selector ?? null });
+    queue.push({ kind, method, args: toArr(args), selector: selector == null ? null : selector });
   }
+
+  function resolveCollection(real, selector){
+    if (!selector) return real.elements();
+    if (selector.__type === 'id')    return real.getElementById(String(selector.value));
+    if (selector.__type === 'query') return real.$(String(selector.value));
+    return real.elements(selector);
+  }
+
   function flush(real){
-    if (!real) return;
+    if (!real || !queue.length) return;
     try{
       for (const op of queue){
         if (op.kind === 'cy'){
           const fn = real[op.method];
           if (typeof fn === 'function') fn.apply(real, op.args);
         } else if (op.kind === 'collection'){
-          // Resolve selector on the real instance
-          let coll = null;
-          if (op.selector && op.selector.__type === 'id'){
-            coll = real.getElementById(op.selector.value);
-          } else if (op.selector && op.selector.__type === 'query'){
-            coll = real.$(op.selector.value);
-          } else {
-            coll = real.elements(op.selector || undefined);
-          }
-          const fn = coll && coll[op.method];
+          const coll = resolveCollection(real, op.selector);
+          if (!coll) continue;
+          const fn = coll[op.method];
           if (typeof fn === 'function') fn.apply(coll, op.args);
         }
       }
-    }catch(_){ }
+    }catch(_){} // swallow
     queue.length = 0;
   }
 
@@ -50,7 +51,7 @@
     api.forEach = noop;
     api.map     = function(){ return []; };
     api.filter  = function(){ return makeCollectionProxy(selector); };
-    Object.defineProperty(api,'length',{ get: ()=>0 });
+    Object.defineProperty(api, 'length', { get: ()=>0 });
     return api;
   }
 
@@ -62,7 +63,7 @@
     nodes(sel){ return makeCollectionProxy(sel); },
     edges(sel){ return makeCollectionProxy(sel); },
     getElementById(id){ return makeCollectionProxy({ __type:'id', value:String(id) }); },
-    $ (query){ return makeCollectionProxy({ __type:'query', value:String(query) }); },
+    $: function(query){ return makeCollectionProxy({ __type:'query', value:String(query) }); },
 
     // events & batching
     on: noop, off: noop,
@@ -96,5 +97,11 @@
     const inst = e && e.detail && e.detail.cy;
     if (inst){ try{ realCy = inst; flush(realCy); }catch(_){ } }
   });
-})();
 
+  // Late flush fallback (in case ready event fired before setter)
+  setTimeout(function(){
+    try{
+      if (window.cy && window.cy !== cyStub) flush(window.cy);
+    }catch(_){}
+  }, 200);
+})();
