@@ -1,26 +1,38 @@
 (function(){
-  // گِیت آماده‌سازی Cytoscape (اگر از قبل نبود)
+  if (window.__CLD_RT_GUARD__) return; window.__CLD_RT_GUARD__=true;
+
+  // onCyReady: run callback once Cytoscape instance is ready
   if (!window.onCyReady) {
     window.__CLD_READY__ = false;
     window.onCyReady = function(run){
-      if (window.cy && typeof window.cy.on === 'function') { try { run(window.cy); } catch(_){} return; }
-      if (!window.__CLD_READY__) {
+      const tryRun = (cy) => { if (cy && typeof run==='function') { try{ run(cy); }catch(_){}} };
+      if (window.cy && typeof window.cy.on==='function') { tryRun(window.cy); return; }
+      if (!window.__CLD_READY__){
         window.__CLD_READY__ = true;
-        document.addEventListener('cy:ready', e => { const c = e.detail?.cy || window.cy; if (c) try{ run(c); }catch(_){} }, { once:true });
-        if (window.whenModelReady) window.whenModelReady(() => { if (window.cy) try{ run(window.cy); }catch(_){} });
-        if (document.readyState !== 'loading') { setTimeout(()=>{ if (window.cy) try{ run(window.cy); }catch(_){} }, 0); }
-        else document.addEventListener('DOMContentLoaded', ()=>{ if (window.cy) try{ run(window.cy); }catch(_){} }, { once:true });
+        document.addEventListener('cy:ready', (e)=> tryRun((e && e.detail && e.detail.cy) || window.cy), { once:true });
+        if (window.whenModelReady) window.whenModelReady(()=> tryRun(window.cy));
+        if (document.readyState !== 'loading') setTimeout(()=> tryRun(window.cy), 0);
+        else document.addEventListener('DOMContentLoaded', ()=> tryRun(window.cy), { once:true });
       }
     };
   }
 
-  // دی‌بونس عمومی سبک
+  // lightweight debounce (global helper)
   if (!window.__cldDebounce) {
-    window.__cldDebounce = function(fn, ms=60){ let t=0; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+    window.__cldDebounce = function(fn, ms=60){
+      let t=0; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms); };
+    };
   }
 
-  // fit ایمن (اگر صفر المنت بود، کاری نکن)
+  // safe fit (if there are no elements, do nothing)
   if (!window.__cldSafeFit) {
-    window.__cldSafeFit = function(cy){ if (!cy || cy.elements().length===0) return; try{ cy.fit(cy.elements(), 40); }catch(_){} };
+    window.__cldSafeFit = function(cy){
+      try{
+        if (!cy) return;
+        const els = cy.elements();
+        if (!els || els.length===0) return;
+        cy.fit(els, 40);
+      }catch(_){}
+    };
   }
 })();
