@@ -498,6 +498,43 @@
     });
     window.cy = cy;
 
+    // === Edge labels only at higher zoom levels ===
+    (function(){
+      var showAt = 1.0; // آستانه زوم (zoom threshold)
+      function syncEdgeLabels(){
+        var z = cy.zoom();
+        cy.batch(function(){
+          cy.edges().forEach(function(e){
+            e.style('label', z >= showAt ? e.data('label') : '');
+          });
+        });
+      }
+      cy.on('zoom', syncEdgeLabels);
+      syncEdgeLabels();
+    })();
+
+    // === Neighbor highlight with fade on hover ===
+    (function(){
+      var dim = 0.15; // شدت کم‌رنگ شدن
+      cy.on('mouseover', 'node', function(evt){
+        var n = evt.target;
+        var hood = n.closedNeighborhood();
+        cy.batch(function(){
+          cy.elements().difference(hood).addClass('faded');
+          hood.removeClass('faded');
+        });
+      });
+      cy.on('mouseout', 'node', function(){
+        cy.elements().removeClass('faded');
+      });
+
+      // تعریف استایل کلاس faded
+      cy.style()
+        .selector('.faded')
+        .style({ 'opacity': dim })
+        .update();
+    })();
+
     // ---- Modern Cytoscape styling: card-like nodes & readable edge labels ----
     (function(){
       var cy = window.cy; if(!cy) return;
