@@ -1,0 +1,10 @@
+/* ===== Fix Hints Placement (RTL + Dark, non-invasive) ===== */
+.toolbar.filters label.ctrl{
+  display:inline-flex; align-items:center; gap:6px; flex-wrap:nowrap;
+}
+.toolbar.filters .hint-wrap{
+  display:inline-flex; align-items:center; gap:6px; flex-wrap:nowrap;
+}
+.toolbar.filters .hint{
+  margin:0; opacity:.95; cursor:help;
+}
