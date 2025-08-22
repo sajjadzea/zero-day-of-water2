@@ -1,15 +1,38 @@
-function onCyReady(run){
-  if (window.cy && typeof window.cy.on === 'function') { run(window.cy); return; }
-  document.addEventListener('cy:ready', e => { const cy = e.detail?.cy || window.cy; if (cy) run(cy); });
-  if (window.whenModelReady) whenModelReady(() => { if (window.cy) run(window.cy); });
-  if (document.readyState === 'complete' || document.readyState === 'interactive'){
-    setTimeout(() => { if (window.cy) run(window.cy); }, 0);
-  } else {
-    document.addEventListener('DOMContentLoaded', () => { if (window.cy) run(window.cy); });
-  }
-}
+// ===== CY READINESS (singleton) =====
+window.__CLD_READY__ = window.__CLD_READY__ || false;
+window.onCyReady = window.onCyReady || function (run) {
+  // اگر cy آماده است همین الآن اجرا کن
+  if (window.cy && typeof window.cy.on === 'function') { try { run(window.cy); } catch (e) {} return; }
 
-window.onCyReady = onCyReady;
+  // فقط یک‌بار به رویدادها گوش بده
+  if (!window.__CLD_READY__) {
+    window.__CLD_READY__ = true;
+    document.addEventListener('cy:ready', e => {
+      const c = e.detail?.cy || window.cy;
+      if (c && typeof run === 'function') try { run(c); } catch (e) {}
+    }, { once: true });
+    if (window.whenModelReady) {
+      window.whenModelReady(() => {
+        if (window.cy && typeof run === 'function') try { run(window.cy); } catch (e) {}
+      });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.cy && typeof run === 'function') try { run(window.cy); } catch (e) {}
+      }, { once: true });
+    }
+  }
+};
+
+// Debounce عمومی سبک (برای رفرش‌ها)
+window.__cldDebounce = window.__cldDebounce || function (fn, ms = 50) {
+  let t = 0; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+};
+
+// fit ایمن (صفر المنت → کاری نکن؛ اجرا فقط یک‌بار بعد از layoutstop)
+window.__cldSafeFit = window.__cldSafeFit || function (cy) {
+  if (!cy || cy.elements().length === 0) return;
+  try { cy.fit(cy.elements(), 40); } catch (e) {}
+};
 
 (function () {
   const Parser = (window.exprEval && window.exprEval.Parser) || function () {
@@ -288,14 +311,6 @@ window.onCyReady = onCyReady;
     window.__wesh_sim_chart.update();
   }
 
-  const safeFit = () => {
-    try {
-      cy.resize();
-      cy.fit(undefined, 48);
-    } catch(e){
-      console.error('safeFit failed', e);
-    }
-  };
 
   // ---------- helper: seed positions by group (grid) ----------
   function seedByGroup(cy){
@@ -612,11 +627,11 @@ window.onCyReady = onCyReady;
       }
     });
 
-    cy.on('ready', () => setTimeout(safeFit, 0));
-    window.addEventListener('resize', () => requestAnimationFrame(safeFit));
-    window.addEventListener('orientationchange', () => setTimeout(safeFit,150));
+    cy.on('ready', () => setTimeout(() => window.__cldSafeFit(cy), 0));
+    window.addEventListener('resize', () => requestAnimationFrame(() => window.__cldSafeFit(cy)));
+    window.addEventListener('orientationchange', () => setTimeout(() => window.__cldSafeFit(cy),150));
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(safeFit, 60));
+      document.fonts.ready.then(() => setTimeout(() => window.__cldSafeFit(cy), 60));
     }
 
     // --- [Tooltips for Cytoscape elements using Tippy] ---------------------------
@@ -784,7 +799,7 @@ window.onCyReady = onCyReady;
         if (groupVal && n.data('parent') !== groupVal && n.id() !== groupVal) n.addClass('hidden');
       });
 
-      safeFit();
+      window.__cldSafeFit(cy);
     }
 
     function bindOut(inp, out){
@@ -804,7 +819,7 @@ window.onCyReady = onCyReady;
           e.addClass('hidden');
         }
       });
-      safeFit();
+      window.__cldSafeFit(cy);
     }
     if (wMin) wMin.addEventListener('input', applyEdgeFilters, {passive:true});
     if (dMax) dMax.addEventListener('input', applyEdgeFilters, {passive:true});
@@ -1265,7 +1280,7 @@ window.onCyReady = onCyReady;
 
           cy.once('layoutstop', function(){
             if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth: 240, padding: 16});
-            if (window.safeFit) window.safeFit();
+            requestAnimationFrame(() => window.__cldSafeFit(cy));
           });
         };
       })();
