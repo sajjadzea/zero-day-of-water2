@@ -5,123 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>مدل پویایی بهره‌وری آب در کشاورزی</title>
   <link rel="icon" type="image/webp" href="/page/landing/logo2.webp"/>
-  <link rel="stylesheet" href="/assets/water-cld.css?v=2">
-  <style>
-    :root{
-      --bg:#0b1d1a; --card:#122825; --muted:#1a3430; --text:#e6f1ef; --accent:#58a79a; --line:#2f6158;
-      --pos:#16a34a; --neg:#dc2626;
-    }
-    body{background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;}
-    .rtl{direction:rtl}
-    .board{display:grid;grid-template-columns:360px 1fr;gap:16px;}
-    @media (max-width:1024px){ .board{ grid-template-columns:1fr; } }
-    .card{background:var(--card, #122825);border:1px solid var(--muted, #1a3430);border-radius:16px;padding:12px;}
-    /* ظرف گراف امن */
-    #cy-wrap{min-height:560px;height:calc(100dvh - 280px);}
-    #cy{width:100%;height:100%;border:1px solid var(--muted, #1a3430);border-radius:14px;}
-    @media (max-width:640px){
-      .controls, .filters{ gap:10px; }
-      #cy-wrap{min-height:420px;height:calc(var(--vh,1dvh)*65);}
-      .row-nums .num{width:84px;}
-    }
-    /* هدر کنترل‌های بالای گراف */
-    .toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;position:sticky;top:0;z-index:10;background:linear-gradient(to bottom, rgba(0,0,0,0.25), transparent);padding-bottom:6px;margin-bottom:6px;}
-    /* اسلایدرها و دکمه‌ها لمسی‌تر */
-    .controls input[type="range"]{accent-color:var(--accent);}
-    input[type="range"]{height:30px;touch-action:pan-y;}
-    .btn{min-height:36px;padding:8px 12px;border-radius:10px;border:1px solid var(--muted);background:var(--muted);color:var(--text);cursor:pointer;}
-    .btn.outline{background:transparent;}
-    .btn.off{opacity:.5;}
-    .select, select{min-height:36px;}
-    label.ctrl{display:flex;align-items:center;gap:8px;}
-    label.ctrl span{opacity:.9;font-size:.92rem;}
-    label.ctrl output{min-width:36px;text-align:center;font-variant-numeric:tabular-nums;}
-    .row-nums{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;}
-    .row-nums .num{width:88px;height:36px;padding:6px 8px;border-radius:10px;border:1px solid var(--muted,#1a3430);background:#0f2421;color:#e6f1ef;}
-    .tabs{display:flex;gap:8px;margin-bottom:10px;}
-    .tab.active{background:var(--accent);}
-    #panel-formula textarea{width:100%;height:80px;margin-top:8px;background:var(--bg);color:var(--text);border:1px solid var(--muted);border-radius:8px;padding:6px;font-family:monospace;}
-    #panel-formula select{width:100%;}
-    .slider{margin-bottom:12px;}
-    .slider label{display:flex;justify-content:space-between;font-weight:600;}
-    .actions{display:flex;gap:8px;margin-top:8px;}
-    #sc-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}
-    #sc-table th,#sc-table td{border:1px solid var(--muted);padding:4px;text-align:center;}
-    #sc-table tr.selected{background:var(--muted);}
-    .hidden{display:none;}
-    #right-panel{overflow:hidden;}
-    #sim-panel{min-height:260px;}
-    #sim-panel canvas{width:100%;height:100%;}
-    .hint{ width:18px;height:18px;border-radius:50%;border:1px solid #2b3c39;background:#1a3430;color:#fff; font-weight:700; display:inline-grid; place-items:center; cursor:help; margin-inline-start:6px; }
-    .tippy-box{ background:#0f1f1c; color:#e6f1ef; border:1px solid #21433d; }
-  </style>
-  <style>
-    :root{
-      --bg-1:#0f1a17; --bg-2:#122826; --card:#16312d;
-      --brd:#1f413c; --fg:#e9f3f0; --muted:#9fb3ad;
-    }
-    .hero-kpi{
-      display:grid; grid-template-columns: 1.4fr 1fr; gap:16px;
-      background:var(--bg-2); border:1px solid var(--brd);
-      border-radius:16px; padding:16px; margin-bottom:12px;
-      position:sticky; top:8px; z-index:20;
-    }
-    .hero-left .problem-title{margin:0 0 6px 0; font-size:16px; color:var(--fg);}
-    .hero-left .problem-text{margin:0 0 10px 0; font-size:13px; color:var(--muted);}
-    .baseline-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .badge{background:#25443f; color:var(--fg); padding:4px 8px; border-radius:8px; font-size:12px;}
-    .btn{padding:8px 10px; border-radius:10px; border:1px solid var(--brd); cursor:pointer; font-size:13px}
-    .btn-primary{background:#1d776e; color:#fff}
-    .btn-soft{background:transparent; color:var(--fg)}
-    .btn:active{transform:translateY(1px)}
-    .hero-kpis{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
-    .kpi{background:var(--card); border:1px solid var(--brd); border-radius:12px; padding:10px 12px}
-    .kpi-title{font-size:12.5px; color:var(--muted); margin-bottom:6px}
-    .kpi-value{font-size:22px; font-weight:700; display:flex; gap:4px; align-items:baseline; color:var(--fg)}
-    .kpi-rag{margin-top:6px; height:6px; border-radius:4px;
-             background:linear-gradient(90deg,#ef4444 0 33%, #f59e0b 33% 66%, #22c55e 66% 100%);
-             position:relative; overflow:hidden}
-    .kpi-rag::after{content:""; position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff;
-                    transform:translateX(var(--rag-pos,50%)); border-radius:2px}
-    .rag-red::after{--rag-pos:10%} .rag-amber::after{--rag-pos:50%} .rag-green::after{--rag-pos:90%}
-    .rag-neutral::after{display:none}
-    @media (max-width: 992px){
-      .hero-kpi{grid-template-columns:1fr}
-      .hero-kpis{grid-template-columns:1fr 1fr 1fr}
-    }
-    @media (max-width: 560px){
-      .hero-kpis{grid-template-columns:1fr; gap:8px}
-    }
-  </style>
-  <style>
-    :root{
-      --bg:#0f1a17; --panel:#122826; --card:#16312d; --bd:#1f413c;
-      --fg:#e9f3f0; --muted:#9fb3ad; --accent:#1d776e;
-      --chip:#1a3a35;
-    }
-    #cld-control-hub{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:10px}
-    .ac-card{background:var(--panel); border:1px solid var(--bd); border-radius:12px; overflow:hidden}
-    .ac-card > summary{cursor:pointer; padding:10px 12px; font-weight:600; color:var(--fg); outline:none}
-    .ac-body{display:flex; flex-wrap:wrap; gap:8px; padding:10px 12px; align-items:flex-start}
-    .ac-adv{margin:6px 12px; border:1px dashed var(--bd); border-radius:10px}
-    .ac-adv > summary{cursor:pointer; padding:8px 10px; color:var(--muted)}
-
-    .ctl-chip{display:flex; align-items:center; gap:6px; background:var(--card);
-              border:1px solid var(--bd); padding:6px 8px; border-radius:10px}
-    .ctl-chip .meta{font-size:11px; color:var(--muted)}
-    .ctl-chip .unit{background:var(--chip); color:var(--fg); padding:2px 6px; border-radius:8px; font-size:11px}
-    .ctl-chip .rng{font-size:11px; color:var(--muted)}
-    .ctl-chip .def{font-size:11px; color:var(--muted)}
-    .ctl-help{opacity:.8}
-    .ctl-sep{width:1px; height:18px; background:var(--bd); margin:0 4px}
-
-    .btn-reset{margin-inline-start:auto; background:transparent; border:1px solid var(--bd);
-               color:var(--fg); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:12px}
-    .btn-reset:hover{border-color:var(--accent)}
-    @media (max-width: 1100px){ #cld-control-hub{grid-template-columns:1fr 1fr} }
-    @media (max-width: 720px){  #cld-control-hub{grid-template-columns:1fr} }
-  </style>
-</head>
+  <link rel="stylesheet" href="../assets/tailwind.css">
+  <link rel="stylesheet" href="../assets/water-cld.css">
+  </head>
 <body class="rtl">
   <!-- ===== HERO KPI BAR (start) ===== -->
   <section id="hero-kpi" dir="rtl" class="hero-kpi">
@@ -331,12 +217,7 @@
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-  <style>
-    /* دکمهٔ کنتراست بالا (سازگار با دارک‌مود فعلی) */
-    .btn-soft{padding:6px 10px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:transparent;color:inherit;cursor:pointer}
-    .btn-soft:hover{border-color:rgba(255,255,255,.28)}
-  </style>
-
+  
   <script defer src="../assets/water-cld.js"></script>
   <script defer src="../assets/water-cld.runtime-guards.js"></script>
   <script defer src="../assets/water-cld.extras-readability.js"></script>
