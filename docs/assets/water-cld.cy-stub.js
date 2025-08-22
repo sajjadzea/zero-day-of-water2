@@ -79,11 +79,14 @@
     api.map     = function(){ return []; };
     api.filter  = api.filter; // از بالا
     Object.defineProperty(api,'length',{ get: ()=>0 });
+ codex/replace-content-of-water-cld.cy-stub.js-omfag6
     api[0] = api; // allow nodes(...)[0].addClass(...) without throwing
     try{
       Object.defineProperty(api,1,{ get: ()=>api });
       Object.defineProperty(api,2,{ get: ()=>api });
     }catch(_){ }
+
+ main
     return api;
   }
 
