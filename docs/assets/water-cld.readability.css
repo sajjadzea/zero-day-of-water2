@@ -1,0 +1,18 @@
+/* ===== CLD Readability – Sticky Legend & Buttons (RTL + Dark) ===== */
+.legend-sticky {
+  position: sticky; top: 12px;
+  background:#16312d; border:1px solid #1f413c; color:#e9f3f0;
+  border-radius:12px; padding:10px 12px; max-width:280px;
+}
+.legend-sticky h4{margin:0 0 6px 0; font-size:13px}
+.legend-sticky .row{display:flex; align-items:center; gap:8px; margin:6px 0; font-size:12px}
+.legend-sticky .swatch{width:24px; height:2px; background:#9fb3ad; border-radius:1px}
+.legend-sticky .swatch.pos{background:#1ed08e}
+.legend-sticky .swatch.neg{background:#ef6b6b}
+.legend-sticky .swatch.delay{background:transparent; border-top:2px dotted #9fb3ad; height:0}
+
+.btn-soft{
+  padding:6px 10px; border:1px solid rgba(255,255,255,.12);
+  border-radius:8px; background:transparent; color:inherit; cursor:pointer;
+}
+.btn-soft:hover{border-color:rgba(255,255,255,.28)}
