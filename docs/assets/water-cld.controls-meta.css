@@ -1,0 +1,28 @@
+/* ===== Controls Meta (RTL + Dark, no conflicts) ===== */
+.controls-meta-card{position:relative}
+.controls-meta-header{display:flex;align-items:center;gap:8px}
+.controls-meta-count{margin-inline-start:auto;font-size:11.5px;color:#9fb3ad}
+.controls-help-btn{
+  border:1px solid #1f413c;background:#16312d;color:#e9f3f0;border-radius:8px;
+  padding:2px 8px;font-size:12px;cursor:pointer
+}
+.controls-help-pop{
+  position:absolute; inset-inline-end:10px; top:36px; z-index:40; min-width:240px;
+  background:#16312d;border:1px solid #1f413c;border-radius:12px;padding:10px; display:none;
+  box-shadow:0 10px 28px rgba(0,0,0,.35)
+}
+.controls-help-pop ul{margin:0;padding-inline-start:18px}
+.controls-help-pop li{font-size:12px;color:#e9f3f0;opacity:.9;line-height:1.6}
+
+.ctl-chip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  background:#16312d;border:1px solid #1f413c;border-radius:10px;
+  padding:6px 8px
+}
+.ctl-chip > .ctl-title{font-size:12.5px;color:#e9f3f0;opacity:.95}
+.ctl-chip .unit{background:#1a3a35;color:#e9f3f0;border-radius:8px;padding:0 6px;font-size:11px}
+.ctl-chip .rng,.ctl-chip .def{font-size:11px;color:#9fb3ad}
+.ctl-chip .sep{width:1px;height:16px;background:#1f413c;margin:0 4px}
+
+.card-collapsed .controls-body{display:none}
+.card-collapsed .controls-meta-count{opacity:.85}
