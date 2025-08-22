@@ -1,0 +1,2 @@
+.toast{position:fixed;inset-inline:0;top:8px;margin-inline:auto;z-index:1000;max-width:720px;background:#122826;border:1px solid #1f413c;color:#e9f3f0;border-radius:12px;padding:10px 12px;font-size:13px;box-shadow:0 10px 32px rgba(0,0,0,.35);opacity:0;transform:translateY(-8px);transition:opacity .15s,transform .15s}
+.toast.show{opacity:1;transform:translateY(0)}

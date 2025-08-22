@@ -1,0 +1,5 @@
+.kpi{position:relative}
+.kpi .delta-chip{position:absolute;top:6px;inset-inline-end:6px;font-size:11px;padding:2px 6px;border-radius:999px}
+.delta-up{background:#103a2f;color:#a8f5de}
+.delta-down{background:#3a1212;color:#ffd4d4}
+.delta-zero{background:#2a2a2a;color:#ddd}
