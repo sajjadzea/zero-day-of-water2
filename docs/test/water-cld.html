@@ -60,12 +60,14 @@
     </div>
   </section>
   <!-- ===== HERO KPI BAR (end) ===== -->
+
   <div class="board">
     <section class="card" id="left-panel">
       <div class="tabs">
         <button id="tab-param" class="btn tab active">پارامتر</button>
         <button id="tab-formula" class="btn tab">فرمول</button>
       </div>
+
       <div id="panel-param">
         <div class="controls">
           <div class="slider">
@@ -84,14 +86,17 @@
             <span class="hint" data-tippy-content="تأخیر زمانی واکنش سیستم بر حسب سال">❔</span>
           </div>
         </div>
+
         <div class="actions">
           <button id="btn-run" class="btn">اجرای سناریو</button><span class="hint" data-tippy-content="سناریو/چارت: با اجرای سناریو، نمودار نتایج به‌روزرسانی می‌شود.">❔</span>
           <button id="btn-reset" class="btn outline">بازنشانی</button>
           <button id="btn-export-csv" class="btn outline">Export CSV</button>
         </div>
+
         <div id="sim-panel" style="margin-top:12px">
           <canvas id="sim-chart"></canvas>
         </div>
+
         <div id="scenario-panel" style="margin-top:12px">
           <div class="actions">
             <button id="sc-new" class="btn outline">New</button>
@@ -104,6 +109,7 @@
             <tbody></tbody>
           </table>
         </div>
+
         <div id="sens-panel" style="margin-top:12px">
           <div class="slider">
             <label>حساسیت پارامتر</label>
@@ -121,6 +127,7 @@
           </div>
         </div>
       </div>
+
       <div id="panel-formula" style="display:none">
         <select id="formula-node" class="btn outline"></select>
         <textarea id="formula-expr"></textarea>
@@ -131,6 +138,7 @@
         <div id="formula-msg" style="margin-top:6px;color:#fbbf24"></div>
       </div>
     </section>
+
     <section class="card" id="right-panel">
       <!-- ===== CLD CONTROL HUB (start) ===== -->
       <section id="cld-control-hub" dir="rtl" class="cld-control-hub" aria-label="کنترل‌های نمودار">
@@ -151,6 +159,7 @@
         </details>
       </section>
       <!-- ===== CLD CONTROL HUB (end) ===== -->
+
       <div class="toolbar filters">
         <label class="ctrl">
           <span>حداقل وزن رابطه</span>
@@ -164,7 +173,7 @@
           <output id="flt-delay-max-val">5</output>
           <span class="hint" data-tippy-content="حداکثر تأخیر زمانی (سال)">❔</span>
         </label>
-        <!-- باقی کنترل‌ها (جستجو/گروه‌ها/Layout/Loops) -->
+
         <button id="f-pos" class="btn outline">روابط مثبت</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">❔</span>
         <button id="f-neg" class="btn outline">روابط منفی</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">❔</span>
         <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select><span class="hint" data-tippy-content="نمایش گروه خاصی از متغیرها">❔</span>
@@ -172,71 +181,86 @@
         <label class="btn outline" style="display:flex;align-items:center;gap:4px">
           <input type="checkbox" id="f-delay"/>تاخیر
         </label><span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
+
         <select id="model-switch" aria-label="انتخاب مدل">
           <option value="/data/water-cld.json?v=2">Simple</option>
           <option value="/data/water-cld-poster.json?v=1" selected>Poster</option>
         </select>
+
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
         </select><span class="hint" data-tippy-content="انتخاب الگوریتم چیدمان (ELK یا Dagre)">❔</span>
+
         <select id="layout-preset" class="btn outline">
           <option value="">پیش‌فرض</option>
           <option value="grid">Grid</option>
           <option value="radial">Radial</option>
           <option value="hierarchical">Hierarchical</option>
         </select><span class="hint" data-tippy-content="چیدمان‌های آماده (Grid, Radial, Hierarchical)">❔</span>
+
         <button id="btn-loops" class="btn outline">حلقه‌ها</button><span class="hint" data-tippy-content="شناسایی حلقه‌های بازخورد">❔</span>
       </div>
+
       <details id="panel-loops" style="margin:8px 0">
         <summary>Loops</summary>
         <ul id="loops-list"></ul>
       </details>
-      <div id="cy-wrap"><div id="cy"></div>
-      <!-- CLD Legend (fixed, scoped to #cy-wrap) -->
-      <div id="cld-legend" class="cld-legend" dir="rtl" aria-label="راهنمای نمودار علّی">
-        <div class="legend-row">
-          <span class="legend-line line-pos" aria-hidden="true"></span>
-          <span class="legend-text">رابطه مثبت (+)</span>
+
+      <div id="cy-wrap">
+        <div id="cy"></div>
+
+        <!-- CLD Legend (fixed, scoped to #cy-wrap) -->
+        <div id="cld-legend" class="cld-legend" dir="rtl" aria-label="راهنمای نمودار علّی">
+          <div class="legend-row">
+            <span class="legend-line line-pos" aria-hidden="true"></span>
+            <span class="legend-text">رابطه مثبت (+)</span>
+          </div>
+          <div class="legend-row">
+            <span class="legend-line line-neg" aria-hidden="true"></span>
+            <span class="legend-text">رابطه منفی (−)</span>
+          </div>
+          <div class="legend-row">
+            <span class="legend-line line-delay" aria-hidden="true"></span>
+            <span class="legend-text">تأخیر (خط‌چین)</span>
+          </div>
+          <div class="legend-row">
+            <span class="legend-line line-weight-thick" aria-hidden="true"></span>
+            <span class="legend-text">ضخامت = وزن رابطه</span>
+          </div>
+          <div class="legend-row">
+            <span class="badge badge-r" aria-hidden="true">R</span>
+            <span class="badge badge-b" aria-hidden="true">B</span>
+            <span class="legend-text">حلقه‌ها: R (تقویتی)، B (موازنه‌ای)</span>
+          </div>
         </div>
-        <div class="legend-row">
-          <span class="legend-line line-neg" aria-hidden="true"></span>
-          <span class="legend-text">رابطه منفی (−)</span>
-        </div>
-        <div class="legend-row">
-          <span class="legend-line line-delay" aria-hidden="true"></span>
-          <span class="legend-text">تأخیر (خط‌چین)</span>
-        </div>
-        <div class="legend-row">
-          <span class="legend-line line-weight-thick" aria-hidden="true"></span>
-          <span class="legend-text">ضخامت = وزن رابطه</span>
-        </div>
-        <div class="legend-row">
-          <span class="badge badge-r" aria-hidden="true">R</span>
-          <span class="badge badge-b" aria-hidden="true">B</span>
-          <span class="legend-text">حلقه‌ها: R (تقویتی)، B (موازنه‌ای)</span>
-        </div>
-      </div>
       </div>
     </section>
   </div>
-    <script defer src="../assets/water-cld.cy-stub.js"></script>
-    <script defer src="/assets/vendor/cytoscape.min.js"></script>
+
+  <!-- Guards: pre-core (singleton, idempotent) -->
+  <script defer src="../assets/water-cld.cy-stub.js"></script>
+
+  <!-- Vendors -->
+  <script defer src="/assets/vendor/cytoscape.min.js"></script>
   <script defer src="/assets/vendor/elk.bundled.js"></script>
   <script defer src="/assets/vendor/cytoscape-elk.js"></script>
   <script defer src="/assets/vendor/dagre.min.js"></script>
   <script defer src="/assets/vendor/cytoscape-dagre.js"></script>
-  <!-- Chart.js محلی -->
   <script defer src="/vendor/chart.umd.min.js"></script>
   <script defer src="/assets/vendor/expr-eval.min.js"></script>
   <script defer src="/assets/loop-detect.js"></script>
   <script defer src="/assets/layout-presets.js"></script>
   <script defer src="/assets/vendor/popper.min.js"></script>
-    <script defer src="/assets/vendor/tippy.umd.min.js"></script>
-    <script defer src="../assets/water-cld.cy-batch-guard.js"></script>
-    <script defer src="../assets/water-cld.cy-collection-guard.js"></script>
+  <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-    <script defer src="../assets/water-cld.js"></script>
+  <!-- Guards after vendors -->
+  <script defer src="../assets/water-cld.cy-batch-guard.js"></script>
+  <script defer src="../assets/water-cld.cy-safe-add.js"></script>
+  <script defer src="../assets/water-cld.cy-collection-guard.js"></script>
+
+  <!-- Core app + extras -->
+  <script defer src="../assets/water-cld.js"></script>
   <script defer src="../assets/water-cld.runtime-guards.js"></script>
   <script defer src="../assets/model-bridge.js"></script>
   <script defer src="../assets/water-cld.extras-hero.js"></script>
@@ -258,7 +282,8 @@
   <script defer src="../assets/water-cld.ghost-delta.js"></script>
   <script defer src="../assets/water-cld.spotlight.js"></script>
   <script defer src="../assets/water-cld.explain-10s.js"></script>
-    <!-- Guards / Fixes (additive, idempotent) -->
-    <script defer src="../assets/chart.guard.js"></script>
+
+  <!-- Fixes (additive, idempotent) -->
+  <script defer src="../assets/chart.guard.js"></script>
 </body>
 </html>
