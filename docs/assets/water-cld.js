@@ -1,3 +1,16 @@
+function onCyReady(run){
+  if (window.cy && typeof window.cy.on === 'function') { run(window.cy); return; }
+  document.addEventListener('cy:ready', e => { const cy = e.detail?.cy || window.cy; if (cy) run(cy); });
+  if (window.whenModelReady) whenModelReady(() => { if (window.cy) run(window.cy); });
+  if (document.readyState === 'complete' || document.readyState === 'interactive'){
+    setTimeout(() => { if (window.cy) run(window.cy); }, 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => { if (window.cy) run(window.cy); });
+  }
+}
+
+window.onCyReady = onCyReady;
+
 (function () {
   const Parser = (window.exprEval && window.exprEval.Parser) || function () {
     this.parse = function () {
@@ -11,6 +24,7 @@
   var __modelReadyQueue = [];
   function whenModelReady(fn){ if(__modelReady){ try{ fn(); }catch(e){ console.error(e);} } else { __modelReadyQueue.push(fn); } }
   function markModelReady(){ __modelReady = true; for(var i=0;i<__modelReadyQueue.length;i++){ try{ __modelReadyQueue[i](); }catch(e){ console.error(e);} } __modelReadyQueue = []; }
+  window.whenModelReady = whenModelReady;
 
   function setVhVar(){
     const vh = window.innerHeight * 0.01;
@@ -536,8 +550,7 @@
     })();
 
     // ---- Modern Cytoscape styling: card-like nodes & readable edge labels ----
-    (function(){
-      var cy = window.cy; if(!cy) return;
+    onCyReady(cy => {
 
       cy.style()
         // Nodes: card-like
@@ -597,7 +610,7 @@
           if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
         });
       }
-    })();
+    });
 
     cy.on('ready', () => setTimeout(safeFit, 0));
     window.addEventListener('resize', () => requestAnimationFrame(safeFit));
@@ -710,16 +723,10 @@
         });
       }
 
-      if (window.cy && window.cy.ready) {
-        bindCyTooltips(window.cy);
-      } else {
-        document.addEventListener('DOMContentLoaded', function () {
-          if (window.cy) bindCyTooltips(window.cy);
-        });
-      }
+      onCyReady(cy => { bindCyTooltips(cy); });
     })();
 
-    if (cy) {
+    onCyReady(cy => {
       cy.on('dbltap', 'node', n => {
         if (n.target.locked()) {
           n.target.unlock().removeClass('highlight');
@@ -727,7 +734,7 @@
           n.target.lock().addClass('highlight');
         }
       });
-    }
+    });
 
     const layoutSel = document.getElementById('layout');
 
@@ -1341,8 +1348,7 @@
         });
 
         // --- persist cy view (zoom/pan)
-        var cyInst = window.cy;
-        if (cyInst) {
+        onCyReady(cyInst => {
           var saveViewThrottled;
           function commitView() {
             var z = cyInst.zoom();
@@ -1355,7 +1361,7 @@
             saveViewThrottled = setTimeout(commitView, 200);
           }
           cyInst.on('zoom pan', scheduleSave);
-        }
+        });
       }
 
       // init after DOM & cy
