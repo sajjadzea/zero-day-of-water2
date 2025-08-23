@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,13 +11,13 @@
   <link rel="stylesheet" href="/assets/tailwind.css" />
   <link rel="stylesheet" href="/assets/chart.autofix.css" />
 
-  <!-- CLD bundle CSS (خروجی بیلد) -->
+  <!-- Bundled CLD styles -->
   <link rel="stylesheet" href="/assets/dist/water-cld.bundle.css" />
 </head>
 
 <body class="rtl">
   <!-- ===== HERO KPI BAR (start) ===== -->
-  <section id="hero-kpi" dir="rtl" class="hero-kpi">
+  <section id="hero-kpi" class="hero-kpi">
     <div class="hero-left">
       <h2 class="problem-title">مسئله‌ی مورد بررسی</h2>
       <p class="problem-text" id="problem-text">
@@ -25,9 +25,7 @@
       </p>
       <div class="baseline-row">
         <span id="hero-baseline" class="badge">Baseline v1.0</span>
-        <button id="btn-run-sample" class="btn btn-primary">
-          اجرای سناریوی نمونه: کاهش تلفات ۳۰→۲۰٪
-        </button>
+        <button id="btn-run-sample" class="btn btn-primary">اجرای سناریوی نمونه: کاهش تلفات ۳۰→۲۰٪</button>
         <button id="btn-reset-baseline" class="btn btn-soft">بازگشت به Baseline</button>
       </div>
     </div>
@@ -135,7 +133,7 @@
 
     <section class="card" id="right-panel">
       <!-- ===== CLD CONTROL HUB (start) ===== -->
-      <section id="cld-control-hub" dir="rtl" class="cld-control-hub" aria-label="کنترل‌های نمودار">
+      <section id="cld-control-hub" class="cld-control-hub" aria-label="کنترل‌های نمودار">
         <details class="ac-card mode" open>
           <summary>حالت‌ها (Mode)</summary>
           <div id="group-mode" class="ac-body"></div>
@@ -172,22 +170,16 @@
           <span class="hint" data-tippy-content="حداکثر تأخیر زمانی (سال)">❔</span>
         </label>
 
-        <button id="f-pos" class="btn outline">روابط مثبت</button>
-        <span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">❔</span>
+        <button id="f-pos" class="btn outline">روابط مثبت</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر مثبت.">❔</span>
+        <button id="f-neg" class="btn outline">روابط منفی</button><span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">❔</span>
 
-        <button id="f-neg" class="btn outline">روابط منفی</button>
-        <span class="hint" data-tippy-content="نمایش تنها یال‌های دارای اثر منفی.">❔</span>
+        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select><span class="hint" data-tippy-content="نمایش گروه خاصی از متغیرها">❔</span>
 
-        <select id="f-group" class="btn outline"><option value="">همه گروه‌ها</option></select>
-        <span class="hint" data-tippy-content="نمایش گروه خاصی از متغیرها">❔</span>
-
-        <input id="q" class="btn outline" placeholder="جست‌وجو" value="" />
-        <span class="hint" data-tippy-content="جست‌وجوی نام گره‌ها">❔</span>
+        <input id="q" class="btn outline" placeholder="جست‌وجو" value="" /><span class="hint" data-tippy-content="جست‌وجوی نام گره‌ها">❔</span>
 
         <label class="btn outline" style="display:flex;align-items:center;gap:4px">
           <input type="checkbox" id="f-delay" />تاخیر
-        </label>
-        <span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
+        </label><span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
 
         <select id="model-switch" aria-label="انتخاب مدل">
           <option value="/data/water-cld.json?v=2">Simple</option>
@@ -197,19 +189,16 @@
         <select id="layout" class="btn outline">
           <option value="elk" selected>ELK</option>
           <option value="dagre">Dagre</option>
-        </select>
-        <span class="hint" data-tippy-content="انتخاب الگوریتم چیدمان (ELK یا Dagre)">❔</span>
+        </select><span class="hint" data-tippy-content="انتخاب الگوریتم چیدمان (ELK یا Dagre)">❔</span>
 
         <select id="layout-preset" class="btn outline">
           <option value="">پیش‌فرض</option>
           <option value="grid">Grid</option>
           <option value="radial">Radial</option>
           <option value="hierarchical">Hierarchical</option>
-        </select>
-        <span class="hint" data-tippy-content="چیدمان‌های آماده (Grid, Radial, Hierarchical)">❔</span>
+        </select><span class="hint" data-tippy-content="چیدمان‌های آماده (Grid, Radial, Hierarchical)">❔</span>
 
-        <button id="btn-loops" class="btn outline">حلقه‌ها</button>
-        <span class="hint" data-tippy-content="شناسایی حلقه‌های بازخورد">❔</span>
+        <button id="btn-loops" class="btn outline">حلقه‌ها</button><span class="hint" data-tippy-content="شناسایی حلقه‌های بازخورد">❔</span>
       </div>
 
       <details id="panel-loops" style="margin:8px 0">
@@ -221,7 +210,7 @@
         <div id="cy"></div>
 
         <!-- CLD Legend -->
-        <div id="cld-legend" class="cld-legend" dir="rtl" aria-label="راهنمای نمودار علّی">
+        <div id="cld-legend" class="cld-legend" aria-label="راهنمای نمودار علّی">
           <div class="legend-row">
             <span class="legend-line line-pos" aria-hidden="true"></span>
             <span class="legend-text">رابطه مثبت (+)</span>
@@ -244,27 +233,22 @@
     </section>
   </div>
 
-  <!-- ========== SCRIPTS ========== -->
-
-  <!-- Vendor libs (حتماً قبل از باندل لود شوند) -->
+  <!-- ========== JS (order matters) ========== -->
+  <!-- Vendor libs -->
   <script defer src="/assets/vendor/cytoscape.min.js"></script>
   <script defer src="/assets/vendor/elk.bundled.js"></script>
   <script defer src="/assets/vendor/cytoscape-elk.js"></script>
   <script defer src="/assets/vendor/dagre.min.js"></script>
   <script defer src="/assets/vendor/cytoscape-dagre.js"></script>
-
-  <!-- مسیر صحیح Chart.js -->
   <script defer src="/assets/libs/chart.umd.min.js"></script>
-
   <script defer src="/assets/vendor/expr-eval.min.js"></script>
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-  <!-- ⚠️ اسکریپت‌های هسته (kernel/adapter/graph-store/model-bridge) را بیرون از باندل لود نکنید. -->
-  <!-- فقط باندل برنامه -->
+  <!-- Single bundled CLD (includes app code & modules) -->
   <script defer src="/assets/dist/water-cld.bundle.js"></script>
 
-  <!-- Fixes / guards (بعد از Chart و باندل) -->
+  <!-- Small additive guard/fixers -->
   <script defer src="/assets/chart.guard.js"></script>
 </body>
 </html>
