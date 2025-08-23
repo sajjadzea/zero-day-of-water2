@@ -13,6 +13,20 @@
 
   <!-- Bundled CLD styles -->
   <link rel="stylesheet" href="/assets/dist/water-cld.bundle.css" />
+
+  <script>
+  (function () {
+    if (!window.kernel) {
+      const bus = {};
+      window.kernel = {
+        state: {},
+        on(ev, fn){ (bus[ev]||(bus[ev]=[])).push(fn); },
+        off(ev, fn){ bus[ev] = (bus[ev]||[]).filter(f=>f!==fn); },
+        emit(ev, data){ (bus[ev]||[]).forEach(f=>{ try{ f(data);}catch(e){} }); }
+      };
+    }
+  })();
+  </script>
 </head>
 
 <body class="rtl">
@@ -231,7 +245,7 @@
   </div>
 
   <!-- ========== JS (order matters) ========== -->
-  <!-- Vendor libs (must load BEFORE bundle) -->
+  <!-- ===== Vendor libs (must be before bundle) ===== -->
   <script defer src="/assets/vendor/cytoscape.min.js"></script>
   <script defer src="/assets/vendor/elk.bundled.js"></script>
   <script defer src="/assets/vendor/cytoscape-elk.js"></script>
@@ -242,10 +256,16 @@
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-  <!-- Single bundled CLD (depends on vendors above) -->
+  <!-- ===== Core (depends on vendor) ===== -->
+  <script defer src="/assets/water-cld.kernel.js"></script>
+  <script defer src="/assets/water-cld.kernel-adapter.js"></script>
+  <script defer src="/assets/graph-store.js"></script>
+  <script defer src="/assets/model-bridge.js"></script>
+
+  <!-- ===== Bundle (last) ===== -->
   <script defer src="/assets/dist/water-cld.bundle.js"></script>
 
-  <!-- Small additive guard/fixers (runs after bundle) -->
+  <!-- Fixes / guards -->
   <script defer src="/assets/chart.guard.js"></script>
 </body>
 </html>
