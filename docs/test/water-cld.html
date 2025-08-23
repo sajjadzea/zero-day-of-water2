@@ -14,19 +14,6 @@
   <!-- Bundled CLD styles -->
   <link rel="stylesheet" href="/assets/dist/water-cld.bundle.css" />
 
-  <script>
-  (function () {
-    if (!window.kernel) {
-      const bus = {};
-      window.kernel = {
-        state: {},
-        on(ev, fn){ (bus[ev]||(bus[ev]=[])).push(fn); },
-        off(ev, fn){ bus[ev] = (bus[ev]||[]).filter(f=>f!==fn); },
-        emit(ev, data){ (bus[ev]||[]).forEach(f=>{ try{ f(data);}catch(e){} }); }
-      };
-    }
-  })();
-  </script>
 </head>
 
 <body class="rtl">
@@ -255,6 +242,9 @@
   <script defer src="/assets/vendor/expr-eval.min.js"></script>
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
+
+  <!-- Kernel bootstrap: make kernel object exist even if main kernel loads late -->
+  <script defer src="/assets/water-cld.kernel-shim.js"></script>
 
   <!-- ===== Core (depends on vendor) ===== -->
   <script defer src="/assets/water-cld.kernel.js"></script>
