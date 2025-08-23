@@ -13,13 +13,13 @@ No existing files will be modified.
 ## Dependencies & Assets
 - Tailwind CSS: reuse `../assets/tailwind.css`.
 - Site-wide styles and Vazirmatn font: `../assets/fonts.css`.
-- Charts: `../assets/libs/chart.umd.min.js` (and adapter/annotation plugins if needed).
+- Charts: `../assets/vendor/chart.umd.min.js` (and adapter/annotation plugins if needed).
 - Number formatting helper: `../assets/numfmt.js`.
 - Existing images for branding: `../header2.webp` and `../page/landing/logo2.webp`.
 
 ## File Structure & Paths
 - New HTML resides at `docs/gas/fuel-carbon.html` and loads scripts with:
-  - `<script defer src="../assets/libs/chart.umd.min.js"></script>`
+  - `<script defer src="../assets/vendor/chart.umd.min.js"></script>`
   - `<script defer src="../assets/numfmt.js"></script>`
   - `<script defer src="../assets/js/gas-fuel-carbon.js"></script>`
 - HTML references images via relative paths:
