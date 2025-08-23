@@ -232,7 +232,7 @@
   </div>
 
   <!-- ========== JS (order matters) ========== -->
-  <!-- ===== Vendor libs (must be before bundle) ===== -->
+  <!-- ===== Vendor libs (must come first) ===== -->
   <script defer src="/assets/vendor/cytoscape.min.js"></script>
   <script defer src="/assets/vendor/elk.bundled.js"></script>
   <script defer src="/assets/vendor/cytoscape-elk.js"></script>
@@ -243,19 +243,17 @@
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-  <!-- Kernel bootstrap: make kernel object exist even if main kernel loads late -->
-  <script defer src="/assets/water-cld.kernel-shim.js"></script>
-
   <!-- ===== Core (depends on vendor) ===== -->
   <script defer src="/assets/water-cld.kernel.js"></script>
   <script defer src="/assets/water-cld.kernel-adapter.js"></script>
   <script defer src="/assets/graph-store.js"></script>
   <script defer src="/assets/model-bridge.js"></script>
 
-  <!-- ===== Bundle (last) ===== -->
-  <script defer src="/assets/dist/water-cld.bundle.js"></script>
+  <!-- SHIM + DEFER (no inline) -->
+  <script defer src="/assets/water-cld.kernel-shim.js"></script>
+  <script defer src="/assets/water-cld.defer.js"></script>
 
   <!-- Fixes / guards -->
   <script defer src="/assets/chart.guard.js"></script>
-</body>
-</html>
+  </body>
+  </html>
