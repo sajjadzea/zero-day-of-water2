@@ -132,7 +132,6 @@
     </section>
 
     <section class="card" id="right-panel">
-      <!-- ===== CLD CONTROL HUB (start) ===== -->
       <section id="cld-control-hub" class="cld-control-hub" aria-label="کنترل‌های نمودار">
         <details class="ac-card mode" open>
           <summary>حالت‌ها (Mode)</summary>
@@ -153,7 +152,6 @@
           <div id="group-layout" class="ac-body"></div>
         </details>
       </section>
-      <!-- ===== CLD CONTROL HUB (end) ===== -->
 
       <div class="toolbar filters">
         <label class="ctrl">
@@ -209,7 +207,6 @@
       <div id="cy-wrap">
         <div id="cy"></div>
 
-        <!-- CLD Legend -->
         <div id="cld-legend" class="cld-legend" aria-label="راهنمای نمودار علّی">
           <div class="legend-row">
             <span class="legend-line line-pos" aria-hidden="true"></span>
@@ -234,7 +231,7 @@
   </div>
 
   <!-- ========== JS (order matters) ========== -->
-  <!-- Vendor libs -->
+  <!-- Vendor libs (must load BEFORE bundle) -->
   <script defer src="/assets/vendor/cytoscape.min.js"></script>
   <script defer src="/assets/vendor/elk.bundled.js"></script>
   <script defer src="/assets/vendor/cytoscape-elk.js"></script>
@@ -245,10 +242,10 @@
   <script defer src="/assets/vendor/popper.min.js"></script>
   <script defer src="/assets/vendor/tippy.umd.min.js"></script>
 
-  <!-- Single bundled CLD (includes app code & modules) -->
+  <!-- Single bundled CLD (depends on vendors above) -->
   <script defer src="/assets/dist/water-cld.bundle.js"></script>
 
-  <!-- Small additive guard/fixers -->
+  <!-- Small additive guard/fixers (runs after bundle) -->
   <script defer src="/assets/chart.guard.js"></script>
 </body>
 </html>
