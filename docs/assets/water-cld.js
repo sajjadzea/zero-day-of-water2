@@ -75,9 +75,19 @@ function cldGetCy(){
 }
 
 function findSynonyms(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
-  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
-  return (syn.get(id) || []).map(function(x){ return x; }).filter(Boolean);
+  const graph = (typeof window !== 'undefined' && window.cy && window.cy.graph) ? window.cy.graph : {};
+  const meta = graph.meta || {};
+  // اگر هنوز آماده نیست، آرایهٔ خالی برگردان
+  if (!meta || !meta.synonymToId) return [];
+
+  const node = (meta.nodes instanceof Map) ? meta.nodes.get(id) : undefined;
+  const synonymsOfN = Array.isArray(node?.synonyms) ? node.synonyms : [];
+  if (!synonymsOfN.length) return [];
+
+  const synonymIds = synonymsOfN
+    .map((s) => meta.synonymToId.get(s))
+    .filter(Boolean);
+  return synonymIds;
 }
 
 function findSynonymNodes(id){
