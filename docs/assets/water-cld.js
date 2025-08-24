@@ -341,16 +341,30 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
   }
 
   // --- load model from URL and rebuild graph (non-module) ---
-  function normalizeModel(m){
-    const nodes = (m.nodes || []).map(function(n, i){
-      const id = n.id || (n.data && n.data.id) || ('n_' + i);
-      return { data: { id: id, label: n.label, group: n.group, unit: n.unit, desc: n.desc } };
+  function normalizeAndValidate(model){
+    const seen = new Set();
+    const nodes = (model?.nodes || []).map((n,i) => {
+      const data = n?.data ? { ...n.data } : { ...n };
+      data.id = data.id != null ? String(data.id) : `n_${i}`;
+      if (seen.has(data.id)) {
+        console.warn('[CLD] dup node id', data.id);
+        data.id = `${data.id}_${i}`;
+      }
+      seen.add(data.id);
+      return { data };
     });
-    const edges = (m.edges || []).map(function(e, i){
-      const id = e.id || (e.data && e.data.id) || (e.source + '__' + e.target + '__' + (e.sign || '') || ('e_' + i));
-      return { data: { id: id, source: e.source, target: e.target, sign: e.sign, label: e.label || (e.sign === '-' ? '−' : '+'), weight: (typeof e.weight === 'number') ? e.weight : undefined, delayYears: (typeof e.delayYears === 'number') ? e.delayYears : 0 } };
-    });
-    return { nodes: nodes, edges: edges };
+    let invalidEdges = 0;
+    const edges = (model?.edges || []).reduce((acc,e,i) => {
+      const data = e?.data ? { ...e.data } : { ...e };
+      data.id = data.id != null ? String(data.id) : `e_${i}`;
+      data.source = String(data.source ?? e?.source ?? '');
+      data.target = String(data.target ?? e?.target ?? '');
+      if (!data.source || !data.target) { invalidEdges++; return acc; }
+      acc.push({ data });
+      return acc;
+    }, []);
+    if (invalidEdges) console.warn('[CLD] edges dropped (no source/target):', invalidEdges);
+    return { nodes, edges };
   }
 
   window.loadModelFromUrl = function(url){
@@ -368,9 +382,9 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
           return;
         }
         if (!model) return;
-        const graph = normalizeModel(model);
-        if ((location.hostname === 'localhost' || /preview/.test(location.href)) && graph.nodes.length === 0){
-          console.warn('[CLD] empty graph → injecting dummy node (dev only)');
+        const graph = normalizeAndValidate(model);
+        if ((location.hostname === 'localhost' || /preview/.test(location.href)) && Array.isArray(graph.nodes) && graph.nodes.length === 0){
+          console.warn('[CLD] empty graph \u2192 injecting dummy node (dev only)');
           graph.nodes.push({ data:{ id:'dummy' } });
         }
         if (window.graphStore && typeof window.graphStore.setGraph === 'function') {
@@ -381,47 +395,59 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         }
         window.kernel = window.kernel || {};
         window.kernel.graph = graph;
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('MODEL_LOADED', graph);
+
         modelData = model;
         parseModel(model);
         markModelReady();
         if (__chartReady) initBaselineIfPossible();
-        var C = window.cy; if (!C) return graph;
-        var groupSelect = document.getElementById('f-group');
-        if (groupSelect){
-          groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
-          (model.groups||[]).forEach(function(g){
-            var opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.id;
-            groupSelect.appendChild(opt);
-          });
-        }
-        C.startBatch();
-        C.elements().remove();
-        graph.nodes.forEach(function(n){ C.add(n); });
-        (model.groups||[]).forEach(function(g){
-          if (!C.getElementById(g.id).nonempty) {
-            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+
+        waterKernel.onReady('cy', (C) => {
+          const gs = window.graphStore?.graph;
+          if (!gs || !Array.isArray(gs.nodes) || !Array.isArray(gs.edges)) return;
+          try {
+            if (!C) {
+              C = window.__cy || window.cy || null;
+              if (!C) { console.warn('[CLD] cy missing'); return; }
+            }
+            if (typeof C.startBatch !== 'function') { console.warn('[CLD] invalid cy'); return; }
+            const graph = gs;
+            const nodesEls = graph.nodes.map(n => ({ data: n.data || n }));
+            const edgesEls = graph.edges.map(e => ({ data: e.data || e }));
+            console.debug('[CLD] will add', { nodes: nodesEls.length, edges: edgesEls.length, sampleNode: nodesEls[0] });
+
+            C.startBatch();
+            C.elements().remove();
+            C.add(nodesEls.concat(edgesEls));
+            C.endBatch();
+
+            const nn = C.nodes().length, ne = C.edges().length;
+            console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne });
+
+            if (nn !== graph.nodes.length) {
+              console.warn('[CLD] node mismatch, delaying GRAPH_READY', graph.nodes.length, nn);
+              console.debug('[CLD] first cy node?', C.nodes()[0]?.data());
+              C.off('remove.__cld');
+              C.on('remove.__cld', () => {
+                console.warn('[CLD] element removed after add; counts:', C.nodes().length, C.edges().length);
+              });
+              const elems = C.elements();
+              if (!elems.__cldWrapped){
+                const _rm = elems.remove;
+                elems.remove = function(...args){
+                  console.warn('[CLD] elements.remove called');
+                  return _rm.apply(this, args);
+                };
+                elems.__cldWrapped = true;
+              }
+              return;
+            }
+            waterKernel.emit('MODEL_LOADED', graph);
+            waterKernel.emit('GRAPH_READY', graph);
+          } catch (e) {
+            console.error('[CLD] add-to-cy failed', e);
           }
-          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-          var pn = C.getElementById(g.id);
-          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
         });
-        graph.edges.forEach(function(e){
-          var edgeEl = C.add(e);
-          CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
-        });
-        C.endBatch();
-        seedByGroup(C);
-        var algo = (document.getElementById('layout')||{}).value || 'elk';
-        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-        if (window.runLayout) window.runLayout(algo, dir);
-        if (window.populateLoops) window.populateLoops(C, model.loops || []);
-        if (window.graphStore && window.graphStore.graph && window.graphStore.graph.nodes && window.graphStore.graph.nodes.length !== C.nodes().length){
-          console.warn('[CLD] node count mismatch', window.graphStore.graph.nodes.length, C.nodes().length);
-        }
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('GRAPH_READY', graph);
+
         try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
         return graph;
       })
@@ -441,7 +467,7 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     if (delayInput) { delayInput.value = 0; delayInput.dispatchEvent(new Event('input')); }
   }
 
-  document.addEventListener('DOMContentLoaded', async function () {
+  async function initCytoscape(){
     const container = document.getElementById('cy');
     if (!container) { console.warn('cy container not found'); return; }
     if (typeof window.cytoscape === 'undefined') { console.warn('cytoscape not loaded'); return; }
@@ -456,7 +482,7 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
-    cy = cytoscape({
+    const cy = cytoscape({
       container,
       elements: [],
       style: [
@@ -554,7 +580,9 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       ],
       layout: { name: 'grid' }
     });
-    window.cy = cy;
+    window.__cy = cy; window.lastCy = cy; window.cy = cy;
+    document.dispatchEvent(new CustomEvent('cy:ready', { detail: { cy } }));
+    console.log('[CLD init] cy built', typeof cy.startBatch === 'function');
 
     // === Edge labels only at higher zoom levels ===
     (function(){
@@ -1514,7 +1542,10 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         });
       });
     }
-  });
+  }
+
+  if (document.readyState !== 'loading') initCytoscape();
+  else document.addEventListener('DOMContentLoaded', initCytoscape, { once: true });
 
   (function(){
     function initSwitcher(){
