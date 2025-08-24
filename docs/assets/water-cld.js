@@ -34,6 +34,73 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
   try { cy.fit(cy.elements(), 40); } catch (e) {}
 };
 
+// ---- Singleton Cytoscape + ready event ------------------------------------
+(function(){
+  if (!window.__cld_cy_init) {
+    window.__cld_cy_init = true;
+
+    function buildCy(){
+      if (window.__cy && typeof window.__cy.startBatch === 'function') {
+        return window.__cy; // keep existing instance
+      }
+      const el = document.getElementById('cy');
+      if (!el) { console.warn('[CLD init] #cy missing'); return null; }
+      if (!window.cytoscape) { console.warn('[CLD init] cytoscape not loaded'); return null; }
+
+      const cy = cytoscape({ container: el, elements: [] });
+      window.cy = window.__cy = window.lastCy = cy;
+      document.dispatchEvent(new CustomEvent('cy:ready', { detail:{ cy } }));
+      console.log('[CLD init] cy built', true);
+      return cy;
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', buildCy, { once:true });
+    } else {
+      buildCy();
+    }
+  }
+})();
+
+// ---- Safe accessors --------------------------------------------------------
+function cldGetStoreGraph(){
+  const g = window.graphStore && window.graphStore.graph;
+  if (!g || !Array.isArray(g.nodes) || !Array.isArray(g.edges)) return null;
+  return g;
+}
+function cldGetCy(){
+  const C = window.__cy || window.lastCy || window.cy || null;
+  return (C && typeof C.startBatch === 'function') ? C : null;
+}
+
+// ---- Normalize elements for Cytoscape -------------------------------------
+function cldToCyElements(model){
+  const nodesSrc = Array.isArray(model?.nodes) ? model.nodes : [];
+  const edgesSrc = Array.isArray(model?.edges) ? model.edges : [];
+
+  const seen = new Set();
+  const nodes = nodesSrc.map((n,i)=>{
+    const d = n?.data ? { ...n.data } : { ...(n||{}) };
+    d.id = d.id != null ? String(d.id) : `n_${i}`;
+    if (seen.has(d.id)) { console.warn('[CLD] dup node id', d.id); d.id = `${d.id}_${i}`; }
+    seen.add(d.id);
+    return { data: d };
+  });
+
+  let dropped = 0;
+  const edges = edgesSrc.reduce((acc,e,i)=>{
+    const d = e?.data ? { ...e.data } : { ...(e||{}) };
+    d.id = d.id != null ? String(d.id) : `e_${i}`;
+    d.source = String(d.source ?? e?.source ?? '');
+    d.target = String(d.target ?? e?.target ?? '');
+    if (!d.source || !d.target) { dropped++; return acc; }
+    acc.push({ data: d }); return acc;
+  },[]);
+  if (dropped) console.warn('[CLD] edges dropped (no source/target):', dropped);
+
+  return { nodes, edges };
+}
+
 (function () {
   const Parser = (window.exprEval && window.exprEval.Parser) || function () {
     this.parse = function () {
@@ -353,82 +420,78 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     return { nodes: nodes, edges: edges };
   }
 
-  window.loadModelFromUrl = function(url){
-    return fetch(url, {cache:'no-store'})
-      .then(async function(r){
-        if (!r.ok) {
-          console.error('Failed to load model:', r.status, r.statusText);
-          return;
-        }
-        let model;
-        try {
-          model = await r.json();
-        } catch (e) {
-          console.error('Invalid model JSON', e);
-          return;
-        }
-        if (!model) return;
-        const graph = normalizeModel(model);
-        if ((location.hostname === 'localhost' || /preview/.test(location.href)) && graph.nodes.length === 0){
-          console.warn('[CLD] empty graph → injecting dummy node (dev only)');
-          graph.nodes.push({ data:{ id:'dummy' } });
-        }
-        if (window.graphStore && typeof window.graphStore.setGraph === 'function') {
-          window.graphStore.setGraph(graph);
-        } else {
-          window.graphStore = window.graphStore || { graph:{ nodes:[], edges:[] } };
-          window.graphStore.graph = graph;
-        }
-        window.kernel = window.kernel || {};
-        window.kernel.graph = graph;
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('MODEL_LOADED', graph);
-        modelData = model;
-        parseModel(model);
-        markModelReady();
-        if (__chartReady) initBaselineIfPossible();
-        var C = window.cy; if (!C) return graph;
-        var groupSelect = document.getElementById('f-group');
-        if (groupSelect){
-          groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
-          (model.groups||[]).forEach(function(g){
-            var opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.id;
-            groupSelect.appendChild(opt);
-          });
-        }
+  async function loadModelFromUrl(url){
+    // fetch + parse
+    const res = await fetch(url, { cache:'no-store' }).catch(e => { console.error('[CLD] fetch failed', e); });
+    if (!res || !res.ok) { console.error('[CLD] fetch bad status', res && res.status); return; }
+    let model;
+    try { model = await res.json(); } catch (e) { console.error('[CLD] invalid model JSON', e); return; }
+
+    // sync store + kernel (raw graph)
+    const graph = {
+      nodes: Array.isArray(model?.nodes) ? model.nodes : [],
+      edges: Array.isArray(model?.edges) ? model.edges : []
+    };
+    if (window.graphStore?.setGraph) window.graphStore.setGraph(graph);
+    else { window.graphStore = window.graphStore || {}; window.graphStore.graph = graph; }
+    window.kernel = window.kernel || {}; window.kernel.graph = graph;
+
+    // keep for other modules
+    modelData = model;
+    if (typeof parseModel === 'function') { try { parseModel(model); } catch(e){ console.error('[CLD] parse model', e); } }
+    if (typeof markModelReady === 'function') markModelReady();
+    if (__chartReady && typeof initBaselineIfPossible === 'function') initBaselineIfPossible();
+
+    // normalize for Cytoscape, keep for debug
+    const els = cldToCyElements(graph);
+    window.__lastElementsForCy = els;
+
+    // inject when cy is ready
+    const inject = () => {
+      const C = cldGetCy();
+      if (!C) { console.warn('[CLD] cy missing/invalid for inject'); return; }
+
+      console.debug('[CLD] to-cy arrays', { nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0] });
+
+      let viaJson = true;
+      try {
         C.startBatch();
-        C.elements().remove();
-        graph.nodes.forEach(function(n){ C.add(n); });
-        (model.groups||[]).forEach(function(g){
-          if (!C.getElementById(g.id).nonempty) {
-            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
-          }
-          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-          var pn = C.getElementById(g.id);
-          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
-        });
-        graph.edges.forEach(function(e){
-          var edgeEl = C.add(e);
-          CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
-        });
+        C.json({ elements: { nodes: els.nodes, edges: els.edges } });
         C.endBatch();
-        seedByGroup(C);
-        var algo = (document.getElementById('layout')||{}).value || 'elk';
-        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-        if (window.runLayout) window.runLayout(algo, dir);
-        if (window.populateLoops) window.populateLoops(C, model.loops || []);
-        if (window.graphStore && window.graphStore.graph && window.graphStore.graph.nodes && window.graphStore.graph.nodes.length !== C.nodes().length){
-          console.warn('[CLD] node count mismatch', window.graphStore.graph.nodes.length, C.nodes().length);
+      } catch (err) {
+        viaJson = false;
+        console.error('[CLD] cy.json failed; fallback to add()', err);
+        try {
+          C.startBatch();
+          C.elements().remove();
+          C.add( els.nodes.concat(els.edges) );
+          C.endBatch();
+        } catch (err2) {
+          console.error('[CLD] add() also failed', err2);
+          return;
         }
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('GRAPH_READY', graph);
-        try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
-        return graph;
-      })
-      .catch(function(err){
-        console.error('Error fetching model', err);
-      });
-  };
+      }
+
+      const nn = C.nodes().length, ne = C.edges().length;
+      console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne, viaJson });
+
+      if (nn !== els.nodes.length) {
+        console.warn('[CLD] node mismatch, delaying GRAPH_READY', els.nodes.length, nn);
+        console.debug('[CLD] first cy node?', C.nodes()[0]?.data());
+        C.off('remove.__cld');
+        C.on('remove.__cld', ()=>console.warn('[CLD] element removed after add; now:', C.nodes().length, C.edges().length));
+        return;
+      }
+
+      window.waterKernel?.emit?.('MODEL_LOADED', graph);
+      window.waterKernel?.emit?.('GRAPH_READY', graph);
+    };
+
+    const C0 = cldGetCy();
+    if (C0) inject();
+    else document.addEventListener('cy:ready', function once(){ document.removeEventListener('cy:ready', once); inject(); }, { once:true });
+  }
+  window.loadModelFromUrl = loadModelFromUrl;
 
   function resetScenario() {
     if (!baseSim) return;
@@ -446,6 +509,9 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     if (!container) { console.warn('cy container not found'); return; }
     if (typeof window.cytoscape === 'undefined') { console.warn('cytoscape not loaded'); return; }
 
+    const cy = cldGetCy();
+    if (!cy) { console.warn('[CLD init] cy missing'); return; }
+
     if (window.tippy) {
       tippy('.hint', { allowHTML:true, theme:'light', delay:[80,0], placement:'bottom', maxWidth: 320, interactive: true });
     }
@@ -456,105 +522,22 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     const colorAccent = rootStyle.getPropertyValue('--accent').trim() || '#58a79a';
     const colorLine = rootStyle.getPropertyValue('--line').trim() || '#2f6158';
     const colorText = rootStyle.getPropertyValue('--text').trim() || '#e6f1ef';
-    cy = cytoscape({
-      container,
-      elements: [],
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'background-color': '#f8faf9',
-            'border-width': 2
-          }
-        },
-        {
-          selector: 'node[label][!isGroup]',
-          style: {
-            'label': 'data(label)',
-            'font-family': 'Vazirmatn, sans-serif',
-            'text-wrap': 'wrap',
-            'text-max-width': 260,
-            'font-size': 15,
-            'font-weight': 500,
-            'color': '#0a0f0e',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'text-margin-y': 0,
-            'text-outline-width': 0,
-            'background-color': '#eaf3f1',
-            'shape': 'round-rectangle',
-            'padding': '12px 18px',
-            'border-width': 3,
-            'border-color': '#ffffff',
-            'min-zoomed-font-size': 8
-          }
-        },
-        {
-          selector: 'node.compound',
-          style: {
-            'shape': 'round-rectangle',
-            'background-color': '#ffffff',
-            'background-opacity': 0.12,
-            'border-color': '#2b3c39',
-            'border-width': 1.5,
-            'label': 'data(label)',
-            'text-valign': 'top',
-            'text-halign': 'center',
-            'font-size': 12,
-            'color': '#cfe7e2',
-            'padding': 24,
-            'font-family': 'Vazirmatn, sans-serif'
-          }
-        },
-        {
-          selector: 'edge',
-          style: {
-            'curve-style': 'bezier',
-            'width': ele => 2 + (ele.data('weight') || 0),
-            'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid',
-            'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0],
-            'target-arrow-shape': 'triangle',
-            'arrow-scale': 1.2,
-            'line-color': colorLine,
-            'target-arrow-color': colorLine,
-            'source-arrow-color': colorLine,
-            'label': 'data(label)',
-            'text-rotation': 'autorotate',
-            'text-background-color': 'rgba(0,0,0,0.35)',
-            'text-background-opacity': 1,
-            'text-background-padding': 1,
-            'text-wrap': 'wrap',
-            'text-max-width': 100,
-            'font-family': 'Vazirmatn, sans-serif',
-            'font-size': 12,
-            'color': colorText
-          }
-        },
-        {
-          selector: 'edge.pos',
-          style: {
-            'line-color': colorPos,
-            'target-arrow-color': colorPos,
-            'source-arrow-color': colorPos
-          }
-        },
-        {
-          selector: 'edge.neg',
-          style: {
-            'line-color': colorNeg,
-            'target-arrow-color': colorNeg,
-            'source-arrow-color': colorNeg
-          }
-        },
-        { selector: '.hidden', style: { 'display': 'none' } },
-        { selector: '.faded', style: { 'opacity': 0.1 } },
-        { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
-        { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
-        { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
-      ],
-      layout: { name: 'grid' }
-    });
-    window.cy = cy;
+
+    const baseStyle = [
+      { selector: 'node', style: { 'background-color': '#f8faf9', 'border-width': 2 } },
+      { selector: 'node[label][!isGroup]', style: { 'label': 'data(label)', 'font-family': 'Vazirmatn, sans-serif', 'text-wrap': 'wrap', 'text-max-width': 260, 'font-size': 15, 'font-weight': 500, 'color': '#0a0f0e', 'text-valign': 'center', 'text-halign': 'center', 'text-margin-y': 0, 'text-outline-width': 0, 'background-color': '#eaf3f1', 'shape': 'round-rectangle', 'padding': '12px 18px', 'border-width': 3, 'border-color': '#ffffff', 'min-zoomed-font-size': 8 } },
+      { selector: 'node.compound', style: { 'shape': 'round-rectangle', 'background-color': '#ffffff', 'background-opacity': 0.12, 'border-color': '#2b3c39', 'border-width': 1.5, 'label': 'data(label)', 'text-valign': 'top', 'text-halign': 'center', 'font-size': 12, 'color': '#cfe7e2', 'padding': 24, 'font-family': 'Vazirmatn, sans-serif' } },
+      { selector: 'edge', style: { 'curve-style': 'bezier', 'width': ele => 2 + (ele.data('weight') || 0), 'line-style': ele => ele.data('delayYears') > 0 ? 'dashed' : 'solid', 'line-dash-pattern': ele => ele.data('delayYears') > 0 ? [8,6] : [0], 'target-arrow-shape': 'triangle', 'arrow-scale': 1.2, 'line-color': colorLine, 'target-arrow-color': colorLine, 'source-arrow-color': colorLine, 'label': 'data(label)', 'text-rotation': 'autorotate', 'text-background-color': 'rgba(0,0,0,0.35)', 'text-background-opacity': 1, 'text-background-padding': 1, 'text-wrap': 'wrap', 'text-max-width': 100, 'font-family': 'Vazirmatn, sans-serif', 'font-size': 12, 'color': colorText } },
+      { selector: 'edge.pos', style: { 'line-color': colorPos, 'target-arrow-color': colorPos, 'source-arrow-color': colorPos } },
+      { selector: 'edge.neg', style: { 'line-color': colorNeg, 'target-arrow-color': colorNeg, 'source-arrow-color': colorNeg } },
+      { selector: '.hidden', style: { 'display': 'none' } },
+      { selector: '.faded', style: { 'opacity': 0.1 } },
+      { selector: '.highlighted', style: { 'border-color': '#facc15', 'border-width': 3 } },
+      { selector: '.highlight', style: { 'border-color': colorAccent, 'border-width': 3 } },
+      { selector: 'edge.highlight', style: { 'line-color': colorAccent, 'target-arrow-color': colorAccent, 'source-arrow-color': colorAccent, 'width': 4 } }
+    ];
+    cy.style().fromJson(baseStyle).update();
+    cy.layout({ name: 'grid' }).run();
 
     // === Edge labels only at higher zoom levels ===
     (function(){
