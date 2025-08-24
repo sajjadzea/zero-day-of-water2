@@ -342,69 +342,85 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
 
   // --- load model from URL and rebuild graph (non-module) ---
   window.loadModelFromUrl = function(url){
-    fetch(url, {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(model){
-      modelData = model;
-      parseModel(model);
-      markModelReady();
-      if (__chartReady) initBaselineIfPossible();
-      var C = window.cy; if (!C || !model) return;
-      // update group select
-      var groupSelect = document.getElementById('f-group');
-      if (groupSelect){
-        groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
-        (model.groups||[]).forEach(function(g){
-          var opt = document.createElement('option');
-          opt.value = g.id;
-          opt.textContent = g.id;
-          groupSelect.appendChild(opt);
-        });
-      }
-      C.startBatch();
-      C.elements().remove();
-      // nodes
-      (model.nodes||[]).forEach(function(n){
-        C.add({ data:{
-          id: n.id, label: n.label, group: n.group, unit: n.unit, desc: n.desc
-        }});
-      });
-      // compounds from groups
-      (model.groups||[]).forEach(function(g){
-        if (!C.getElementById(g.id).nonempty) {
-          C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+    fetch(url, {cache:'no-store'})
+      .then(async function(r){
+        if (!r.ok) {
+          console.error('Failed to load model:', r.status, r.statusText);
+          return;
         }
-        C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-        var pn = C.getElementById(g.id);
-        if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
-      });
-      // edges
-      (model.edges||[]).forEach(function(e){
-        const edgeEl = C.add({ group:'edges', data:{
-          id: (e.id || (e.source+'__'+e.target+'__'+(e.sign||''))),
-          source: e.source, target: e.target,
-          sign: e.sign, label: e.label || (e.sign==='-'?'−':'+'),
-          weight: (typeof e.weight==='number') ? e.weight : undefined,
-          delayYears: (typeof e.delayYears==='number') ? e.delayYears : 0
-        }});
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(edgeEl, e.sign === '-' ? 'neg' : 'pos');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            edgeEl?.classList?.add(e.sign === '-' ? 'neg' : 'pos');
+        let model;
+        try {
+          model = await r.json();
+        } catch (e) {
+          console.error('Invalid model JSON', e);
+          return;
+        }
+        if (!model) return;
+        modelData = model;
+        parseModel(model);
+        markModelReady();
+        if (__chartReady) initBaselineIfPossible();
+        var C = window.cy; if (!C) return;
+        // update group select
+        var groupSelect = document.getElementById('f-group');
+        if (groupSelect){
+          groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
+          (model.groups||[]).forEach(function(g){
+            var opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.id;
+            groupSelect.appendChild(opt);
+          });
+        }
+        C.startBatch();
+        C.elements().remove();
+        // nodes
+        (model.nodes||[]).forEach(function(n){
+          C.add({ data:{
+            id: n.id, label: n.label, group: n.group, unit: n.unit, desc: n.desc
+          }});
+        });
+        // compounds from groups
+        (model.groups||[]).forEach(function(g){
+          if (!C.getElementById(g.id).nonempty) {
+            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
           }
+          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
+          var pn = C.getElementById(g.id);
+          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
+        });
+        // edges
+        (model.edges||[]).forEach(function(e){
+          const edgeEl = C.add({ group:'edges', data:{
+            id: (e.id || (e.source+'__'+e.target+'__'+(e.sign||''))),
+            source: e.source, target: e.target,
+            sign: e.sign, label: e.label || (e.sign==='-'?'−':'+'),
+            weight: (typeof e.weight==='number') ? e.weight : undefined,
+            delayYears: (typeof e.delayYears==='number') ? e.delayYears : 0
+          }});
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(edgeEl, e.sign === '-' ? 'neg' : 'pos');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              edgeEl?.classList?.add(e.sign === '-' ? 'neg' : 'pos');
+            }
+        });
+
+        C.endBatch();
+
+        seedByGroup(C);
+
+        var algo = (document.getElementById('layout')||{}).value || 'elk';
+        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
+        if (window.runLayout) window.runLayout(algo, dir);
+
+        if (window.populateLoops) window.populateLoops(C, model.loops || []);
+
+        try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
+      })
+      .catch(function(err){
+        console.error('Error fetching model', err);
       });
-
-      C.endBatch();
-
-      seedByGroup(C);
-
-      var algo = (document.getElementById('layout')||{}).value || 'elk';
-      var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-      if (window.runLayout) window.runLayout(algo, dir);
-
-      if (window.populateLoops) window.populateLoops(C, model.loops || []);
-
-      try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
-    });
   };
 
   function resetScenario() {
