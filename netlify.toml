@@ -1,17 +1,18 @@
 [build]
   publish = "docs"
-  # CLD را بساز، چک باینری بزن، بعد build اصلی سایت را اجرا کن
-  command = "npm ci && node scripts/build-cld.js && npm run check:no-binary && npm run build"
+  # CLD را بساز، بعد build اصلی سایت را اجرا کن
+  command = "npm ci && node scripts/build-cld.js && npm run build"
 
 [build.processing]
   skip_processing = true
 
 [build.environment]
   NODE_VERSION = "20"
+  CI = "true"
 
 # همان دستور برای Deploy Preview تا PRها هم باندل درست داشته باشند
 [context.deploy-preview]
-  command = "npm ci && node scripts/build-cld.js && npm run check:no-binary && npm run build"
+  command = "npm ci && node scripts/build-cld.js && npm run build"
 
 [functions]
   directory = "netlify/functions"
@@ -55,6 +56,11 @@ for = "/assets/dist/*"
 
 [[headers]]
 for = "/*.woff2"
+  [headers.values]
+  Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/assets/*"
   [headers.values]
   Cache-Control = "public, max-age=31536000, immutable"
 
