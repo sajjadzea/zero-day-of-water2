@@ -78,6 +78,49 @@ function cldGetCy(){
   return (C && typeof C.startBatch === 'function') ? C : null;
 }
 
+// ---- Data sanitization -----------------------------------------------------
+function sanitizeGraph(graph){
+  const g = graph || {};
+  const nodes = Array.isArray(g.nodes) ? g.nodes : [];
+  const edges = Array.isArray(g.edges) ? g.edges : [];
+  const meta  = g.meta || {};
+  const syn   = (meta.synonymToId instanceof Map) ? meta.synonymToId : null;
+
+  const seenNodes = new Set();
+  const nodeSet   = new Set();
+  const cleanNodes = [];
+  for (const n of nodes){
+    const id = String(n?.id || '').trim();
+    if (!id || seenNodes.has(id)) continue;
+    seenNodes.add(id); nodeSet.add(id);
+    cleanNodes.push({ data:{ id, label: (n?.label ?? id), group: n?.group || '' }, classes:(n?.classes||'') });
+  }
+
+  const seenEdges = new Set();
+  const cleanEdges = [];
+  for (const e of edges){
+    let s = String(e?.source || '').trim();
+    let t = String(e?.target || '').trim();
+    if (syn){ s = String(syn.get(s) || s); t = String(syn.get(t) || t); }
+    if (!s || !t || !nodeSet.has(s) || !nodeSet.has(t)) continue;
+    const p = (e?.polarity === '-' || e?.polarity === '+') ? e.polarity : (e?.p || '');
+    const key = `${s}->${t}:${p}`;
+    if (seenEdges.has(key)) continue;
+    seenEdges.add(key);
+    cleanEdges.push({ data:{ id: (e?.id || key), source:s, target:t, polarity:p, weight:(+e?.weight||0) }, classes:(e?.classes||'') });
+  }
+  return { nodes: cleanNodes, edges: cleanEdges, meta };
+}
+
+function whenCyReady(run){
+  const C = cldGetCy();
+  if (C && typeof run === 'function'){ try{ run(C); }catch(_){ } return; }
+  document.addEventListener('cy:ready', (ev)=>{
+    const cy = (ev && ev.detail && ev.detail.cy) || cldGetCy();
+    if (cy && typeof run === 'function') try{ run(cy); }catch(_){ }
+  }, { once:true });
+}
+
 function findSynonyms(id){
   const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
   const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
@@ -93,31 +136,11 @@ window.findSynonyms = findSynonyms;
 window.findSynonymNodes = findSynonymNodes;
 
 // ---- Normalize elements for Cytoscape -------------------------------------
-function cldToCyElements(model){
-  const nodesSrc = Array.isArray(model?.nodes) ? model.nodes : [];
-  const edgesSrc = Array.isArray(model?.edges) ? model.edges : [];
-
-  const seen = new Set();
-  const nodes = nodesSrc.map((n,i)=>{
-    const d = n?.data ? { ...n.data } : { ...(n||{}) };
-    d.id = d.id != null ? String(d.id) : `n_${i}`;
-    if (seen.has(d.id)) { console.warn('[CLD] dup node id', d.id); d.id = `${d.id}_${i}`; }
-    seen.add(d.id);
-    return { data: d };
-  });
-
-  let dropped = 0;
-  const edges = edgesSrc.reduce((acc,e,i)=>{
-    const d = e?.data ? { ...e.data } : { ...(e||{}) };
-    d.id = d.id != null ? String(d.id) : `e_${i}`;
-    d.source = String(d.source ?? e?.source ?? '');
-    d.target = String(d.target ?? e?.target ?? '');
-    if (!d.source || !d.target) { dropped++; return acc; }
-    acc.push({ data: d }); return acc;
-  },[]);
-  if (dropped) console.warn('[CLD] edges dropped (no source/target):', dropped);
-
-  return { nodes, edges };
+function cldToCyElements(graph){
+  const clean = sanitizeGraph(graph);
+  const nodes = clean.nodes.map(n => ({ group:'nodes', data:n.data, classes:n.classes }));
+  const edges = clean.edges.map(e => ({ group:'edges', data:e.data, classes:e.classes }));
+  return { nodes, edges, meta: clean.meta };
 }
 
 (function () {
@@ -447,10 +470,12 @@ function cldToCyElements(model){
     try { model = await res.json(); } catch (e) { console.error('[CLD] invalid model JSON', e); return; }
 
     // sync store + kernel (raw graph)
-    const graph = {
+    const rawGraph = {
       nodes: Array.isArray(model?.nodes) ? model.nodes : [],
-      edges: Array.isArray(model?.edges) ? model.edges : []
+      edges: Array.isArray(model?.edges) ? model.edges : [],
+      meta : model?.meta || {}
     };
+    const graph = sanitizeGraph(rawGraph);
     if (window.graphStore?.setGraph) window.graphStore.setGraph(graph);
     else { window.graphStore = window.graphStore || {}; window.graphStore.graph = graph; }
     window.kernel = window.kernel || {}; window.kernel.graph = graph;
@@ -521,9 +546,12 @@ function cldToCyElements(model){
       window.__WATER_CLD_RESOLVE__?.();
     };
 
-    const C0 = cldGetCy();
-    if (C0) inject();
-    else document.addEventListener('cy:ready', function once(){ document.removeEventListener('cy:ready', once); inject(); }, { once:true });
+    const doInject = () => inject();
+    if (window.graphStore && typeof window.graphStore.ready === 'function'){
+      window.graphStore.ready().then(()=> doInject()).catch(()=> whenCyReady(()=> doInject()));
+    } else {
+      whenCyReady(()=> doInject());
+    }
   }
   window.loadModelFromUrl = loadModelFromUrl;
 
