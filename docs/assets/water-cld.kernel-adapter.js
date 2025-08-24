@@ -18,12 +18,15 @@
 
   window.waterKernel.onceReady('cy', (cy) => {
     const el = document.getElementById('cy');
-    if (el && 'ResizeObserver' in window){
-      const ro = new ResizeObserver(() => safeLayout(cy));
-      ro.observe(el);
-    }
-    window.waterKernel.onReady('MODEL_LOADED', () => safeLayout(cy));
-    window.waterKernel.onReady('GRAPH_READY', () => safeLayout(cy));
+    let ro;
+    window.waterKernel.onReady('GRAPH_READY', () => {
+      if (el && 'ResizeObserver' in window && !ro){
+        ro = new ResizeObserver(() => safeLayout(cy));
+        ro.observe(el);
+      }
+      console.log('[kernel-adapter] cy ready, running layout');
+      safeLayout(cy);
+    });
   });
 })();
 
