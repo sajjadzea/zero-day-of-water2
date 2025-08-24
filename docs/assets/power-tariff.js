@@ -163,9 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
   console.clear();
   populateTariffTable(ETariffConfig);
   initTabs();
-  document.getElementById('etf-check-tier-btn').addEventListener('click', checkUserTier);
-  document.getElementById('etf-calculate-btn').addEventListener('click', handleCalculate);
-  document.getElementById('etf-savings-slider').addEventListener('input', updateSavings);
-  document.getElementById('etf-analyze-btn').addEventListener('click', analyzeConsumption);
-  document.getElementById('etf-download-pdf-btn').addEventListener('click', downloadBillAsPDF);
+  const addListener = (id, evt, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(evt, handler);
+    else console.warn(`Element #${id} not found`);
+  };
+  addListener('etf-check-tier-btn', 'click', checkUserTier);
+  addListener('etf-calculate-btn', 'click', handleCalculate);
+  addListener('etf-savings-slider', 'input', updateSavings);
+  addListener('etf-analyze-btn', 'click', analyzeConsumption);
+  addListener('etf-download-pdf-btn', 'click', downloadBillAsPDF);
 });
