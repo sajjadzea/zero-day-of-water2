@@ -11,21 +11,28 @@ const DIST = path.join(ASSETS, 'dist');
 (async function main(){
   await fs.ensureDir(DIST);
 
-  // 1) JS های CLD (به‌جز vendor/dist/worker)
-  const jsFiles = glob.sync('**/*.js', {
+  // 1) JS های CLD با ترتیب صریح گاردها -> هسته -> افزونه‌ها
+  const manualOrder = [
+    'docs/assets/debug/sentinel.js',
+    'docs/assets/graph-store.js',
+    'docs/assets/water-cld.cy-stub.js',
+    'docs/assets/water-cld.cy-addclass-patch.js',
+    'docs/assets/water-cld.cy-batch-guard.js',
+    'docs/assets/water-cld.cy-collection-guard.js',
+    'docs/assets/water-cld.cy-safe-add.js',
+    'docs/assets/water-cld.runtime-guards.js',
+    'docs/assets/water-cld.cy-alias.js',
+    'docs/assets/water-cld.js'
+  ].map(p => path.resolve(ROOT, p));
+
+  const allJs = glob.sync('**/*.js', {
     cwd: ASSETS, nodir: true, absolute: true,
     ignore: ['**/vendor/**','**/dist/**','**/*worker*.js','**/*sim-worker*.js']
   }).filter(f => /cld|water-cld/i.test(f));
 
-  const weight = (p) => {
-    const f = path.basename(p).toLowerCase();
-    if (/guard|safe|batch|stub/.test(f)) return 10;
-    if (/^water-cld(\.|-|$)/.test(f)) return 20; // core
-    if (/controls|preset|presets|extras|legend|tour/.test(f)) return 30;
-    if (/readability|scenario|scenarios|paths|provenance|param|a11y|aha|delta-kpi|fix-hints|spotlight|ghost/.test(f)) return 40;
-    return 50;
-  };
-  const orderedJs = jsFiles.sort((a,b)=> weight(a)-weight(b) || a.localeCompare(b));
+  const orderedJs = manualOrder.concat(
+    allJs.filter(f => !manualOrder.includes(f)).sort()
+  );
 
   let jsBundle = '(function(window,document){\n"use strict";\n';
   for (const f of orderedJs) {
