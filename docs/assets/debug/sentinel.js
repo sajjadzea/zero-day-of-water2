@@ -1,12 +1,18 @@
 (function(g){
   g = g || (typeof window !== 'undefined' ? window : globalThis);
   g.CLD_SAFE = g.CLD_SAFE || {};
-  g.CLD_SAFE.safeAddClass = g.CLD_SAFE.safeAddClass || function(node, cls){
+  g.CLD_SAFE.safeAddClass = g.CLD_SAFE.safeAddClass || function(node, cls, direct){
     try{
+      if (typeof direct === 'function'){ direct.call(node, cls); return true; }
       if (node?.addClass){ node.addClass(cls); return true; }
       if (node?.classList?.add){ node.classList.add(cls); return true; }
     }catch(_){ }
-    console.warn('CLD_SAFE.safeAddClass fallback');
+    var c = g.CLD_SAFE._acCnt = (g.CLD_SAFE._acCnt || 0) + 1;
+    if (c === 1 || c >= 10){
+      var ctx = node ? (node.constructor && node.constructor.name || typeof node) : typeof node;
+      console.debug('CLD_SAFE.safeAddClass fallback', ctx);
+      if (c >= 10) g.CLD_SAFE._acCnt = 0;
+    }
     return false;
   };
   function mark(cls){
