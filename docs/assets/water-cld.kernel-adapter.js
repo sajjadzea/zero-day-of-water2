@@ -22,8 +22,10 @@
       const ro = new ResizeObserver(() => safeLayout(cy));
       ro.observe(el);
     }
-    window.waterKernel.onReady('MODEL_LOADED', () => safeLayout(cy));
-    window.waterKernel.onReady('GRAPH_READY', () => safeLayout(cy));
+    window.waterKernel.onReady('GRAPH_READY', () => {
+      console.debug('[kernel-adapter] cy ready, running layout');
+      safeLayout(cy);
+    });
   });
 })();
 
