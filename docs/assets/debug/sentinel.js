@@ -1,19 +1,21 @@
 (function(g){
   g = g || (typeof window !== 'undefined' ? window : globalThis);
   g.CLD_SAFE = g.CLD_SAFE || {};
-  g.CLD_SAFE.safeAddClass = g.CLD_SAFE.safeAddClass || function(node, cls, direct){
+  let warnCount = 0;
+  g.CLD_SAFE.safeAddClass = function(target, cls, direct){
     try{
-      if (typeof direct === 'function'){ direct.call(node, cls); return true; }
-      if (node?.addClass){ node.addClass(cls); return true; }
-      if (node?.classList?.add){ node.classList.add(cls); return true; }
-    }catch(_){ }
-    var c = g.CLD_SAFE._acCnt = (g.CLD_SAFE._acCnt || 0) + 1;
-    if (c === 1 || c >= 10){
-      var ctx = node ? (node.constructor && node.constructor.name || typeof node) : typeof node;
-      console.debug('CLD_SAFE.safeAddClass fallback', ctx);
-      if (c >= 10) g.CLD_SAFE._acCnt = 0;
+      if (!target) throw new Error('null target');
+      if (typeof direct === 'function') return direct.call(target, cls);
+      if (typeof target.addClass === 'function') return target.addClass(cls);
+      if (target.classList && typeof target.classList.add === 'function') return target.classList.add(cls);
+      if (Array.isArray(target) || (target.length >= 0 && typeof target !== 'string')){
+        for (let i=0;i<target.length;i++){ g.CLD_SAFE.safeAddClass(target[i], cls); }
+        return;
+      }
+      throw new Error('unsupported target');
+    }catch(e){
+      if (++warnCount % 10 === 1) console.debug('[CLD_SAFE] safeAddClass fallback:', e.message);
     }
-    return false;
   };
   function mark(cls){
     var el = (document && (document.documentElement || document.body));
