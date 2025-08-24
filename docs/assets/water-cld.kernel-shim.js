@@ -2,29 +2,42 @@
 (function () {
   const g = (typeof window !== 'undefined') ? window : globalThis;
   g.kernel = g.kernel || {};
-  // normalized spot to check graph readiness
-  function hasGraph() {
+  function readyContext() {
     try {
       const kg = g.kernel && g.kernel.graph;
-      if (kg && Array.isArray(kg.nodes)) return true;
-      // fallback: some builds expose graph via graphStore/state
-      const gs = g.graphStore && (g.graphStore.graph || g.graphStore.state);
-      if (gs && Array.isArray(gs.nodes)) {
-        g.kernel.graph = gs; // normalize
-        return true;
+      const gs = g.graphStore && g.graphStore.graph;
+      const graph = kg || gs;
+      const cy = document.querySelector('#cy');
+      const cyOk = cy && cy.offsetWidth > 0 && cy.offsetHeight > 0;
+      if (graph && Array.isArray(graph.nodes) && cyOk) {
+        g.kernel.graph = graph;
+        return { kernel: g.kernel, graph, cy };
       }
-    } catch {}
-    return false;
+    } catch (_) {}
+    return null;
   }
-  // a single promise anyone can await
   if (!g.kernelReady) {
-    g.kernelReady = new Promise((resolve) => {
+    g.kernelReady = new Promise((resolve, reject) => {
       const start = Date.now();
+      let warned = false;
       const iv = setInterval(() => {
-        if (hasGraph()) { clearInterval(iv); resolve(g.kernel); }
-        // hard fallback after 6s: let the app continue anyway
-        if (Date.now() - start > 6000) { clearInterval(iv); resolve(g.kernel || {}); }
-      }, 40);
+        const ctx = readyContext();
+        if (ctx) {
+          clearInterval(iv); resolve(ctx.kernel);
+        } else if (Date.now() - start > 5000) {
+          clearInterval(iv);
+          const cy = document.querySelector('#cy');
+          console.error('[kernel-shim] kernelReady timeout', {
+            kernel: !!g.kernel,
+            graph: g.kernel?.graph || g.graphStore?.graph,
+            cy: cy ? { w: cy.offsetWidth, h: cy.offsetHeight } : null
+          });
+          reject(new Error('kernelReady timeout'));
+        } else if (!warned && Date.now() - start > 1000) {
+          warned = true;
+          console.warn('[kernel-shim] waiting for kernel/graph/#cy...');
+        }
+      }, 50);
     });
   }
 })();

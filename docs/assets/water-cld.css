@@ -109,11 +109,12 @@
     @media (max-width:1024px){ .board{ grid-template-columns:1fr; } }
     .card{background:var(--card, #122825);border:1px solid var(--muted, #1a3430);border-radius:16px;padding:12px;}
     /* ظرف گراف امن */
-    #cy-wrap{min-height:560px;height:calc(100dvh - 280px);}
-    #cy{width:100%;height:100%;border:1px solid var(--muted, #1a3430);border-radius:14px;}
+    #cy-wrap{min-height:560px;}
+    #cy{width:100%;min-height:520px;height:calc(100vh - 240px);border:1px solid var(--muted, #1a3430);border-radius:14px;}
+    #cy.cy-force-size{min-height:520px;}
     @media (max-width:640px){
       .controls, .filters{ gap:10px; }
-      #cy-wrap{min-height:420px;height:calc(var(--vh,1dvh)*65);}
+      #cy-wrap{min-height:420px;}
       .row-nums .num{width:84px;}
     }
     /* هدر کنترل‌های بالای گراف */

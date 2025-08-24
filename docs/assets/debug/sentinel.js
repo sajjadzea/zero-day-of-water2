@@ -18,6 +18,26 @@
     var ok = !!(window.cytoscape && window.elk && window.dagre && window.Chart && window.exprEval && window.tippy && window.Popper);
     mark(ok ? 'vendor-ok' : 'vendor-missing');
   }
+  function logState(){
+    try{
+      var cyEl = document.getElementById('cy');
+      var info = {
+        kernel: !!g.kernel,
+        nodes: g.kernel?.graph?.nodes?.length || 0,
+        storeGraph: !!(g.graphStore && g.graphStore.graph),
+        cy: !!cyEl,
+        width: cyEl?.offsetWidth || 0,
+        height: cyEl?.offsetHeight || 0
+      };
+      console.table(info);
+      if (cyEl && (info.width === 0 || info.height === 0)) {
+        g.CLD_SAFE.safeAddClass(cyEl, 'cy-force-size');
+      }
+    }catch(e){ console.warn('[sentinel] logState', e); }
+  }
+  if (g.kernelReady && typeof g.kernelReady.then === 'function'){
+    g.kernelReady.then(logState);
+  }
   if (typeof document === 'undefined'){ return; }
   if (document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', detect, { once:true });
