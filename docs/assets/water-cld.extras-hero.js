@@ -79,7 +79,7 @@
       card.querySelector('.unit').textContent = spec.unit;
       const rag = card.querySelector('.kpi-rag');
       rag.classList.remove('rag-red','rag-amber','rag-green','rag-neutral');
-      rag.classList.add(ragClass(val, spec.thresholds));
+      CLD_SAFE?.safeAddClass(rag, ragClass(val, spec.thresholds));
     });
     const base = $('#hero-baseline');
     if (base) base.textContent = `Baseline ${CONFIG.version}`;
