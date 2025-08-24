@@ -381,47 +381,55 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         }
         window.kernel = window.kernel || {};
         window.kernel.graph = graph;
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('MODEL_LOADED', graph);
+        if (window.waterKernel && typeof window.waterKernel.emit === 'function'){
+          window.waterKernel.emit('MODEL_LOADED', graph);
+        }
         modelData = model;
         parseModel(model);
         markModelReady();
         if (__chartReady) initBaselineIfPossible();
-        var C = window.cy; if (!C) return graph;
-        var groupSelect = document.getElementById('f-group');
-        if (groupSelect){
-          groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
-          (model.groups||[]).forEach(function(g){
-            var opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.id;
-            groupSelect.appendChild(opt);
-          });
-        }
-        C.startBatch();
-        C.elements().remove();
-        graph.nodes.forEach(function(n){ C.add(n); });
-        (model.groups||[]).forEach(function(g){
-          if (!C.getElementById(g.id).nonempty) {
-            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+        window.waterKernel && typeof window.waterKernel.onReady === 'function' && window.waterKernel.onReady('cy', function(C){
+          if (!C) return;
+          var groupSelect = document.getElementById('f-group');
+          if (groupSelect){
+            groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
+            (model.groups||[]).forEach(function(g){
+              var opt = document.createElement('option');
+              opt.value = g.id;
+              opt.textContent = g.id;
+              groupSelect.appendChild(opt);
+            });
           }
-          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-          var pn = C.getElementById(g.id);
-          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
+          C.startBatch();
+          C.elements().remove();
+          graph.nodes.forEach(function(n){ C.add(n); });
+          (model.groups||[]).forEach(function(g){
+            if (!C.getElementById(g.id).nonempty) {
+              C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+            }
+            C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
+            var pn = C.getElementById(g.id);
+            if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
+          });
+          graph.edges.forEach(function(e){
+            var edgeEl = C.add(e);
+            CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
+          });
+          C.endBatch();
+          seedByGroup(C);
+          var algo = (document.getElementById('layout')||{}).value || 'elk';
+          var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
+          if (window.runLayout) window.runLayout(algo, dir);
+          if (window.populateLoops) window.populateLoops(C, model.loops || []);
+          var cyCount = C.nodes().length;
+          var storeCount = (window.graphStore && window.graphStore.graph && window.graphStore.graph.nodes.length) || 0;
+          if (cyCount !== storeCount) {
+            console.warn('[CLD] node count mismatch', storeCount, cyCount);
+          }
+          if (window.waterKernel && typeof window.waterKernel.emit === 'function'){
+            window.waterKernel.emit('GRAPH_READY', graph);
+          }
         });
-        graph.edges.forEach(function(e){
-          var edgeEl = C.add(e);
-          CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
-        });
-        C.endBatch();
-        seedByGroup(C);
-        var algo = (document.getElementById('layout')||{}).value || 'elk';
-        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-        if (window.runLayout) window.runLayout(algo, dir);
-        if (window.populateLoops) window.populateLoops(C, model.loops || []);
-        if (window.graphStore && window.graphStore.graph && window.graphStore.graph.nodes && window.graphStore.graph.nodes.length !== C.nodes().length){
-          console.warn('[CLD] node count mismatch', window.graphStore.graph.nodes.length, C.nodes().length);
-        }
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('GRAPH_READY', graph);
         try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
         return graph;
       })
@@ -441,7 +449,7 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     if (delayInput) { delayInput.value = 0; delayInput.dispatchEvent(new Event('input')); }
   }
 
-  document.addEventListener('DOMContentLoaded', async function () {
+  async function initCytoscape(){
     const container = document.getElementById('cy');
     if (!container) { console.warn('cy container not found'); return; }
     if (typeof window.cytoscape === 'undefined') { console.warn('cytoscape not loaded'); return; }
@@ -555,6 +563,7 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       layout: { name: 'grid' }
     });
     window.cy = cy;
+    document.dispatchEvent(new CustomEvent('cy:ready', { detail:{ cy } }));
 
     // === Edge labels only at higher zoom levels ===
     (function(){
@@ -1514,7 +1523,10 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         });
       });
     }
-  });
+  }
+
+  if (document.readyState !== 'loading') initCytoscape();
+  else document.addEventListener('DOMContentLoaded', initCytoscape, { once:true });
 
   (function(){
     function initSwitcher(){
