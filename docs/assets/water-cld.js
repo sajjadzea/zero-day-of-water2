@@ -465,43 +465,57 @@ function cldToCyElements(model){
     const els = cldToCyElements(graph);
     window.__lastElementsForCy = els;
 
-    // inject when cy is ready
+    // inject when cy is ready — use graphStore.restore() (safe path)
     const inject = () => {
-      const C = cldGetCy();
-      if (!C) { console.warn('[CLD] cy missing/invalid for inject'); return; }
+      console.debug('[CLD] to-cy arrays', {
+        nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0]
+      });
 
-      console.debug('[CLD] to-cy arrays', { nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0] });
-
-      let viaJson = true;
+      const restoreObj = { elements: { nodes: els.nodes, edges: els.edges } };
       try {
-        C.startBatch();
-        C.json({ elements: { nodes: els.nodes, edges: els.edges } });
-        C.endBatch();
-      } catch (err) {
-        viaJson = false;
-        console.error('[CLD] cy.json failed; fallback to add()', err);
-        try {
-          C.startBatch();
-          C.elements().remove();
-          C.add( els.nodes.concat(els.edges) );
-          C.endBatch();
-        } catch (err2) {
-          console.error('[CLD] add() also failed', err2);
-          return;
+        if (window.graphStore && typeof window.graphStore.restore === 'function') {
+          window.graphStore.restore(restoreObj);
+        } else {
+          // Fallback قدیمی در صورت نبود graphStore
+          const C0 = cldGetCy();
+          if (!C0) { console.warn('[CLD] cy missing/invalid for inject'); return; }
+          if (C0.startBatch) C0.startBatch();
+          try {
+            if (typeof C0.json === 'function') {
+              C0.elements().remove();
+              C0.json(restoreObj);
+            } else {
+              C0.add(els.nodes.concat(els.edges));
+            }
+          } finally {
+            if (C0.endBatch) try{ C0.endBatch(); }catch(_){ }
+          }
         }
-      }
-
-      const nn = C.nodes().length, ne = C.edges().length;
-      console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne, viaJson });
-
-      if (nn !== els.nodes.length) {
-        console.warn('[CLD] node mismatch, delaying GRAPH_READY', els.nodes.length, nn);
-        console.debug('[CLD] first cy node?', C.nodes()[0]?.data());
-        C.off('remove.__cld');
-        C.on('remove.__cld', ()=>console.warn('[CLD] element removed after add; now:', C.nodes().length, C.edges().length));
+      } catch (err) {
+        console.error('[CLD] inject failed', err);
         return;
       }
 
+      // راستی‌آزمایی و سیگنال‌ها
+      const C = cldGetCy();
+      const nn = C?.nodes()?.length || 0;
+      const ne = C?.edges()?.length || 0;
+      console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne });
+      if (nn !== els.nodes.length) {
+        console.warn('[CLD] node mismatch, delaying GRAPH_READY', els.nodes.length, nn);
+        let tries = 0;
+        const t = setInterval(()=>{
+          const n2 = C?.nodes()?.length || 0;
+          const e2 = C?.edges()?.length || 0;
+          if (n2 === els.nodes.length || ++tries > 12) {
+            clearInterval(t);
+            window.waterKernel?.emit?.('MODEL_LOADED', graph);
+            window.waterKernel?.emit?.('GRAPH_READY', graph);
+            window.__WATER_CLD_RESOLVE__?.();
+          }
+        }, 250);
+        return;
+      }
       window.waterKernel?.emit?.('MODEL_LOADED', graph);
       window.waterKernel?.emit?.('GRAPH_READY', graph);
       window.__WATER_CLD_RESOLVE__?.();
