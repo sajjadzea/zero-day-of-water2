@@ -57,8 +57,17 @@
     cy = inst;
     setStatus('CY_READY');
     ev.emit('cy', cy);
-    // mirror on window (works with cy-alias guard too)
-    try{ Object.defineProperty(window,'cy',{ configurable:true, get:function(){return cy;}}); }catch(_){ window.cy = cy; }
+    // mirror on window (getter + SAFE setter -> re-adopt)
+    try{
+      Object.defineProperty(window, 'cy', {
+        configurable: true,
+        get: function(){ return cy; },
+        set: function(v){ try{ adopt(v); }catch(_){ } }
+      });
+    }catch(_){
+      // قدیمی‌ترین fallback
+      window.cy = cy;
+    }
     flush();
   }
 

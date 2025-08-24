@@ -6,7 +6,14 @@
       Object.defineProperty(window, 'c', {
         configurable: true,
         get: function(){ return window.cy; },
-        set: function(v){ try { window.cy = v; } catch(_) {} }
+        // به‌جای set روی window.cy (که قبلاً باعث TypeError می‌شد)،
+        // فقط نمونه را در متغیرهای داخلی نگه می‌داریم و سیگنال cy:ready می‌فرستیم.
+        set: function(v){
+          try{
+            window.__cy = v;
+            window.lastCy = v;
+            document.dispatchEvent(new CustomEvent('cy:ready', { detail:{ cy: v } }));
+          }catch(_){}}
       });
     }catch(_){ window.c = window.cy; }
   }
