@@ -4,6 +4,17 @@
   const num = v => Number(String(v).replace(/[^\d.-]/g,'') || 0);
   const fmt = n => new Intl.NumberFormat('fa-IR').format(Math.round(n));
 
+  function sendInput(id) {
+    const targetInput = document.getElementById(id);
+    const val = targetInput?.value;
+    if (typeof val === 'string') {
+      return val.toLowerCase();
+    } else {
+      console.error('input element not found or has no value');
+      return '';
+    }
+  }
+
   // Bind inputs (number <-> range sync)
   function bindPair(numId, rangeId){
     const n = $('#'+numId), r = $('#'+rangeId);
@@ -118,4 +129,5 @@
     $('#recalc').addEventListener('click', recalc);
     recalc();
   });
+  window.sendInput = sendInput;
 })();
