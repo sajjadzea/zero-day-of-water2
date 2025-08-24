@@ -15,13 +15,19 @@
   // ساخت reference انتخاب با نگه‌داری زنجیرهٔ فیلترها
   function makeSelectorRef(base){
     // base: { type:'elements'|'id'|'query', value:any }
-    return { type: base.type, value: base.value, ops: [] }; // ops: [{method:'filter', args:[...]}]
+    var val = base.value;
+    if (base.type === 'id'){
+      val = val != null ? String(val) : undefined;
+    } else if (base.type === 'elements' || base.type === 'query'){
+      val = (typeof val === 'string') ? val : undefined;
+    }
+    return { type: base.type, value: val, ops: [] }; // ops: [{method:'filter', args:[...]}]
   }
 
   function resolveBase(real, ref){
     if (!ref) return real.elements();
-    if (ref.type === 'id')    return real.getElementById(String(ref.value));
-    if (ref.type === 'query') return real.$(String(ref.value));
+    if (ref.type === 'id')    return real.getElementById(ref.value);
+    if (ref.type === 'query') return real.$(ref.value);
     return real.elements(ref.value);
   }
 
@@ -64,7 +70,8 @@
     for (var i=0; i<chainOps.length; i++){
       (function(m){
         api[m] = function(){
-          selectorRef.ops.push({ method: m, args: arguments });
+          var sel = (typeof arguments[0] === 'string') ? arguments[0] : undefined;
+          selectorRef.ops.push({ method: m, args: [sel] });
           return api;
         };
       })(chainOps[i]);
@@ -106,8 +113,8 @@
     elements: function(sel){ return makeCollectionProxy(makeSelectorRef({ type:'elements', value: sel })); },
     nodes:    function(sel){ return makeCollectionProxy(makeSelectorRef({ type:'elements', value: sel })); },
     edges:    function(sel){ return makeCollectionProxy(makeSelectorRef({ type:'elements', value: sel })); },
-    getElementById: function(id){ return makeCollectionProxy(makeSelectorRef({ type:'id', value: String(id) })); },
-    $: function(query){ return makeCollectionProxy(makeSelectorRef({ type:'query', value: String(query) })); },
+    getElementById: function(id){ return makeCollectionProxy(makeSelectorRef({ type:'id', value: id })); },
+    $: function(query){ return makeCollectionProxy(makeSelectorRef({ type:'query', value: query })); },
 
     // events & batching
     on: noop, off: noop,
