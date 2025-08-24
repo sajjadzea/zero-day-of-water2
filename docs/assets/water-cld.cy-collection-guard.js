@@ -103,10 +103,22 @@
       collection: cy.collection.bind(cy)
     };
 
-    cy.elements = function(sel){ return wrapCollection(orig.elements(sel), [''+(sel||'')]); };
-    cy.nodes    = function(sel){ return wrapCollection(orig.nodes(sel),    [''+(sel||'')]); };
-    cy.edges    = function(sel){ return wrapCollection(orig.edges(sel),    [''+(sel||'')]); };
-    cy.$        = function(q){   return wrapCollection(orig.$(q),          [''+(q||'')]); };
+    cy.elements = function(sel){
+      const s = (typeof sel === 'string') ? sel : undefined;
+      return wrapCollection(orig.elements(s), [s || '']);
+    };
+    cy.nodes = function(sel){
+      const s = (typeof sel === 'string') ? sel : undefined;
+      return wrapCollection(orig.nodes(s), [s || '']);
+    };
+    cy.edges = function(sel){
+      const s = (typeof sel === 'string') ? sel : undefined;
+      return wrapCollection(orig.edges(s), [s || '']);
+    };
+    cy.$ = function(q){
+      const s = (typeof q === 'string') ? q : undefined;
+      return wrapCollection(orig.$(s), [s || '']);
+    };
     cy.getElementById = function(id){
       // emulate a selector path that resolves to a single id
       return wrapCollection(orig.getElementById(id), ['[#'+id+']']);
