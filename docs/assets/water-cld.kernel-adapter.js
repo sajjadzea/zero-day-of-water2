@@ -16,14 +16,16 @@
     });
   }
 
-  window.waterKernel.onceReady('cy', (cy) => {
+  window.waterKernel.onReady('GRAPH_READY', () => {
+    const cy = window.__cy;
+    if (!cy || !cy.nodes || cy.nodes().length === 0) return;
     const el = document.getElementById('cy');
     if (el && 'ResizeObserver' in window){
       const ro = new ResizeObserver(() => safeLayout(cy));
       ro.observe(el);
     }
-    window.waterKernel.onReady('MODEL_LOADED', () => safeLayout(cy));
-    window.waterKernel.onReady('GRAPH_READY', () => safeLayout(cy));
+    console.log('[kernel-adapter] cy ready, running layout');
+    safeLayout(cy);
   });
 })();
 
