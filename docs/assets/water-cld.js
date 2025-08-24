@@ -354,80 +354,105 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
   }
 
   window.loadModelFromUrl = function(url){
-    return fetch(url, {cache:'no-store'})
-      .then(async function(r){
-        if (!r.ok) {
-          console.error('Failed to load model:', r.status, r.statusText);
-          return;
-        }
-        let model;
-        try {
-          model = await r.json();
-        } catch (e) {
-          console.error('Invalid model JSON', e);
-          return;
-        }
-        if (!model) return;
-        const graph = normalizeModel(model);
-        if ((location.hostname === 'localhost' || /preview/.test(location.href)) && graph.nodes.length === 0){
-          console.warn('[CLD] empty graph → injecting dummy node (dev only)');
-          graph.nodes.push({ data:{ id:'dummy' } });
-        }
-        if (window.graphStore && typeof window.graphStore.setGraph === 'function') {
-          window.graphStore.setGraph(graph);
-        } else {
-          window.graphStore = window.graphStore || { graph:{ nodes:[], edges:[] } };
-          window.graphStore.graph = graph;
-        }
-        window.kernel = window.kernel || {};
-        window.kernel.graph = graph;
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('MODEL_LOADED', graph);
-        modelData = model;
-        parseModel(model);
-        markModelReady();
-        if (__chartReady) initBaselineIfPossible();
-        var C = window.cy; if (!C) return graph;
-        var groupSelect = document.getElementById('f-group');
-        if (groupSelect){
-          groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
-          (model.groups||[]).forEach(function(g){
-            var opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.id;
-            groupSelect.appendChild(opt);
+    return new Promise(function(resolve, reject){
+      if (!window.waterKernel || !window.waterKernel.onReady){ return reject('kernel missing'); }
+      window.waterKernel.onReady('cy', function(cy){
+        fetch(url, { cache:'no-store' })
+          .then(async function(r){
+            if (!r.ok){
+              console.error('Failed to load model:', r.status, r.statusText);
+              return resolve();
+            }
+            let model;
+            try { model = await r.json(); }
+            catch(e){ console.error('Invalid model JSON', e); return resolve(); }
+            if (!model) return resolve();
+            const graph = normalizeModel(model);
+            if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
+              console.warn('[CLD] invalid graph');
+              return resolve();
+            }
+            if ((location.hostname === 'localhost' || /preview/.test(location.href)) && graph.nodes.length === 0){
+              console.warn('[CLD] empty graph → injecting dummy node (dev only)');
+              graph.nodes.push({ data:{ id:'dummy' } });
+            }
+            if (window.graphStore && typeof window.graphStore.setGraph === 'function'){
+              window.graphStore.setGraph(graph);
+            } else {
+              window.graphStore = window.graphStore || { graph:{ nodes:[], edges:[] } };
+              window.graphStore.graph = graph;
+            }
+            window.kernel = window.kernel || {};
+            window.kernel.graph = graph;
+            modelData = model;
+            parseModel(model);
+            markModelReady();
+            if (__chartReady) initBaselineIfPossible();
+
+            var groupSelect = document.getElementById('f-group');
+            if (groupSelect){
+              groupSelect.innerHTML = '<option value="">همه گروه‌ها</option>';
+              (model.groups||[]).forEach(function(g){
+                var opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.id;
+                groupSelect.appendChild(opt);
+              });
+            }
+
+            const elements = [
+              ...graph.nodes.map(n => ({ data: n.data || n })),
+              ...graph.edges.map(e => ({ data: e.data || e }))
+            ];
+
+            cy.startBatch();
+            try {
+              cy.elements().remove();
+              cy.add(elements);
+              (model.groups||[]).forEach(function(g){
+                if (!cy.getElementById(g.id).nonempty) {
+                  cy.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
+                }
+                cy.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
+                var pn = cy.getElementById(g.id);
+                if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
+              });
+              graph.edges.forEach(function(e){
+                var id = (e.data && e.data.id) || e.id;
+                var edgeEl = cy.getElementById(id);
+                if (edgeEl){
+                  CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
+                }
+              });
+            } finally {
+              cy.endBatch();
+            }
+
+            console.log('[CLD] added to cy', cy.nodes().length, 'nodes');
+
+            if (cy.nodes().length !== graph.nodes.length) {
+              console.warn('[CLD] node mismatch, delaying GRAPH_READY');
+              return resolve(graph);
+            }
+
+            seedByGroup(cy);
+            var algo = (document.getElementById('layout')||{}).value || 'elk';
+            var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
+            if (window.runLayout) window.runLayout(algo, dir);
+            if (window.populateLoops) window.populateLoops(cy, model.loops || []);
+
+            window.waterKernel.emit('MODEL_LOADED', graph);
+            window.waterKernel.emit('GRAPH_READY', graph);
+
+            try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
+            resolve(graph);
+          })
+          .catch(function(err){
+            console.error('Error fetching model', err);
+            reject(err);
           });
-        }
-        C.startBatch();
-        C.elements().remove();
-        graph.nodes.forEach(function(n){ C.add(n); });
-        (model.groups||[]).forEach(function(g){
-          if (!C.getElementById(g.id).nonempty) {
-            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
-          }
-          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-          var pn = C.getElementById(g.id);
-          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
-        });
-        graph.edges.forEach(function(e){
-          var edgeEl = C.add(e);
-          CLD_SAFE?.safeAddClass(edgeEl, e.data.sign === '-' ? 'neg' : 'pos');
-        });
-        C.endBatch();
-        seedByGroup(C);
-        var algo = (document.getElementById('layout')||{}).value || 'elk';
-        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-        if (window.runLayout) window.runLayout(algo, dir);
-        if (window.populateLoops) window.populateLoops(C, model.loops || []);
-        if (window.graphStore && window.graphStore.graph && window.graphStore.graph.nodes && window.graphStore.graph.nodes.length !== C.nodes().length){
-          console.warn('[CLD] node count mismatch', window.graphStore.graph.nodes.length, C.nodes().length);
-        }
-        window.waterKernel && window.waterKernel.emit && window.waterKernel.emit('GRAPH_READY', graph);
-        try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
-        return graph;
-      })
-      .catch(function(err){
-        console.error('Error fetching model', err);
       });
+    });
   };
 
   function resetScenario() {
@@ -555,6 +580,13 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       layout: { name: 'grid' }
     });
     window.cy = cy;
+    // expose for tests/debugging
+    cy.ready(() => {
+      window.__cy = cy;
+      window.lastCy = cy;
+      window.__lastCy = cy;
+      document.dispatchEvent(new CustomEvent('cy:ready', { detail: { cy } }));
+    });
 
     // === Edge labels only at higher zoom levels ===
     (function(){
