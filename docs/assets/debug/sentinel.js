@@ -1,6 +1,15 @@
 (function(g){
   g = g || (typeof window !== 'undefined' ? window : globalThis);
   g.CLD_SAFE = g.CLD_SAFE || {};
+  // Ensure there is a global variable/property named CLD_SAFE so that
+  // optional chaining like `CLD_SAFE?.safeAddClass` does not throw a ReferenceError.
+  // Use globalThis (or window) to define the property once.
+  try {
+    const root = (typeof globalThis !== 'undefined') ? globalThis : (typeof window !== 'undefined' ? window : g);
+    if (!('CLD_SAFE' in root)) {
+      root.CLD_SAFE = g.CLD_SAFE;
+    }
+  } catch (_) { /* ignore */ }
   let warnCount = 0;
   g.CLD_SAFE.safeAddClass = function(target, cls, direct){
     try{
