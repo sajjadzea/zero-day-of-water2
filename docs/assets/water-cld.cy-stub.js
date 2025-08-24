@@ -1,4 +1,4 @@
-(function(){
+(typeof window !== 'undefined' && !window.cy) && (function(){
   if (window.__CY_STUB__) return; window.__CY_STUB__ = true;
   'use strict';
 
@@ -131,6 +131,7 @@
     reset:       function(){ enqueue('cy','reset',       arguments); },
     layout:      function(){ enqueue('cy','layout',      arguments); }
   };
+  cyStub.graph = { meta: { synonymToId: new Map(), nodes: new Map(), edges: new Map() } };
 
   // Getter/Setter روی window.cy + flush
   try{

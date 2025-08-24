@@ -1,3 +1,4 @@
+window.__WATER_CLD_READY__ = new Promise(function(resolve){ window.__WATER_CLD_RESOLVE__ = resolve; });
 // ===== CY READINESS (singleton) =====
 window.__CLD_READY__ = window.__CLD_READY__ || false;
 window.onCyReady = window.onCyReady || function (run) {
@@ -72,6 +73,20 @@ function cldGetCy(){
   const C = window.__cy || window.lastCy || window.cy || null;
   return (C && typeof C.startBatch === 'function') ? C : null;
 }
+
+function findSynonyms(id){
+  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
+  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
+  return (syn.get(id) || []).map(function(x){ return x; }).filter(Boolean);
+}
+
+function findSynonymNodes(id){
+  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
+  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
+  return (syn.get(id) || []).map(function(x){ return meta.nodes?.get?.(x); }).filter(Boolean);
+}
+window.findSynonyms = findSynonyms;
+window.findSynonymNodes = findSynonymNodes;
 
 // ---- Normalize elements for Cytoscape -------------------------------------
 function cldToCyElements(model){
@@ -485,6 +500,7 @@ function cldToCyElements(model){
 
       window.waterKernel?.emit?.('MODEL_LOADED', graph);
       window.waterKernel?.emit?.('GRAPH_READY', graph);
+      window.__WATER_CLD_RESOLVE__?.();
     };
 
     const C0 = cldGetCy();
@@ -550,45 +566,48 @@ function cldToCyElements(model){
           });
         });
       }
-      cy.on('zoom', syncEdgeLabels);
-      syncEdgeLabels();
+      window.__WATER_CLD_READY__.then(function(){
+        cy.on('zoom', syncEdgeLabels);
+        syncEdgeLabels();
+      });
     })();
 
     // === Neighbor highlight with fade on hover ===
     (function(){
       var dim = 0.15; // شدت کم‌رنگ شدن
-      cy.on('mouseover', 'node', function(evt){
-        var n = evt.target;
-        var hood = n.closedNeighborhood();
-        cy.batch(function(){
-          const others = cy.elements().difference(hood);
-            if (CLD_SAFE?.safeAddClass) {
-              CLD_SAFE.safeAddClass(others, 'faded');
-            } else {
-              console.warn('CLD_SAFE.safeAddClass missing');
-              if (others?.forEach) {
-                others.forEach(el => el.classList?.add('faded'));
+      window.__WATER_CLD_READY__.then(function(){
+        cy.on('mouseover', 'node', function(evt){
+          var n = evt.target;
+          var hood = n.closedNeighborhood();
+          cy.batch(function(){
+            const others = cy.elements().difference(hood);
+              if (CLD_SAFE?.safeAddClass) {
+                CLD_SAFE.safeAddClass(others, 'faded');
               } else {
-                others?.classList?.add('faded');
+                console.warn('CLD_SAFE.safeAddClass missing');
+                if (others?.forEach) {
+                  others.forEach(el => el.classList?.add('faded'));
+                } else {
+                  others?.classList?.add('faded');
+                }
               }
-            }
-          hood.removeClass('faded');
+            hood.removeClass('faded');
+          });
         });
-      });
-      cy.on('mouseout', 'node', function(){
-        cy.elements().removeClass('faded');
-      });
+        cy.on('mouseout', 'node', function(){
+          cy.elements().removeClass('faded');
+        });
 
-      // تعریف استایل کلاس faded
-      cy.style()
-        .selector('.faded')
-        .style({ 'opacity': dim })
-        .update();
+        // تعریف استایل کلاس faded
+        cy.style()
+          .selector('.faded')
+          .style({ 'opacity': dim })
+          .update();
+      });
     })();
 
     // ---- Modern Cytoscape styling: card-like nodes & readable edge labels ----
-    onCyReady(cy => {
-
+    window.__WATER_CLD_READY__.then(function(){
       cy.style()
         // Nodes: card-like
         .selector('node')
@@ -647,14 +666,14 @@ function cldToCyElements(model){
           if (window.measureAndResizeNodes) window.measureAndResizeNodes(cy, {maxWidth:240, padding:16});
         });
       }
-    });
 
-    cy.on('ready', () => setTimeout(() => window.__cldSafeFit(cy), 0));
-    window.addEventListener('resize', () => requestAnimationFrame(() => window.__cldSafeFit(cy)));
-    window.addEventListener('orientationchange', () => setTimeout(() => window.__cldSafeFit(cy),150));
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(() => window.__cldSafeFit(cy), 60));
-    }
+      cy.on('ready', () => setTimeout(() => window.__cldSafeFit(cy), 0));
+      window.addEventListener('resize', () => requestAnimationFrame(() => window.__cldSafeFit(cy)));
+      window.addEventListener('orientationchange', () => setTimeout(() => window.__cldSafeFit(cy),150));
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => setTimeout(() => window.__cldSafeFit(cy), 60));
+      }
+    });
 
     // --- [Tooltips for Cytoscape elements using Tippy] ---------------------------
     (function () {
@@ -760,10 +779,10 @@ function cldToCyElements(model){
         });
       }
 
-      onCyReady(cy => { bindCyTooltips(cy); });
+      window.__WATER_CLD_READY__.then(function(){ bindCyTooltips(cy); });
     })();
 
-    onCyReady(cy => {
+    window.__WATER_CLD_READY__.then(function(){
       cy.on('dbltap', 'node', n => {
         if (n.target.locked()) {
           n.target.unlock().removeClass('highlight');
@@ -1457,21 +1476,21 @@ function cldToCyElements(model){
           saveState({ dir: dirSel.value });
         });
 
-        // --- persist cy view (zoom/pan)
-        onCyReady(cyInst => {
-          var saveViewThrottled;
-          function commitView() {
-            var z = cyInst.zoom();
-            var p = cyInst.pan();
-            saveState({ zoom: z, pan: {x:p.x, y:p.y} });
-            saveViewThrottled = null;
-          }
-          function scheduleSave() {
-            if (saveViewThrottled) return;
-            saveViewThrottled = setTimeout(commitView, 200);
-          }
-          cyInst.on('zoom pan', scheduleSave);
-        });
+          // --- persist cy view (zoom/pan)
+          window.__WATER_CLD_READY__.then(function(){
+            var saveViewThrottled;
+            function commitView() {
+              var z = cy.zoom();
+              var p = cy.pan();
+              saveState({ zoom: z, pan: {x:p.x, y:p.y} });
+              saveViewThrottled = null;
+            }
+            function scheduleSave() {
+              if (saveViewThrottled) return;
+              saveViewThrottled = setTimeout(commitView, 200);
+            }
+            cy.on('zoom pan', scheduleSave);
+          });
       }
 
       // init after DOM & cy
