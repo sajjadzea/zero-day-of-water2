@@ -75,9 +75,17 @@ function cldGetCy(){
 }
 
 function findSynonyms(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
-  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
-  return (syn.get(id) || []).map(function(x){ return x; }).filter(Boolean);
+  // Defensive Guard: Ensure meta and synonymToId map are fully loaded.
+  const meta = window?.cy?.graph?.meta;
+  if (!meta || !(meta.synonymToId instanceof Map)) {
+    return []; // Return empty array if data is not ready, preventing errors.
+  }
+  const synonymsOfN = meta.nodes?.get(id)?.synonyms;
+  if (!synonymsOfN) {
+    return [];
+  }
+  const synonymIds = synonymsOfN.map((s) => meta.synonymToId.get(s));
+  return synonymIds.filter(Boolean);
 }
 
 function findSynonymNodes(id){
