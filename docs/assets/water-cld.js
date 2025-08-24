@@ -75,15 +75,25 @@ function cldGetCy(){
 }
 
 function findSynonyms(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
-  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
-  return (syn.get(id) || []).map(function(x){ return x; }).filter(Boolean);
+  const meta = window?.cy?.graph?.meta;
+  if (!meta || !meta.synonymToId) {
+    return [];
+  }
+  const synonymsOfN = meta.nodes?.get?.(id)?.synonyms;
+  if (!synonymsOfN) {
+    return [];
+  }
+  const synonymIds = synonymsOfN.map(function (s) { return meta.synonymToId.get(s); });
+  return synonymIds.filter(Boolean);
 }
 
 function findSynonymNodes(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
-  const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
-  return (syn.get(id) || []).map(function(x){ return meta.nodes?.get?.(x); }).filter(Boolean);
+  const meta = window?.cy?.graph?.meta;
+  if (!meta || !meta.synonymToId) {
+    return [];
+  }
+  const synonymIds = findSynonyms(id);
+  return synonymIds.map(function(x){ return meta.nodes?.get?.(x); }).filter(Boolean);
 }
 window.findSynonyms = findSynonyms;
 window.findSynonymNodes = findSynonymNodes;
