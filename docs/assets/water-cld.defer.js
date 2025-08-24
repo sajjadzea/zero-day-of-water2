@@ -10,7 +10,7 @@
     });
   }
   function guardsReady(){
-    try{ return !!(window.graphStore && window.__CY_COLL_GUARD__ && window.__SAFE_ADD__); }
+    try{ return !!(window.graphStore && window.CLD_SAFE && window.__CY_COLL_GUARD__); }
     catch(_){ return false; }
   }
   function waitForGuards(cb, tries=0){
@@ -18,19 +18,16 @@
     setTimeout(()=>waitForGuards(cb, tries+1), 50);
   }
   function loadBundle() {
-    if (document.getElementById('cld-bundle-loader')) {
-      console.debug('[CLD defer] bundle already injected');
-      return;
-    }
+    if (window.__CLD_BUNDLE_INJECTED__) { console.debug('[CLD defer] bundle already injected'); return; }
     try{
       const exists = Array.from(document.scripts||[]).some(s => (s.src||'').endsWith('/assets/dist/water-cld.bundle.js'));
-      if (exists) { console.debug('[CLD defer] bundle present by src'); return; }
+      if (exists) { window.__CLD_BUNDLE_INJECTED__ = true; console.debug('[CLD defer] bundle present by src'); return; }
     }catch(_){ }
     const s = document.createElement('script');
     s.src = '/assets/dist/water-cld.bundle.js';
     s.defer = true;
     s.id = 'cld-bundle-loader';
-    s.addEventListener('load', () => console.debug('[CLD defer] bundle loaded'));
+    s.addEventListener('load', () => { window.__CLD_BUNDLE_INJECTED__ = true; console.debug('[CLD defer] bundle loaded');});
     document.head.appendChild(s);
     console.debug('[CLD defer] bundle injected');
   }

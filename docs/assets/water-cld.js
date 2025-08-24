@@ -490,52 +490,39 @@ function cldToCyElements(graph){ return toCyElements(graph); }
 
     const inject = () => {
       console.debug('[CLD] to-cy arrays', { nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0] });
-      if (els.nodes.length === 0) { console.warn('CLD: no elements to display'); return; }
-
-      const restoreObj = { elements: { nodes: els.nodes, edges: els.edges } };
       try {
-        if (window.graphStore && typeof window.graphStore.restore === 'function') {
-          window.graphStore.restore(restoreObj);
+        if (window.graphStore?.restore) {
+          window.graphStore.restore({ elements: { nodes: els.nodes, edges: els.edges } });
         } else {
-          const C0 = cldGetCy();
-          if (!C0) { console.warn('[CLD] cy missing/invalid for inject'); return; }
-          if (C0.startBatch) C0.startBatch();
+          const C = cldGetCy(); if (!C) return;
+          if (C.startBatch) C.startBatch();
           try {
-            if (typeof C0.json === 'function') {
-              C0.elements().remove();
-              C0.json(restoreObj);
+            if (typeof C.json === 'function') {
+              C.elements().remove();
+              C.json({ elements: { nodes: els.nodes, edges: els.edges } });
             } else {
-              C0.add(els.nodes.concat(els.edges));
+              C.add(els.nodes.concat(els.edges));
             }
-          } finally {
-            if (C0.endBatch) try { C0.endBatch(); } catch (_) { }
-          }
+          } finally { if (C.endBatch) try { C.endBatch(); } catch (_) {} }
         }
-      } catch (err) {
-        console.error('[CLD] inject failed', err);
-        return;
-      }
+      } catch (err) { console.error('[CLD] inject failed', err); return; }
 
       const cy = cldGetCy();
-      if (cy) {
-        const layoutSel = document.getElementById('layout');
-        const algo = layoutSel ? layoutSel.value : 'elk';
-        if (window.runLayout) {
-          window.runLayout(algo).then(() => {
-            document.dispatchEvent(new CustomEvent('GRAPH_READY', { detail: { cy } }));
-          });
-        } else {
-          const layout = cy.layout({ name: 'dagre', rankDir: 'LR', fit: true });
-          layout.run();
-          cy.once('layoutstop', () => {
-            cy.fit();
-            document.dispatchEvent(new CustomEvent('GRAPH_READY', { detail: { cy } }));
-          });
-        }
-      }
+      const nn = cy?.nodes()?.length || 0;
+      const ne = cy?.edges()?.length || 0;
+      console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne });
 
-      document.dispatchEvent(new CustomEvent('MODEL_LOADED', { detail: { graph } }));
-      window.__WATER_CLD_RESOLVE__?.();
+      // حتماً layout و fit اجرا شود
+      try {
+        if (nn > 0) {
+          const layout = (cy.layout && cy.layout({ name: 'dagre', rankDir: 'LR', fit: true })) || null;
+          if (layout?.run) layout.run();
+          if (cy.fit) cy.fit();
+        }
+      } catch (e) { console.warn('[CLD] layout/fit error', e); }
+
+      window.waterKernel?.emit?.('MODEL_LOADED', graph);
+      window.waterKernel?.emit?.('GRAPH_READY', graph);
     };
 
     const doInject = () => inject();
@@ -1584,10 +1571,15 @@ function cldToCyElements(graph){ return toCyElements(graph); }
         var last = localStorage.getItem('waterCLD.activeModel');
         if (last) sw.value = last;
       } catch(e){}
+      function safeLoad(url){
+        if (window.__MODEL_LOADING__) return;
+        window.__MODEL_LOADING__ = true;
+        window.loadModelFromUrl(url).finally(()=> window.__MODEL_LOADING__ = false);
+      }
       sw.addEventListener('change', function(){
-        window.loadModelFromUrl(sw.value);
+        safeLoad(sw.value);
       });
-      if (sw.value) window.loadModelFromUrl(sw.value);
+      if (sw.value) safeLoad(sw.value);
     }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', initSwitcher);

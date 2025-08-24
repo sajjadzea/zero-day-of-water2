@@ -14,6 +14,10 @@
   <!-- Bundled CLD styles -->
   <link rel="stylesheet" href="/assets/dist/water-cld.bundle.css" />
 
+  <style>
+    #system-graph, #cy { min-height: 480px; height: 100%; }
+  </style>
+
 </head>
 
 <body class="rtl">
@@ -232,13 +236,6 @@
   </div>
 
   <!-- ========== JS (order matters) ========== -->
-  <!-- ===== Vendor libs (must come first) ===== -->
-  <script defer src="/assets/vendor/cytoscape.min.js"></script>
-  <script defer src="/assets/vendor/chart.umd.min.js"></script>
-  <script defer src="/assets/vendor/expr-eval.min.js"></script>
-  <script defer src="/assets/vendor/popper.min.js"></script>
-  <script defer src="/assets/vendor/tippy.umd.min.js"></script>
-
   <!-- فقط لودر باندل CLD را نگه می‌داریم -->
   <script defer src="/assets/water-cld.defer.js"></script>
   </body>
