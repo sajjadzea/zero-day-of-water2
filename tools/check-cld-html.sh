@@ -84,9 +84,9 @@ if [[ -z "$GLINE" || -z "$BLINE" || "$GLINE" -le "$BLINE" ]]; then
 fi
 
 # --- مسیر قدیمی Chart.js نباید در مخزن باشد
-if git grep -n "assets/libs/chart.umd.min.js" -- ':!node_modules' >/dev/null 2>&1; then
+if git grep -n "assets/libs/chart.umd.min.js" -- ':!node_modules' ':!tools/check-cld-html.sh' >/dev/null 2>&1; then
   red "❌ Found legacy Chart path: assets/libs/chart.umd.min.js (replace with /assets/vendor/chart.umd.min.js)"
-  git grep -n "assets/libs/chart.umd.min.js" -- ':!node_modules' || true
+  git grep -n "assets/libs/chart.umd.min.js" -- ':!node_modules' ':!tools/check-cld-html.sh' || true
   exit 1
 fi
 

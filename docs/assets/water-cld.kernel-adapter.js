@@ -61,7 +61,7 @@
     }catch(_){ }
   });
 
-  // 3) API کمکی برای ماژول‌ها: اجرای امن بر اساس فاز
-  // مثال استفاده: waterKernel.queue('graph', () => cy.$('#x').addClass('on'));
+    // 3) API کمکی برای ماژول‌ها: اجرای امن بر اساس فاز
+    // مثال استفاده: waterKernel.queue('graph', () => CLD_SAFE.safeAddClass(cy.$('#x'), 'on'));
   // (در کنار graphStore.run نیز قابل استفاده است)
 })();

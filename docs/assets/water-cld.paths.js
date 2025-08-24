@@ -104,7 +104,15 @@
       const q = $('#node-search')?.value?.trim(); const n = findNodeByLabel(q);
       if (!n) return;
       cy.animate({ fit: { eles: n, padding: 60 }, duration: 240 });
-      n.flashClass = (cls, ms=700)=>{ n.addClass(cls); setTimeout(()=> n.removeClass(cls), ms); };
+      n.flashClass = (cls, ms=700)=>{ 
+        if (CLD_SAFE?.safeAddClass) {
+          CLD_SAFE.safeAddClass(n, cls);
+        } else {
+          console.warn('CLD_SAFE.safeAddClass missing');
+          n?.addClass?.(cls) ?? n?.classList?.add(cls);
+        }
+        setTimeout(()=> n.removeClass(cls), ms); 
+      };
       n.flashClass('cy-path-active', 800);
     });
 
@@ -120,9 +128,20 @@
     function highlightSet(eles, cls='cy-path-active'){
       const set = eles.union ? eles : cy.collection(eles);
       cy.batch(()=>{
-        cy.elements().not(set).addClass('cy-dim');
+        const others = cy.elements().not(set);
+        if (CLD_SAFE?.safeAddClass) {
+          CLD_SAFE.safeAddClass(others, 'cy-dim');
+        } else {
+          console.warn('CLD_SAFE.safeAddClass missing');
+          others?.addClass?.('cy-dim') ?? others?.classList?.add('cy-dim');
+        }
         set.removeClass('cy-dim');
-        set.addClass(cls);
+        if (CLD_SAFE?.safeAddClass) {
+          CLD_SAFE.safeAddClass(set, cls);
+        } else {
+          console.warn('CLD_SAFE.safeAddClass missing');
+          set?.addClass?.(cls) ?? set?.classList?.add(cls);
+        }
       });
     }
 

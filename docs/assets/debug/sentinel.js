@@ -1,13 +1,17 @@
-(function(){
-  function safeAddClass(node, cls){
+(function(g){
+  g = g || (typeof window !== 'undefined' ? window : globalThis);
+  g.CLD_SAFE = g.CLD_SAFE || {};
+  g.CLD_SAFE.safeAddClass = g.CLD_SAFE.safeAddClass || function(node, cls){
     try{
-      if (node && node.classList && cls){ node.classList.add(cls); return true; }
+      if (node?.addClass){ node.addClass(cls); return true; }
+      if (node?.classList?.add){ node.classList.add(cls); return true; }
     }catch(_){ }
+    console.warn('CLD_SAFE.safeAddClass fallback');
     return false;
-  }
+  };
   function mark(cls){
     var el = (document && (document.documentElement || document.body));
-    if (el) safeAddClass(el, cls);
+    if (el) g.CLD_SAFE.safeAddClass(el, cls);
   }
   function detect(){
     if (!document || !document.createElement){ return; }
@@ -20,4 +24,4 @@
   } else {
     detect();
   }
-})();
+})(typeof window !== 'undefined' ? window : globalThis);
