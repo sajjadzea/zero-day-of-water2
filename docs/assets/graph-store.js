@@ -13,6 +13,7 @@
   var st  = 'BOOT';        // BOOT → CY_READY → GRAPH_READY
   var q   = [];            // deferred actions until CY_READY
   var rdy = [];            // resolve fns for ready()
+  var graph = { nodes: [], edges: [] };
 
   function setStatus(s){ st=s; ev.emit('status', s); }
 
@@ -110,7 +111,15 @@
       return new Promise(function(res){
         if (cy) res(cy); else rdy.push(res);
       });
-    }
+    },
+    setGraph: function(g){
+      graph = g || { nodes: [], edges: [] };
+      this.graph = graph;
+      try{ window.kernel = window.kernel || {}; window.kernel.graph = graph; }catch(_){ }
+      return graph;
+    },
+    getGraph: function(){ return graph; },
+    graph: graph
   };
 
   // expose
