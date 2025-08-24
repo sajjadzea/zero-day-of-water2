@@ -17,7 +17,7 @@
   var ev  = new E();
   var st  = 'BOOT';
   var q   = { vendors:[], cy:[], model:[], graph:[] }; // deferred actions per phase
-  var once = Object.create(null);
+  var last = Object.create(null); // last payload per phase
   var debugOn = false;
 
   function log(){ if(debugOn && console && console.log) try{ console.log.apply(console, arguments); }catch(_){ } }
@@ -37,6 +37,7 @@
   function emit(next, payload){
     if (!MAP[next] && !IDX[next]) return; // ignore unknown
     var target = MAP[next] || next;
+    last[target] = payload;
     if (!canAdvance(target)) { // allow duplicate emits silently
       ev.emit(target, payload);
       return;
@@ -52,17 +53,18 @@
   }
 
   function onReady(phase, fn){
-    var stName = MAP[phase]||phase;
-    if (reached(phase)) { try{ fn(); }catch(_){ } return fn; }
-    return ev.on(stName, fn);
+    var key = MAP[phase]||phase;
+    if (reached(phase)) {
+      try{ fn(last[key]); }catch(_){ }
+      return fn;
+    }
+    return ev.on(key, fn);
   }
   function onceReady(phase, fn){
-    var key = phase + '::' + (fn && fn.name || Math.random());
-    if (once[key]) return once[key];
-    var off = onReady(phase, function(){
-      try{ fn(); }finally{ ev.off(MAP[phase]||phase, off); }
+    var key = MAP[phase]||phase;
+    var off = onReady(phase, function(arg){
+      try{ fn(arg); }finally{ ev.off(key, off); }
     });
-    once[key] = off;
     return off;
   }
   function queue(phase, fn){
