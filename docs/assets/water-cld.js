@@ -342,25 +342,56 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
 
   // --- load model from URL and rebuild graph (non-module) ---
   window.loadModelFromUrl = function(url){
-    fetch(url, {cache:'no-store'})
-      .then(async function(r){
-        if (!r.ok) {
+    function normalizeModel(m){
+      const nodes = (m.nodes || []).map((n,i) => {
+        const id = n.id || n.data?.id || `n_${i}`;
+        return { data: { id, ...(n.data||{}), ...(n.attrs||{}) } };
+      });
+      const edges = (m.edges || []).map((e,i) => {
+        const id = e.id || e.data?.id || `e_${i}`;
+        const source = e.source || e.data?.source;
+        const target = e.target || e.data?.target;
+        return { data: { id, source, target, ...(e.data||{}), ...(e.attrs||{}) } };
+      });
+      return { nodes, edges };
+    }
+
+    return fetch(url, { cache: 'no-store' })
+      .then(async r => {
+        if (!r.ok){
           console.error('Failed to load model:', r.status, r.statusText);
-          return;
+          return null;
         }
-        let model;
-        try {
-          model = await r.json();
-        } catch (e) {
-          console.error('Invalid model JSON', e);
-          return;
-        }
+        try{ return await r.json(); }catch(e){ console.error('Invalid model JSON', e); return null; }
+      })
+      .then(model => {
         if (!model) return;
         modelData = model;
         parseModel(model);
         markModelReady();
         if (__chartReady) initBaselineIfPossible();
-        var C = window.cy; if (!C) return;
+        const graph = (Array.isArray(model.nodes) && Array.isArray(model.edges))
+          ? model
+          : normalizeModel(model);
+
+        // 1) sync store + kernel
+        window.graphStore = window.graphStore || {};
+        window.graphStore.graph = graph;
+        window.kernel = window.kernel || {};
+        window.kernel.graph = graph;
+
+        // 2) notify: model loaded (real payload)
+        window.waterKernel?.emit?.('MODEL_LOADED', graph);
+
+        // 3) push to cy
+        const elements = [
+          ...graph.nodes.map(n => ({ data: n.data || n })),
+          ...graph.edges.map(e => ({ data: e.data || e }))
+        ];
+        cy.elements().remove();
+        cy.add(elements);
+        if (typeof seedByGroup === 'function') seedByGroup(cy);
+
         // update group select
         var groupSelect = document.getElementById('f-group');
         if (groupSelect){
@@ -372,51 +403,19 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
             groupSelect.appendChild(opt);
           });
         }
-        C.startBatch();
-        C.elements().remove();
-        // nodes
-        (model.nodes||[]).forEach(function(n){
-          C.add({ data:{
-            id: n.id, label: n.label, group: n.group, unit: n.unit, desc: n.desc
-          }});
-        });
-        // compounds from groups
-        (model.groups||[]).forEach(function(g){
-          if (!C.getElementById(g.id).nonempty) {
-            C.add({ data:{ id: g.id, label: g.id }, classes:'compound' });
-          }
-          C.nodes().filter('[group = "'+g.id+'"]').move({ parent: g.id }).style('background-color', g.color);
-          var pn = C.getElementById(g.id);
-          if (pn) pn.style({ 'background-color': g.color, 'border-color': g.color });
-        });
-        // edges
-        (model.edges||[]).forEach(function(e){
-          const edgeEl = C.add({ group:'edges', data:{
-            id: (e.id || (e.source+'__'+e.target+'__'+(e.sign||''))),
-            source: e.source, target: e.target,
-            sign: e.sign, label: e.label || (e.sign==='-'?'−':'+'),
-            weight: (typeof e.weight==='number') ? e.weight : undefined,
-            delayYears: (typeof e.delayYears==='number') ? e.delayYears : 0
-          }});
-            if (CLD_SAFE?.safeAddClass) {
-              CLD_SAFE.safeAddClass(edgeEl, e.sign === '-' ? 'neg' : 'pos');
-            } else {
-              console.warn('CLD_SAFE.safeAddClass missing');
-              edgeEl?.classList?.add(e.sign === '-' ? 'neg' : 'pos');
-            }
-        });
 
-        C.endBatch();
+        // 4) notify: graph ready (after cy has elements)
+        window.waterKernel?.emit?.('GRAPH_READY', graph);
 
-        seedByGroup(C);
+        const cyNodes = cy.nodes().length;
+        const storeNodes = graph.nodes.length;
+        if (cyNodes !== storeNodes) {
+          console.warn('[loadModelFromUrl] node count mismatch', { cyNodes, storeNodes });
+        }
 
-        var algo = (document.getElementById('layout')||{}).value || 'elk';
-        var dir  = (document.getElementById('layout-dir')||{}).value || 'LR';
-        if (window.runLayout) window.runLayout(algo, dir);
-
-        if (window.populateLoops) window.populateLoops(C, model.loops || []);
-
+        if (window.populateLoops) window.populateLoops(cy, model.loops || []);
         try { localStorage.setItem('waterCLD.activeModel', url); } catch(e){}
+        return graph;
       })
       .catch(function(err){
         console.error('Error fetching model', err);
@@ -1086,7 +1085,7 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         tr.addEventListener('click', () => {
           selectedScenario = name;
           Array.from(scTbody.children).forEach(r => r.classList.remove('selected'));
-          tr.classList.add('selected');
+          CLD_SAFE?.safeAddClass(tr, 'selected');
         });
         scTbody.appendChild(tr);
       });
@@ -1208,13 +1207,13 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
     const panelFormula = document.getElementById('panel-formula');
     if (tabParam && tabFormula && panelParam && panelFormula) {
       tabParam.addEventListener('click', () => {
-        tabParam.classList.add('active');
+        CLD_SAFE?.safeAddClass(tabParam, 'active');
         tabFormula.classList.remove('active');
         panelParam.style.display = 'block';
         panelFormula.style.display = 'none';
       });
       tabFormula.addEventListener('click', () => {
-        tabFormula.classList.add('active');
+        CLD_SAFE?.safeAddClass(tabFormula, 'active');
         tabParam.classList.remove('active');
         panelParam.style.display = 'none';
         panelFormula.style.display = 'block';

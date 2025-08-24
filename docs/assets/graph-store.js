@@ -1,6 +1,8 @@
+
 (function(){
   if (window.__GRAPH_STORE__) return; window.__GRAPH_STORE__ = true;
   'use strict';
+  var g = window;
 
   // Tiny emitter (no deps)
   function Evt(){ this._ = Object.create(null); }
@@ -63,6 +65,9 @@
 
   // PUBLIC API
   var api = {
+    graph: { nodes: [], edges: [] },
+    setGraph: function(x){ this.graph = x; if (g.kernel) g.kernel.graph = x; },
+    getGraph: function(){ return this.graph; },
     init: function(opts){
       // if a cy instance already exists and container changed, destroy it
       if (cy && opts && opts.container){
@@ -115,6 +120,10 @@
 
   // expose
   window.graphStore = window.graphStore || api;
+  if (!window.graphStore.setGraph) window.graphStore.setGraph = api.setGraph;
+  if (!window.graphStore.getGraph) window.graphStore.getGraph = api.getGraph;
+  if (!window.graphStore.graph) window.graphStore.graph = api.graph;
+  if (g.kernel && !g.kernel.graph) g.kernel.graph = window.graphStore.graph;
 
   // wiring for current/future instances
   if (window.cy) adopt(window.cy);

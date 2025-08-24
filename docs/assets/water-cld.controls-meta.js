@@ -31,8 +31,8 @@
     card.__hdr_done = true;
     const header = card.querySelector('summary, .title, .header, h3, h4, [role="heading"]');
     if (!header) return;
-    header.classList.add('controls-meta-header');
-    card.classList.add('controls-meta-card');
+    CLD_SAFE?.safeAddClass(header, 'controls-meta-header');
+    CLD_SAFE?.safeAddClass(card, 'controls-meta-card');
 
     // شمارنده
     let count = document.createElement('span');
@@ -170,7 +170,7 @@
 
     if (!controls.length){
       // کارت خالی → collapse
-      card.classList.add('card-collapsed');
+      CLD_SAFE?.safeAddClass(card, 'card-collapsed');
     }else{
       card.classList.remove('card-collapsed');
     }

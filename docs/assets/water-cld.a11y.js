@@ -63,8 +63,8 @@
     candidates.forEach(el=>{
       const r = el.getBoundingClientRect();
       if (r.width < 44 || r.height < 44){
-        el.classList.add('a11y-touch');
-        if (/icon/i.test(el.className)) el.classList.add('round'); // برای آیکن‌های دایره‌ای
+        CLD_SAFE?.safeAddClass(el, 'a11y-touch');
+        if (/icon/i.test(el.className)) CLD_SAFE?.safeAddClass(el, 'round'); // برای آیکن‌های دایره‌ای
       }
     });
   }
@@ -78,7 +78,7 @@
       if (!container || container.__a11y_done) return;
 
       container.__a11y_done = true;
-      container.classList.add('cy-a11y-focus');
+      CLD_SAFE?.safeAddClass(container, 'cy-a11y-focus');
       setOnce(container, 'tabindex', '0');                 // فوکوس‌پذیر
       setOnce(container, 'role', 'application');           // محتوای تعاملی پیچیده
       const descId = 'cy-a11y-desc';

@@ -132,7 +132,7 @@
     if (!row) return;
     // اگر دکمه موجود است (مثلا #btn-run-sample) از همان استفاده کن
     const existing = $('#btn-run-sample') || $$('button').find(b=>/اجرای.*سناریو|Run.*sample/i.test(b.textContent||''));
-    if (existing) { existing.classList.add('btn-primary-aha'); return; }
+    if (existing) { CLD_SAFE?.safeAddClass(existing, 'btn-primary-aha'); return; }
     // در غیر اینصورت بساز
     const btn = document.createElement('button');
     btn.type='button'; btn.id='btn-run-sample'; btn.className='btn-primary-aha';
@@ -179,7 +179,10 @@
 
       const badge = card.querySelector('.kpi-delta');
       if (!badge) return;
-      badge.classList.remove('pos','neg','neutral'); badge.classList.add('show', cls, 'kpi-ping');
+      badge.classList.remove('pos','neg','neutral');
+      CLD_SAFE?.safeAddClass(badge, 'show');
+      CLD_SAFE?.safeAddClass(badge, cls);
+      CLD_SAFE?.safeAddClass(badge, 'kpi-ping');
       badge.querySelector('.arrow').textContent = arrow;
       badge.querySelector('.val').textContent = `${Math.abs(delta).toFixed(1)}%`;
       setTimeout(()=>badge.classList.remove('kpi-ping'), CFG.highlightMs);
