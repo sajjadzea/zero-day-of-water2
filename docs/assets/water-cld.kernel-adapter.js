@@ -1,8 +1,10 @@
 (function(){
   if (!window.waterKernel) return;
 
+  let graphReady = false;
   function safeLayout(cy){
-    if (!cy) return;
+    cy = cy || window.__cy || window.cy;
+    if (!cy || !graphReady || cy.nodes().length === 0) return;
     if (safeLayout._inflight) return;
     safeLayout._inflight = true;
     requestAnimationFrame(() => {
@@ -22,8 +24,7 @@
       const ro = new ResizeObserver(() => safeLayout(cy));
       ro.observe(el);
     }
-    window.waterKernel.onReady('MODEL_LOADED', () => safeLayout(cy));
-    window.waterKernel.onReady('GRAPH_READY', () => safeLayout(cy));
+    window.waterKernel.onReady('GRAPH_READY', () => { graphReady = true; safeLayout(cy); });
   });
 })();
 
