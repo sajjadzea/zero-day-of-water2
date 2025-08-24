@@ -13,7 +13,9 @@ function boot(){
   const bar=document.createElement('div'); bar.className='quick-cta'; bar.id='quick-cta';
   bar.innerHTML=`<button id="cta-see-effect" class="btn">\u0627\u062b\u0631 \u0633\u06cc\u0627\u0633\u062a \u0646\u0645\u0648\u0646\u0647 \u0631\u0627 \u0628\u0628\u06cc\u0646</button><span class="hint">\u06f2 \u06a9\u0644\u06cc\u06a9 \u062a\u0627 \u062f\u06cc\u062f\u0646 \u0627\u062b\u0631 \u0631\u0648\u06cc KPI\u0647\u0627</span>`;
   const anchor=document.getElementById('hero-kpi')||document.body; anchor.parentElement.insertBefore(bar,anchor);
-  bar.querySelector('#cta-see-effect').addEventListener('click',()=>{ applyPresetLeakage20(); try{LS.setItem('seenAha','1')}catch(_){} });
+  const btn = bar.querySelector('#cta-see-effect');
+  if (btn) btn.addEventListener('click',()=>{ applyPresetLeakage20(); try{LS.setItem('seenAha','1')}catch(_){} });
+  else console.warn('Element #cta-see-effect not found');
 }
 document.readyState!=='loading'?boot():window.addEventListener('DOMContentLoaded',boot,{once:true});
 })();
