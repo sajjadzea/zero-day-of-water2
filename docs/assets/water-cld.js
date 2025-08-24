@@ -135,13 +135,16 @@ function findSynonymNodes(id){
 window.findSynonyms = findSynonyms;
 window.findSynonymNodes = findSynonymNodes;
 
-// ---- Normalize elements for Cytoscape -------------------------------------
-function cldToCyElements(graph){
-  const clean = sanitizeGraph(graph);
-  const nodes = clean.nodes.map(n => ({ group:'nodes', data:n.data, classes:n.classes }));
-  const edges = clean.edges.map(e => ({ group:'edges', data:e.data, classes:e.classes }));
-  return { nodes, edges, meta: clean.meta };
+// ---- Normalize arbitrary raw graph to Cytoscape elements -------------------
+function toCyElements(raw){
+  const nodesSrc = Array.isArray(raw) ? raw : (raw?.nodes || raw?.vertices || []);
+  const linksSrc = Array.isArray(raw) ? [] : (raw?.edges || raw?.links || raw?.connections || []);
+  const clean = sanitizeGraph({ nodes: nodesSrc, edges: linksSrc, meta: raw?.meta || {} });
+  const nodes = clean.nodes.map(n => ({ group: 'nodes', data: n.data, classes: n.classes }));
+  const edges = clean.edges.map(e => ({ group: 'edges', data: e.data, classes: e.classes }));
+  return { nodes, edges, meta: clean.meta, graph: clean, rawNodes: nodesSrc, rawEdges: linksSrc };
 }
+function cldToCyElements(graph){ return toCyElements(graph); }
 
 (function () {
   const Parser = (window.exprEval && window.exprEval.Parser) || function () {
@@ -463,45 +466,37 @@ function cldToCyElements(graph){
   }
 
   async function loadModelFromUrl(url){
-    // fetch + parse
-    const res = await fetch(url, { cache:'no-store' }).catch(e => { console.error('[CLD] fetch failed', e); });
+    const res = await fetch(url, { cache: 'no-store' }).catch(e => { console.error('[CLD] fetch failed', e); });
     if (!res || !res.ok) { console.error('[CLD] fetch bad status', res && res.status); return; }
     let model;
     try { model = await res.json(); } catch (e) { console.error('[CLD] invalid model JSON', e); return; }
 
-    // sync store + kernel (raw graph)
-    const rawGraph = {
-      nodes: Array.isArray(model?.nodes) ? model.nodes : [],
-      edges: Array.isArray(model?.edges) ? model.edges : [],
-      meta : model?.meta || {}
-    };
-    const graph = sanitizeGraph(rawGraph);
+    const mapped = toCyElements(model);
+    console.table({ rawNodes: mapped.rawNodes.length, rawEdges: mapped.rawEdges.length });
+    console.log('first raw node', mapped.rawNodes[0]);
+
+    const graph = mapped.graph;
     if (window.graphStore?.setGraph) window.graphStore.setGraph(graph);
     else { window.graphStore = window.graphStore || {}; window.graphStore.graph = graph; }
     window.kernel = window.kernel || {}; window.kernel.graph = graph;
 
-    // keep for other modules
     modelData = model;
-    if (typeof parseModel === 'function') { try { parseModel(model); } catch(e){ console.error('[CLD] parse model', e); } }
+    if (typeof parseModel === 'function') { try { parseModel(model); } catch (e) { console.error('[CLD] parse model', e); } }
     if (typeof markModelReady === 'function') markModelReady();
     if (__chartReady && typeof initBaselineIfPossible === 'function') initBaselineIfPossible();
 
-    // normalize for Cytoscape, keep for debug
-    const els = cldToCyElements(graph);
+    const els = { nodes: mapped.nodes, edges: mapped.edges };
     window.__lastElementsForCy = els;
 
-    // inject when cy is ready — use graphStore.restore() (safe path)
     const inject = () => {
-      console.debug('[CLD] to-cy arrays', {
-        nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0]
-      });
+      console.debug('[CLD] to-cy arrays', { nNodes: els.nodes.length, nEdges: els.edges.length, sampleNode: els.nodes[0] });
+      if (els.nodes.length === 0) { console.warn('CLD: no elements to display'); return; }
 
       const restoreObj = { elements: { nodes: els.nodes, edges: els.edges } };
       try {
         if (window.graphStore && typeof window.graphStore.restore === 'function') {
           window.graphStore.restore(restoreObj);
         } else {
-          // Fallback قدیمی در صورت نبود graphStore
           const C0 = cldGetCy();
           if (!C0) { console.warn('[CLD] cy missing/invalid for inject'); return; }
           if (C0.startBatch) C0.startBatch();
@@ -513,7 +508,7 @@ function cldToCyElements(graph){
               C0.add(els.nodes.concat(els.edges));
             }
           } finally {
-            if (C0.endBatch) try{ C0.endBatch(); }catch(_){ }
+            if (C0.endBatch) try { C0.endBatch(); } catch (_) { }
           }
         }
       } catch (err) {
@@ -521,28 +516,25 @@ function cldToCyElements(graph){
         return;
       }
 
-      // راستی‌آزمایی و سیگنال‌ها
-      const C = cldGetCy();
-      const nn = C?.nodes()?.length || 0;
-      const ne = C?.edges()?.length || 0;
-      console.log('[CLD] added to cy', { cyNodes: nn, cyEdges: ne });
-      if (nn !== els.nodes.length) {
-        console.warn('[CLD] node mismatch, delaying GRAPH_READY', els.nodes.length, nn);
-        let tries = 0;
-        const t = setInterval(()=>{
-          const n2 = C?.nodes()?.length || 0;
-          const e2 = C?.edges()?.length || 0;
-          if (n2 === els.nodes.length || ++tries > 12) {
-            clearInterval(t);
-            window.waterKernel?.emit?.('MODEL_LOADED', graph);
-            window.waterKernel?.emit?.('GRAPH_READY', graph);
-            window.__WATER_CLD_RESOLVE__?.();
-          }
-        }, 250);
-        return;
+      const cy = cldGetCy();
+      if (cy) {
+        const layoutSel = document.getElementById('layout');
+        const algo = layoutSel ? layoutSel.value : 'elk';
+        if (window.runLayout) {
+          window.runLayout(algo).then(() => {
+            document.dispatchEvent(new CustomEvent('GRAPH_READY', { detail: { cy } }));
+          });
+        } else {
+          const layout = cy.layout({ name: 'dagre', rankDir: 'LR', fit: true });
+          layout.run();
+          cy.once('layoutstop', () => {
+            cy.fit();
+            document.dispatchEvent(new CustomEvent('GRAPH_READY', { detail: { cy } }));
+          });
+        }
       }
-      window.waterKernel?.emit?.('MODEL_LOADED', graph);
-      window.waterKernel?.emit?.('GRAPH_READY', graph);
+
+      document.dispatchEvent(new CustomEvent('MODEL_LOADED', { detail: { graph } }));
       window.__WATER_CLD_RESOLVE__?.();
     };
 
@@ -1395,18 +1387,38 @@ function cldToCyElements(graph){
         return dirSel;
       }
 
+      function loadScriptOnce(src, id){
+        return new Promise(function(res, rej){
+          if (document.getElementById(id) || document.querySelector('script[src="'+src+'"]')) return res();
+          var s = document.createElement('script');
+          s.id = id; s.src = src; s.defer = true;
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      async function ensureLayoutLib(name){
+        if (name === 'elk'){
+          await loadScriptOnce('/assets/vendor/elk.bundled.js','elk-lib');
+          await loadScriptOnce('/assets/vendor/cytoscape-elk.js','cy-elk');
+        } else {
+          await loadScriptOnce('/assets/vendor/dagre.min.js','dagre-lib');
+          await loadScriptOnce('/assets/vendor/cytoscape-dagre.js','cy-dagre');
+        }
+      }
+
       // ---------- runLayout with generous spacing (ELK/Dagre) ----------
       (function(){
         var runLayoutOrig = window.runLayout;
 
-        window.runLayout = function(name, dir){
+        window.runLayout = async function(name, dir){
           var cy = window.cy; if(!cy) return;
           name = (name||'elk').toLowerCase();
           dir  = dir || (document.getElementById('layout-dir') ? document.getElementById('layout-dir').value : 'LR');
 
+          await ensureLayoutLib(name);
+
           var opts;
           if (name === 'elk') {
-            // map LR->RIGHT, TB->DOWN
             var elkDir = (dir === 'TB' ? 'DOWN' : 'RIGHT');
             opts = {
               name: 'elk',

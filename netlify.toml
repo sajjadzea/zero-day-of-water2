@@ -3,6 +3,9 @@
   # CLD را بساز، چک باینری بزن، بعد build اصلی سایت را اجرا کن
   command = "npm ci && node scripts/build-cld.js && npm run check:no-binary && npm run build"
 
+[build.processing]
+  skip_processing = true
+
 [build.environment]
   NODE_VERSION = "20"
 

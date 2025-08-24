@@ -78,6 +78,11 @@ curl -i -X POST http://localhost:8888/api/gemini \
    ```bash
    npm run build:agri && npm run prepare:agri
    ```
+3. **Build CLD bundle**
+   ```bash
+   node scripts/build-cld.js
+   ```
+   This concatenates CLD scripts and styles into `docs/assets/dist/water-cld.bundle.*`.
 3. **Serve locally**
    ```bash
    npx http-server docs -p 8080

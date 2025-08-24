@@ -9,7 +9,7 @@
   "scripts": {
     "build:css": "tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify",
     "build": "npm run build:css && npm run build:agri && npm run prepare:agri",
-    "test": "echo \"No tests\"",
+    "test": "node tests/mapper.test.js && node tests/e2e-cld.test.js",
     "flag:test": "node scripts/check-flag.js",
     "check:no-binary": "node tools/check-no-binary.js",
     "build:agri": "babel docs/agrivoltaics/app.jsx --presets @babel/preset-react -o docs/agrivoltaics/app.js",
