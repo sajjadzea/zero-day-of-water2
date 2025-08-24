@@ -48,9 +48,13 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       if (!el) { console.warn('[CLD init] #cy missing'); return null; }
       if (!window.cytoscape) { console.warn('[CLD init] cytoscape not loaded'); return null; }
 
+      // ایجاد instance جدید بدون مقداردهی مستقیم به window.cy
       const cy = cytoscape({ container: el, elements: [] });
-      window.cy = window.__cy = window.lastCy = cy;
-      document.dispatchEvent(new CustomEvent('cy:ready', { detail:{ cy } }));
+      // نگهداری instance در متغیرهای داخلی؛ graph-store آن را adopt می‌کند
+      window.__cy   = cy;
+      window.lastCy = cy;
+      // ارسال سیگنال آمادگی برای سایر ماژول‌ها
+      document.dispatchEvent(new CustomEvent('cy:ready', { detail: { cy } }));
       console.log('[CLD init] cy built', true);
       return cy;
     }

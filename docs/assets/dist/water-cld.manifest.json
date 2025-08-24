@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2025-08-22T13:46:32.792Z",
+  "generatedAt": "2025-08-24T12:16:47.702Z",
   "jsSources": [
     "water-cld.cy-batch-guard.js",
     "water-cld.cy-collection-guard.js",
@@ -10,7 +10,9 @@
     "water-cld.aha-metrics.js",
     "water-cld.aha.js",
     "water-cld.controls-meta.js",
+    "water-cld.cy-addclass-patch.js",
     "water-cld.cy-alias.js",
+    "water-cld.defer.js",
     "water-cld.delta-kpi.js",
     "water-cld.explain-10s.js",
     "water-cld.extras-controls.js",
@@ -20,6 +22,7 @@
     "water-cld.ghost-delta.js",
     "water-cld.js",
     "water-cld.kernel-adapter.js",
+    "water-cld.kernel-shim.js",
     "water-cld.kernel.js",
     "water-cld.param-chips.js",
     "water-cld.paths.js",
