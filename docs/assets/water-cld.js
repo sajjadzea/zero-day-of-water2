@@ -385,12 +385,12 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
           weight: (typeof e.weight==='number') ? e.weight : undefined,
           delayYears: (typeof e.delayYears==='number') ? e.delayYears : 0
         }});
-        if (CLD_SAFE?.safeAddClass) {
-          CLD_SAFE.safeAddClass(edgeEl, e.sign === '-' ? 'neg' : 'pos');
-        } else {
-          console.warn('CLD_SAFE.safeAddClass missing');
-          edgeEl?.addClass?.(e.sign === '-' ? 'neg' : 'pos') ?? edgeEl?.classList?.add(e.sign === '-' ? 'neg' : 'pos');
-        }
+          if (CLD_SAFE?.safeAddClass) {
+            CLD_SAFE.safeAddClass(edgeEl, e.sign === '-' ? 'neg' : 'pos');
+          } else {
+            console.warn('CLD_SAFE.safeAddClass missing');
+            edgeEl?.classList?.add(e.sign === '-' ? 'neg' : 'pos');
+          }
       });
 
       C.endBatch();
@@ -556,12 +556,16 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         var hood = n.closedNeighborhood();
         cy.batch(function(){
           const others = cy.elements().difference(hood);
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(others, 'faded');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            others?.addClass?.('faded') ?? others?.classList?.add('faded');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(others, 'faded');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              if (others?.forEach) {
+                others.forEach(el => el.classList?.add('faded'));
+              } else {
+                others?.classList?.add('faded');
+              }
+            }
           hood.removeClass('faded');
         });
       });
@@ -758,13 +762,13 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         if (n.target.locked()) {
           n.target.unlock().removeClass('highlight');
         } else {
-          const t = n.target.lock();
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(t, 'highlight');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            t?.addClass?.('highlight') ?? t?.classList?.add('highlight');
-          }
+            const t = n.target.lock();
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(t, 'highlight');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              t?.classList?.add('highlight');
+            }
         }
       });
     });
@@ -811,23 +815,23 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
         const groupOk = !groupVal || (e.source().data('parent') === groupVal && e.target().data('parent') === groupVal);
         const delayOk = !delayOnly || e.data('delayYears') > 0;
         if (!(signOk && groupOk && delayOk)) {
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(e, 'hidden');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            e?.addClass?.('hidden') ?? e?.classList?.add('hidden');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(e, 'hidden');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              e?.classList?.add('hidden');
+            }
         }
       });
 
       cy.nodes().forEach(n => {
         if (groupVal && n.data('parent') !== groupVal && n.id() !== groupVal) {
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(n, 'hidden');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            n?.addClass?.('hidden') ?? n?.classList?.add('hidden');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(n, 'hidden');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              n?.classList?.add('hidden');
+            }
         }
       });
 
@@ -848,12 +852,12 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       const d = dMax ? Number(dMax.value) : 0;
       cy.edges().forEach(e => {
         if (e.data('weight') < w || e.data('delayYears') > d) {
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(e, 'hidden');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            e?.addClass?.('hidden') ?? e?.classList?.add('hidden');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(e, 'hidden');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              e?.classList?.add('hidden');
+            }
         }
       });
       window.__cldSafeFit(cy);
@@ -881,27 +885,39 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
             return;
           }
           const nodesAll = cy.nodes();
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(nodesAll, 'faded');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            nodesAll?.addClass?.('faded') ?? nodesAll?.classList?.add('faded');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(nodesAll, 'faded');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              if (nodesAll?.forEach) {
+                nodesAll.forEach(el => el.classList?.add('faded'));
+              } else {
+                nodesAll?.classList?.add('faded');
+              }
+            }
           const edgesAll = cy.edges();
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(edgesAll, 'faded');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            edgesAll?.addClass?.('faded') ?? edgesAll?.classList?.add('faded');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(edgesAll, 'faded');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              if (edgesAll?.forEach) {
+                edgesAll.forEach(el => el.classList?.add('faded'));
+              } else {
+                edgesAll?.classList?.add('faded');
+              }
+            }
           const matches = cy.nodes().filter(n => re.test(n.data('label')));
           matches.removeClass('faded');
-          if (CLD_SAFE?.safeAddClass) {
-            CLD_SAFE.safeAddClass(matches, 'highlighted');
-          } else {
-            console.warn('CLD_SAFE.safeAddClass missing');
-            matches?.addClass?.('highlighted') ?? matches?.classList?.add('highlighted');
-          }
+            if (CLD_SAFE?.safeAddClass) {
+              CLD_SAFE.safeAddClass(matches, 'highlighted');
+            } else {
+              console.warn('CLD_SAFE.safeAddClass missing');
+              if (matches?.forEach) {
+                matches.forEach(el => el.classList?.add('highlighted'));
+              } else {
+                matches?.classList?.add('highlighted');
+              }
+            }
           matches.connectedEdges().removeClass('faded');
         }
       });
@@ -925,22 +941,22 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
             const col = cy.collection();
             (cycle.nodeIds || []).forEach(id => {
               const n = cy.getElementById(id);
-              if (CLD_SAFE?.safeAddClass) {
-                CLD_SAFE.safeAddClass(n, 'highlight');
-              } else {
-                console.warn('CLD_SAFE.safeAddClass missing');
-                n?.addClass?.('highlight') ?? n?.classList?.add('highlight');
-              }
+                if (CLD_SAFE?.safeAddClass) {
+                  CLD_SAFE.safeAddClass(n, 'highlight');
+                } else {
+                  console.warn('CLD_SAFE.safeAddClass missing');
+                  n?.classList?.add('highlight');
+                }
               col.merge(n);
             });
             (cycle.edgeIds || []).forEach(id => {
               const e = cy.getElementById(id);
-              if (CLD_SAFE?.safeAddClass) {
-                CLD_SAFE.safeAddClass(e, 'highlight');
-              } else {
-                console.warn('CLD_SAFE.safeAddClass missing');
-                e?.addClass?.('highlight') ?? e?.classList?.add('highlight');
-              }
+                if (CLD_SAFE?.safeAddClass) {
+                  CLD_SAFE.safeAddClass(e, 'highlight');
+                } else {
+                  console.warn('CLD_SAFE.safeAddClass missing');
+                  e?.classList?.add('highlight');
+                }
               col.merge(e);
             });
             cy.fit(col, 50);

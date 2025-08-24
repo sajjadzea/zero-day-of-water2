@@ -109,7 +109,7 @@
           CLD_SAFE.safeAddClass(n, cls);
         } else {
           console.warn('CLD_SAFE.safeAddClass missing');
-          n?.addClass?.(cls) ?? n?.classList?.add(cls);
+          n?.classList?.add(cls);
         }
         setTimeout(()=> n.removeClass(cls), ms); 
       };
@@ -133,14 +133,22 @@
           CLD_SAFE.safeAddClass(others, 'cy-dim');
         } else {
           console.warn('CLD_SAFE.safeAddClass missing');
-          others?.addClass?.('cy-dim') ?? others?.classList?.add('cy-dim');
+          if (others?.forEach) {
+            others.forEach(el => el.classList?.add('cy-dim'));
+          } else {
+            others?.classList?.add('cy-dim');
+          }
         }
         set.removeClass('cy-dim');
         if (CLD_SAFE?.safeAddClass) {
           CLD_SAFE.safeAddClass(set, cls);
         } else {
           console.warn('CLD_SAFE.safeAddClass missing');
-          set?.addClass?.(cls) ?? set?.classList?.add(cls);
+          if (set?.forEach) {
+            set.forEach(el => el.classList?.add(cls));
+          } else {
+            set?.classList?.add(cls);
+          }
         }
       });
     }
