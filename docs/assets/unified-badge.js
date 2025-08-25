@@ -27,6 +27,21 @@
     });
   }
 
+  function updateBadgeTimes(){
+    const els = document.querySelectorAll('[data-last-updated]');
+    for (const el of els) {
+      const ts = el.getAttribute('data-last-updated');
+      const d = ts ? new Date(ts) : null;
+      const formatted = (d && !isNaN(d)) ? d.toISOString().slice(0,10) : (ts || '');
+      const timeEl = el.querySelector('.updated-time');
+      if (timeEl) {
+        timeEl.textContent = formatted;
+      } else {
+        console.warn('Element with [data-last-updated] is missing a child ".updated-time"', el);
+      }
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     if (!html.getAttribute('data-theme')) {
@@ -37,5 +52,6 @@
         p.startsWith('/gas')         ? 'gas'     : 'electric');
     }
     installBadges();
+    updateBadgeTimes();
   });
-})();
+  })();
