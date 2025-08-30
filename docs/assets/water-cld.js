@@ -1,24 +1,28 @@
 window.__WATER_CLD_READY__ = new Promise(function(resolve){ window.__WATER_CLD_RESOLVE__ = resolve; });
+const getCy = () => window.CLD_SAFE && window.CLD_SAFE.cy;
 // ===== CY READINESS (singleton) =====
 window.__CLD_READY__ = window.__CLD_READY__ || false;
 window.onCyReady = window.onCyReady || function (run) {
   // اگر cy آماده است همین الآن اجرا کن
-  if (window.cy && typeof window.cy.on === 'function') { try { run(window.cy); } catch (e) {} return; }
+  const c0 = getCy();
+  if (c0 && typeof c0.on === 'function') { try { run(c0); } catch (e) {} return; }
 
   // فقط یک‌بار به رویدادها گوش بده
   if (!window.__CLD_READY__) {
     window.__CLD_READY__ = true;
     document.addEventListener('cy:ready', e => {
-      const c = e.detail?.cy || window.cy;
+      const c = e.detail?.cy || getCy();
       if (c && typeof run === 'function') try { run(c); } catch (e) {}
     }, { once: true });
     if (window.whenModelReady) {
       window.whenModelReady(() => {
-        if (window.cy && typeof run === 'function') try { run(window.cy); } catch (e) {}
+        const c = getCy();
+        if (c && typeof run === 'function') try { run(c); } catch (e) {}
       });
     } else {
       document.addEventListener('DOMContentLoaded', () => {
-        if (window.cy && typeof run === 'function') try { run(window.cy); } catch (e) {}
+        const c = getCy();
+        if (c && typeof run === 'function') try { run(c); } catch (e) {}
       }, { once: true });
     }
   }
@@ -48,13 +52,20 @@ window.__cldSafeFit = window.__cldSafeFit || function (cy) {
       if (!el) { console.warn('[CLD init] #cy missing'); return null; }
       if (!window.cytoscape) { console.warn('[CLD init] cytoscape not loaded'); return null; }
 
+      try {
+        if (window.cy && window.cy.tagName) { window._cyDom = window.cy; window.cy = undefined; }
+      } catch(e){}
       // ایجاد instance جدید بدون مقداردهی مستقیم به window.cy
       const cy = cytoscape({ container: el, elements: [] });
       // نگهداری instance در متغیرهای داخلی؛ graph-store آن را adopt می‌کند
       window.__cy   = cy;
       window.lastCy = cy;
+      window.CLD_SAFE = window.CLD_SAFE || {};
+      window.CLD_SAFE.cy = cy;
+      if (!window._cyDom) window.cy = cy;
       // ارسال سیگنال آمادگی برای سایر ماژول‌ها
       document.dispatchEvent(new CustomEvent('cy:ready', { detail: { cy } }));
+      document.dispatchEvent(new CustomEvent('cld:ready', { detail: { cy } }));
       console.log('[CLD init] cy built', true);
       return cy;
     }
@@ -74,7 +85,7 @@ function cldGetStoreGraph(){
   return g;
 }
 function cldGetCy(){
-  const C = window.__cy || window.lastCy || window.cy || null;
+  const C = (window.CLD_SAFE && window.CLD_SAFE.cy) || window.__cy || window.lastCy || window.cy || null;
   return (C && typeof C.startBatch === 'function') ? C : null;
 }
 
@@ -123,13 +134,13 @@ function whenCyReady(run){
 }
 
 function findSynonyms(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
+  const meta = (getCy()?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
   const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
   return (syn.get(id) || []).map(function(x){ return x; }).filter(Boolean);
 }
 
 function findSynonymNodes(id){
-  const meta = (window?.cy?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
+  const meta = (getCy()?.graph?.meta) ?? { synonymToId: new Map(), nodes: new Map(), edges: new Map() };
   const syn = meta.synonymToId instanceof Map ? meta.synonymToId : new Map();
   return (syn.get(id) || []).map(function(x){ return meta.nodes?.get?.(x); }).filter(Boolean);
 }
@@ -1407,7 +1418,7 @@ function cldToCyElements(graph){ return toCyElements(graph); }
         var runLayoutOrig = window.runLayout;
 
         window.runLayout = async function(name, dir){
-          var cy = window.cy; if(!cy) return;
+          var cy = getCy(); if(!cy) return;
           name = (name||'elk').toLowerCase();
           dir  = dir || (document.getElementById('layout-dir') ? document.getElementById('layout-dir').value : 'LR');
 

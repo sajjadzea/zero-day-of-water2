@@ -6,13 +6,14 @@
     window.__CLD_READY__ = false;
     window.onCyReady = function(run){
       const tryRun = (cy) => { if (cy && typeof run==='function') { try{ run(cy); }catch(_){}} };
-      if (window.cy && typeof window.cy.on==='function') { tryRun(window.cy); return; }
+      const c0 = getCy();
+      if (c0 && typeof c0.on==='function') { tryRun(c0); return; }
       if (!window.__CLD_READY__){
         window.__CLD_READY__ = true;
-        document.addEventListener('cy:ready', (e)=> tryRun((e && e.detail && e.detail.cy) || window.cy), { once:true });
-        if (window.whenModelReady) window.whenModelReady(()=> tryRun(window.cy));
-        if (document.readyState !== 'loading') setTimeout(()=> tryRun(window.cy), 0);
-        else document.addEventListener('DOMContentLoaded', ()=> tryRun(window.cy), { once:true });
+        document.addEventListener('cy:ready', (e)=> tryRun((e && e.detail && e.detail.cy) || getCy()), { once:true });
+        if (window.whenModelReady) window.whenModelReady(()=> tryRun(getCy()));
+        if (document.readyState !== 'loading') setTimeout(()=> tryRun(getCy()), 0);
+        else document.addEventListener('DOMContentLoaded', ()=> tryRun(getCy()), { once:true });
       }
     };
   }

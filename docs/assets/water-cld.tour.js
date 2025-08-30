@@ -47,7 +47,8 @@
     const pane = qsa('*').find(x => /Loops/i.test(x?.textContent||'') && x.clientWidth>120 && x.clientHeight>40);
     if (pane) return pane;
     // در نهایت، اگر cy حاضر است، کل بوم را هدف می‌گیریم
-    if (window.cy && window.cy.container) return window.cy.container();
+    const c = getCy();
+    if (c && c.container) return c.container();
     return null;
   }
 

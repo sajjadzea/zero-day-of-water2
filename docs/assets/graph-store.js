@@ -57,16 +57,20 @@
     cy = inst;
     setStatus('CY_READY');
     ev.emit('cy', cy);
-    // mirror on window (getter + SAFE setter -> re-adopt)
-    try{
-      Object.defineProperty(window, 'cy', {
-        configurable: true,
-        get: function(){ return cy; },
-        set: function(v){ try{ adopt(v); }catch(_){ } }
-      });
-    }catch(_){
-      // قدیمی‌ترین fallback
-      window.cy = cy;
+    window.CLD_SAFE = window.CLD_SAFE || {};
+    window.CLD_SAFE.cy = cy;
+    // mirror on window only if no conflicting DOM property
+    if (!window._cyDom){
+      try{
+        Object.defineProperty(window, 'cy', {
+          configurable: true,
+          get: function(){ return cy; },
+          set: function(v){ try{ adopt(v); }catch(_){ } }
+        });
+      }catch(_){
+        // قدیمی‌ترین fallback
+        window.cy = cy;
+      }
     }
     flush();
   }
@@ -135,8 +139,10 @@
   window.graphStore = window.graphStore || api;
 
   // wiring for current/future instances
-  if (window.cy) adopt(window.cy);
+  var initCy = getCy();
+  if (initCy) adopt(initCy);
   document.addEventListener('cy:ready', function(e){ try{ adopt(e && e.detail && e.detail.cy); }catch(_){ } });
+  document.addEventListener('cld:ready', function(e){ try{ adopt(e && e.detail && e.detail.cy); }catch(_){ } });
   if (document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', watchFactory, { once:true });
   } else { watchFactory(); }

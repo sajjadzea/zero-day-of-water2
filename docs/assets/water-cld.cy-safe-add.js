@@ -144,7 +144,7 @@
 
   function tryInstall(){
     try{
-      if (window.cy) install(window.cy);
+      const c = getCy(); if (c) install(c);
       // wrap factory برای نمونه‌های آینده
       if (window.cytoscape && !window.cytoscape.__SAFE_ADD_WRAP__){
         const factory = window.cytoscape;
@@ -164,6 +164,9 @@
     tryInstall();
   }
   document.addEventListener('cy:ready', function(e){
+    try { install(e && e.detail && e.detail.cy); } catch(_){ }
+  });
+  document.addEventListener('cld:ready', function(e){
     try { install(e && e.detail && e.detail.cy); } catch(_){ }
   });
 })();

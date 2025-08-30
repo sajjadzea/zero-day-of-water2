@@ -25,7 +25,7 @@ function serveDocs(){
   await page.goto(`http://localhost:${port}/test/water-cld.html`, { waitUntil: 'networkidle2' });
   await page.waitForFunction(() => window.__WATER_CLD_READY__, { timeout: 15000 });
   await page.evaluate(() => window.__WATER_CLD_READY__);
-  const n = await page.evaluate(() => (window.cy && window.cy.nodes().length) || 0);
+  const n = await page.evaluate(() => (window.CLD_SAFE && window.CLD_SAFE.cy && window.CLD_SAFE.cy.nodes().length) || 0);
   assert(n > 0);
   await browser.close();
   server.close();

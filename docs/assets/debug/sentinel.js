@@ -1,6 +1,7 @@
 (function(g){
   g = g || (typeof window !== 'undefined' ? window : globalThis);
   g.CLD_SAFE = g.CLD_SAFE || {};
+  g.getCy = g.getCy || function(){ return g.CLD_SAFE && g.CLD_SAFE.cy; };
   // Ensure there is a global variable/property named CLD_SAFE so that
   // optional chaining like `CLD_SAFE?.safeAddClass` does not throw a ReferenceError.
   // Use globalThis (or window) to define the property once.
