@@ -185,8 +185,8 @@
         </label><span class="hint" data-tippy-content="نمایش روابط دارای تأخیر زمانی">❔</span>
 
         <select id="model-switch" aria-label="انتخاب مدل">
-          <option value="../data/water-cld.json?v=2">Simple</option>
           <option value="../data/water-cld-poster.json?v=1" selected>Poster</option>
+          <option value="../data/water-cld.json?v=1">Simple</option>
         </select>
 
         <select id="layout" class="btn outline">
@@ -236,6 +236,11 @@
   </div>
 
   <!-- فقط لودر باندل CLD را نگه می‌داریم -->
+  <script>
+    const rel1 = ['..', 'assets', 'dist', 'water-cld.bundle.js?v=3'].join('/');
+    const rel2 = ['.', 'assets', 'dist', 'water-cld.bundle.js?v=3'].join('/');
+    window.CLD_BUNDLE_URLS = [rel1, rel2];
+  </script>
   <script defer src="../assets/water-cld.defer.js"></script>
   </body>
   </html>
