@@ -56,6 +56,8 @@
       }catch(e){ missing.push(th.title); }
     }
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
+    L.control.scale({ metric:true, imperial:false }).addTo(map);
+    L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
     document.getElementById('info').innerHTML = missing.length
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
       : 'همه‌ی لایه‌ها بارگذاری شدند.';
