@@ -58,6 +58,35 @@
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
     L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
+
+    // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
+    const gasLayer = overlays['گاز'];
+    if (gasLayer) {
+      // هاله
+      const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } }).addTo(map);
+      gasLayer.bringToFront();
+
+      // فلِش جهت
+      L.polylineDecorator(gasLayer, {
+        patterns: [{ offset: 0, repeat: '80px',
+          symbol: L.Symbol.arrowHead({ pixelSize: 8, pathOptions: { color: '#ef476f', weight: 1 }})
+        }]
+      }).addTo(map);
+
+      // بافر فاصله (اختیاری)
+      try{
+        const unioned = gasLayer.toGeoJSON().features.reduce((acc,f)=> acc? turf.union(acc,f) : f, null);
+        const distancesKm = [10,30,50];
+        let prev = null;
+        distancesKm.forEach((km,i)=>{
+          const b = turf.buffer(unioned, km, {units:'kilometers'});
+          const ring = prev ? turf.difference(b, prev) : b;
+          prev = b;
+          if(ring) L.geoJSON(ring, { style:{ fillColor:'#ffd0cc', fillOpacity:0.25, color:'#e06b5f', weight:1 } }).addTo(map);
+        });
+      }catch(e){ /* اگر Turf در دسترس نبود یا داده نبود، سکوت */ }
+    }
+
     document.getElementById('info').innerHTML = missing.length
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
       : 'همه‌ی لایه‌ها بارگذاری شدند.';
