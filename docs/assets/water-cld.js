@@ -103,7 +103,8 @@ function sanitizeGraph(graph){
     let t = String(e?.target || '').trim();
     if (syn){ s = String(syn.get(s) || s); t = String(syn.get(t) || t); }
     if (!s || !t || !nodeSet.has(s) || !nodeSet.has(t)) continue;
-    const p = (e?.polarity === '-' || e?.polarity === '+') ? e.polarity : (e?.p || '');
+    const p = (e?.polarity === '-' || e?.polarity === '+') ? e.polarity :
+              (e?.p || e?.sign || '');
     const key = `${s}->${t}:${p}`;
     if (seenEdges.has(key)) continue;
     seenEdges.add(key);
