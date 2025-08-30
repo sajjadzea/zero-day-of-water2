@@ -13,7 +13,7 @@
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await loadJSON('../amaayesh/layers.config.json').catch(()=>null);
+    const cfg = await loadJSON('./layers.config.json').catch(()=>null);
     const combinedPath = cfg?.baseData?.combined;
 
     if(!combinedPath){ return; }
