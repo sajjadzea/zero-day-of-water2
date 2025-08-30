@@ -1,1 +1,6 @@
 node_modules/
+
+# debug artifacts
+docs/assets/*-test.png
+docs/debug/
+docs/**/debug-*.png
