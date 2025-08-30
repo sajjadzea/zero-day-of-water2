@@ -1,0 +1,10 @@
+{
+  "title": "نقشه تعاملی آمایش خراسان رضوی — انرژی",
+  "baseData": { "combined": "/data/amaayesh/khorasan_razavi_combined.geojson" },
+  "themes": [
+    { "key":"electricity", "title":"برق", "type":"line", "file":"/data/amaayesh/electricity_lines.geojson", "style":{"color":"#ffd166","weight":3} },
+    { "key":"water",      "title":"آب",   "type":"line", "file":"/data/amaayesh/water_mains.geojson",      "style":{"color":"#118ab2","weight":3} },
+    { "key":"gas",       "title":"گاز",  "type":"line", "file":"/data/amaayesh/gas_transmission.geojson","style":{"color":"#ef476f","weight":4} },
+    { "key":"oil",       "title":"نفت",  "type":"line", "file":"/data/amaayesh/oil_pipelines.geojson",   "style":{"color":"#073b4c","weight":3} }
+  ]
+}
