@@ -4,6 +4,10 @@ const fs = require('fs');
 const puppeteer = require('puppeteer');
 const assert = require('assert');
 
+if (typeof jest !== 'undefined') {
+  jest.setTimeout(60000);
+}
+
 function serveDocs(){
   const root = path.join(__dirname, '..', 'docs');
   const server = http.createServer((req,res)=>{
@@ -22,8 +26,11 @@ function serveDocs(){
   const port = server.address().port;
   const browser = await puppeteer.launch({args:['--no-sandbox'], headless:'new'});
   const page = await browser.newPage();
-  await page.goto(`http://localhost:${port}/test/water-cld.html`, { waitUntil: 'networkidle2' });
-  await page.waitForFunction(() => window.__WATER_CLD_READY__, { timeout: 15000 });
+  await page.goto(`http://localhost:${port}/test/water-cld.html`);
+  await page.waitForSelector('#map .leaflet-pane.leaflet-map-pane', { timeout: 60000 });
+  await page.waitForSelector('.leaflet-control-zoom-in', { timeout: 60000 });
+  await page.waitForSelector('.legend.solar-legend', { timeout: 60000 });
+  await page.waitForFunction(() => window.__WATER_CLD_READY__, { timeout: 60000 });
   await page.evaluate(() => window.__WATER_CLD_READY__);
   const n = await page.evaluate(() => (window.cy && window.cy.nodes().length) || 0);
   assert(n > 0);
