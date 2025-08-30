@@ -1,7 +1,7 @@
 [build]
   publish = "docs"
   # CLD را بساز، بعد build اصلی سایت را اجرا کن
-  command = "npm ci && node scripts/build-cld.js && npm run build"
+  command = "npm ci && node scripts/build-cld.mjs && npm run build"
 
 [build.processing]
   skip_processing = true
@@ -12,7 +12,7 @@
 
 # همان دستور برای Deploy Preview تا PRها هم باندل درست داشته باشند
 [context.deploy-preview]
-  command = "npm ci && node scripts/build-cld.js && npm run build"
+  command = "npm ci && node scripts/build-cld.mjs && npm run build"
 
 [functions]
   directory = "netlify/functions"
