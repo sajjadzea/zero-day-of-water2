@@ -60,31 +60,42 @@
     L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
 
     // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
-    const gasLayer = overlays['گاز'];
+    const gasLayer = overlays && overlays['گاز'];
     if (gasLayer) {
+      const gasEffects = L.layerGroup();
+      const gasFC = gasLayer.toGeoJSON();
+
       // هاله
-      const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } }).addTo(map);
+      L.geoJSON(gasFC, { style:{ color:'#ffe0d6', weight:8, opacity:1 } }).addTo(gasEffects);
       gasLayer.bringToFront();
 
-      // فلِش جهت
-      L.polylineDecorator(gasLayer, {
-        patterns: [{ offset: 0, repeat: '80px',
-          symbol: L.Symbol.arrowHead({ pixelSize: 8, pathOptions: { color: '#ef476f', weight: 1 }})
-        }]
-      }).addTo(map);
+      // فلِش جهت (اگر پلاگین موجود است)
+      if (typeof L !== 'undefined' && L.polylineDecorator && L.Symbol && L.Symbol.arrowHead) {
+        const segs = [];
+        gasLayer.eachLayer(l => { if (l && typeof l.getLatLngs === 'function') segs.push(l); });
+        if (segs.length) {
+          L.polylineDecorator(segs, {
+            patterns: [{ offset:0, repeat:'80px',
+              symbol: L.Symbol.arrowHead({ pixelSize:8, pathOptions:{ color:'#ef476f', weight:1 }})
+            }]
+          }).addTo(gasEffects);
+        }
+      }
 
       // بافر فاصله (اختیاری)
-      try{
-        const unioned = gasLayer.toGeoJSON().features.reduce((acc,f)=> acc? turf.union(acc,f) : f, null);
+      if (typeof turf !== 'undefined') {
         const distancesKm = [10,30,50];
         let prev = null;
-        distancesKm.forEach((km,i)=>{
-          const b = turf.buffer(unioned, km, {units:'kilometers'});
-          const ring = prev ? turf.difference(b, prev) : b;
-          prev = b;
-          if(ring) L.geoJSON(ring, { style:{ fillColor:'#ffd0cc', fillOpacity:0.25, color:'#e06b5f', weight:1 } }).addTo(map);
-        });
-      }catch(e){ /* اگر Turf در دسترس نبود یا داده نبود، سکوت */ }
+        for (let i=0; i<distancesKm.length; i++){
+          const b = turf.buffer(gasFC, distancesKm[i], { units:'kilometers' });
+          const ring = prev ? turf.difference(b, prev) : b; prev = b;
+          if (ring) L.geoJSON(ring, { style:{ fillColor:'#ffd0cc', fillOpacity:0.25, color:'#e06b5f', weight:1 } }).addTo(gasEffects);
+        }
+      }
+
+      map.on('overlayadd',   e => { if (e.layer === gasLayer) gasEffects.addTo(map); });
+      map.on('overlayremove',e => { if (e.layer === gasLayer) map.removeLayer(gasEffects); });
+      if (map.hasLayer(gasLayer)) gasEffects.addTo(map);
     }
 
     document.getElementById('info').innerHTML = missing.length
