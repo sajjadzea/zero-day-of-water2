@@ -15,8 +15,9 @@
 .map-wrap{ position: relative; } /* برای شناورکردن legend روی نقشه */
 
 .legend-floating{
-  position:absolute; inset:auto 12px 12px auto; /* بالا-راست */
-  z-index:1000; max-width:320px;
+  position:absolute; inset:auto 12px 12px auto; /* پایین-راست */
+  z-index:1000;
+  width:min(320px,calc(100% - 24px));
 }
 
 .solar-legend{
