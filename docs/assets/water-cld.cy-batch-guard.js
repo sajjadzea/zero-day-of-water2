@@ -26,7 +26,8 @@
   }
   function patchAll(){
     ensureBatchOnProto();
-    if (window.cy) ensureBatchOnInstance(window.cy);
+    var c = getCy();
+    if (c) ensureBatchOnInstance(c);
     wrapFactory();
   }
 
@@ -36,6 +37,10 @@
     patchAll();
   }
   document.addEventListener('cy:ready', function(e){
+    ensureBatchOnProto();
+    ensureBatchOnInstance(e && e.detail && e.detail.cy);
+  });
+  document.addEventListener('cld:ready', function(e){
     ensureBatchOnProto();
     ensureBatchOnInstance(e && e.detail && e.detail.cy);
   });

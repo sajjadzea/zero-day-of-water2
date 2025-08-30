@@ -11,10 +11,11 @@
   // onCyReady مینیمال (اگر پروژه دارد از همان استفاده می‌شود)
   if (!window.onCyReady){
     window.onCyReady = function(run){
-      if (window.cy && typeof window.cy.on==='function'){ try{run(window.cy);}catch(_){ } return; }
-      document.addEventListener('cy:ready', e=>{ const c=e.detail?.cy||window.cy; if(c) try{run(c);}catch(_){ } }, {once:true});
-      if (document.readyState!=='loading') setTimeout(()=>{ if(window.cy) try{run(window.cy);}catch(_){ } },0);
-      else document.addEventListener('DOMContentLoaded', ()=>{ if(window.cy) try{run(window.cy);}catch(_){ } }, {once:true});
+      const c0 = getCy();
+      if (c0 && typeof c0.on==='function'){ try{run(c0);}catch(_){ } return; }
+      document.addEventListener('cy:ready', e=>{ const c=e.detail?.cy||getCy(); if(c) try{run(c);}catch(_){ } }, {once:true});
+      if (document.readyState!=='loading') setTimeout(()=>{ const c=getCy(); if(c) try{run(c);}catch(_){ } },0);
+      else document.addEventListener('DOMContentLoaded', ()=>{ const c=getCy(); if(c) try{run(c);}catch(_){ } }, {once:true});
     };
   }
 

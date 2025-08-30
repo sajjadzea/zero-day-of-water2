@@ -94,8 +94,8 @@
 
     if (window.graphStore && typeof window.graphStore.run === 'function') {
       graphStore.run(run);
-    } else if (window.cy && typeof window.cy.container === 'function') {
-      try{ run(window.cy); }catch(_){ }
+    } else if (getCy() && typeof getCy().container === 'function') {
+      try{ run(getCy()); }catch(_){ }
     }
   }
 

@@ -1,4 +1,4 @@
-(typeof window !== 'undefined' && !window.cy) && (function(){
+(typeof window !== 'undefined' && !getCy()) && (function(){
   if (window.__CY_STUB__) return; window.__CY_STUB__ = true;
   'use strict';
 
@@ -133,25 +133,28 @@
   };
   cyStub.graph = { meta: { synonymToId: new Map(), nodes: new Map(), edges: new Map() } };
 
-  // Getter/Setter روی window.cy + flush
-  try{
-    Object.defineProperty(window, 'cy', {
-      configurable: true,
-      get: function(){ return realCy || cyStub; },
-      set: function(v){ realCy = v; flush(realCy); }
-    });
-  }catch(_){
-    window.cy = window.cy || cyStub;
+  // expose stub via safe namespace
+  window.CLD_SAFE = window.CLD_SAFE || {};
+  if (!window.CLD_SAFE.cy) window.CLD_SAFE.cy = cyStub;
+
+  function setReal(v){
+    realCy = v;
+    window.CLD_SAFE.cy = v;
+    flush(realCy);
   }
 
   // گرفتن instance از رویداد
   document.addEventListener('cy:ready', function(e){
     var inst = e && e.detail && e.detail.cy;
-    if (inst){ try{ realCy = inst; flush(realCy); }catch(_){ } }
+    if (inst){ try{ setReal(inst); }catch(_){ } }
+  });
+  document.addEventListener('cld:ready', function(e){
+    var inst = e && e.detail && e.detail.cy;
+    if (inst){ try{ setReal(inst); }catch(_){ } }
   });
 
   // Late flush fallback
   setTimeout(function(){
-    try{ if (window.cy && window.cy !== cyStub) flush(window.cy); }catch(_){}
+    try{ var c = getCy(); if (c && c !== cyStub) flush(c); }catch(_){}
   }, 200);
 })();
