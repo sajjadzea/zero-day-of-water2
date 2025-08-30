@@ -7,6 +7,7 @@
   <link rel="icon" href="../page/landing/favicon.ico"/>
   <link rel="stylesheet" href="../assets/tailwind.css"/>
   <link rel="stylesheet" href="../assets/vendor/leaflet/leaflet.css"/>
+  <link rel="stylesheet" href="../assets/legend.css"/>
   <style>
     html, body { height:100% }
     .label{ font-family: Vazirmatn, sans-serif; font-size:12px; text-shadow:0 0 6px #fff }
@@ -23,6 +24,15 @@
     <div id="info" class="mb-2 text-slate-300 text-sm">در انتظار داده…</div>
     <div class="map-wrap rounded-2xl overflow-hidden ring-1 ring-slate-700">
       <div id="map" class="h-full w-full"></div>
+      <div class="legend">
+        <strong>راهنما</strong>
+        <ul>
+          <li><span class="key" style="background:#ffd166"></span> برق</li>
+          <li><span class="key" style="background:#118ab2"></span> آب</li>
+          <li><span class="key" style="background:#ef476f"></span> گاز</li>
+          <li><span class="key" style="background:#073b4c"></span> نفت</li>
+        </ul>
+      </div>
     </div>
   </main>
 
