@@ -256,5 +256,12 @@
       console.log('[CLD debug] bundle loaded. cy?', !!cy);
     });
   </script>
-  </body>
-  </html>
+  <script>
+    document.addEventListener('cld:ready', (e) => {
+      const cy = e.detail?.cy;
+      console.log('[CLD debug] ready. cyInst?', !!cy && typeof cy.nodes==='function',
+                  'nodes=', cy?.nodes?.length, 'edges=', cy?.edges?.length);
+    });
+  </script>
+</body>
+</html>
