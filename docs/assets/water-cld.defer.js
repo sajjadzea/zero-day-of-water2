@@ -1,20 +1,24 @@
 (function () {
+  // اگر اسکریپت باندل واقعاً در DOM هست، دوباره تزریق نکن
   var existing = document.querySelector('script[data-cld-bundle]');
   if (existing) {
     console.log('[CLD defer] bundle tag already in DOM:', existing.src);
     return;
   }
+
+  // حتی اگر CLD_SAFE روی window هست ولی تگ نیست، باز تزریق کن
   if (window.CLD_SAFE && !existing) {
     console.warn('[CLD defer] CLD_SAFE present but bundle tag missing; injecting anyway');
   }
 
+  // کاندیدهای URL (نسبی) + شکستِ کش
+  var defaultCandidates = [
+    ['..', 'assets', 'dist', 'water-cld.bundle.js?v=3'].join('/'),
+    ['.', 'assets', 'dist', 'water-cld.bundle.js?v=3'].join('/')
+  ];
   var candidates = (Array.isArray(window.CLD_BUNDLE_URLS) && window.CLD_BUNDLE_URLS.length)
     ? window.CLD_BUNDLE_URLS
-    : [
-        '../assets/dist/water-cld.bundle.js?v=3',
-        './assets/dist/water-cld.bundle.js?v=3',
-        '/assets/dist/water-cld.bundle.js?v=3'
-      ];
+    : defaultCandidates;
 
   function tryLoad(i) {
     if (i >= candidates.length) {
@@ -37,6 +41,6 @@
     document.head.appendChild(s);
     console.debug('[CLD defer] trying URL:', url);
   }
+
   tryLoad(0);
 })();
-
