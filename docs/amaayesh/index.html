@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>نقشه آمایش انرژی — خراسان رضوی | WESH360</title>
+  <link rel="stylesheet" href="../assets/tailwind.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    html, body { height:100% }
+    .label{ font-family: Vazirmatn, sans-serif; font-size:12px; text-shadow:0 0 6px #fff }
+    .map-wrap{ height:calc(100vh - 140px) }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+  <header class="w-full px-4 py-3 flex items-center justify-between">
+    <h1 class="text-lg md:text-2xl font-bold">نقشه تعاملی آمایش انرژی — خراسان رضوی</h1>
+    <nav class="text-sm md:text-base"><a href="../index.html" class="underline decoration-dotted">صفحه اصلی</a></nav>
+  </header>
+
+  <main id="main" class="container mx-auto px-4 grow">
+    <div id="info" class="mb-2 text-slate-300 text-sm">در انتظار داده…</div>
+    <div class="map-wrap rounded-2xl overflow-hidden ring-1 ring-slate-700">
+      <div id="map" class="h-full w-full"></div>
+    </div>
+  </main>
+
+  <footer class="mt-6 py-6 text-center text-slate-400 text-xs">WESH360 • Energy Spatial Planning • Leaflet</footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../assets/js/amaayesh-map.js"></script>
+</body>
+</html>
