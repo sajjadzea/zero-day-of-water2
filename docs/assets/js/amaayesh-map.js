@@ -5,6 +5,9 @@
   const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
   map.setView([36.3, 59.6], 7);
 
+  // نمایش موقت نتیجهٔ جستجو
+  let searchLayer = L.layerGroup().addTo(map);
+
   async function loadJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); return r.json(); }
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
@@ -47,6 +50,9 @@
     }).addTo(map);
 
     const overlays = { 'مرز شهرستان‌ها': boundary, 'پُرشدگی شهرستان‌ها': polyFill, 'شهرها/نقاط': pointLayer };
+    if (typeof overlays === 'object') {
+      overlays['نتیجه جستجو'] = searchLayer;
+    }
     const missing = [];
     for(const th of (cfg?.themes || [])){
       try{
@@ -57,7 +63,24 @@
     }
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
-    L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
+    if (L.Control && L.Control.geocoder) {
+      const geocoderCtl = L.Control.geocoder({
+        defaultMarkGeocode: false,
+        placeholder: 'جستجو…'
+      })
+      .on('markgeocode', (e) => {
+        const { center, bbox, name } = e.geocode;
+        searchLayer.clearLayers();
+        searchLayer.addLayer(L.marker(center, { title: name }));
+        if (bbox) {
+          const bounds = L.latLngBounds(bbox);
+          map.fitBounds(bounds.pad(0.1));
+        } else {
+          map.setView(center, Math.max(map.getZoom(), 12));
+        }
+      })
+      .addTo(map);
+    }
     document.getElementById('info').innerHTML = missing.length
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
       : 'همه‌ی لایه‌ها بارگذاری شدند.';
