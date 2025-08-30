@@ -5,6 +5,8 @@
   const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
   map.setView([36.3, 59.6], 7);
 
+  let searchLayer = L.layerGroup().addTo(map);
+
   async function loadJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); return r.json(); }
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
@@ -57,34 +59,57 @@
     }
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
-    L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
+
+    if (L.Control && L.Control.geocoder) {
+      const geocoder = L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
+      geocoder.on('markgeocode', e => {
+        const center = e.geocode.center;
+        const name = e.geocode.name;
+        searchLayer.clearLayers();
+        searchLayer.addLayer(L.circleMarker(center, {
+          radius: 7, color: '#22d3ee', weight: 2, fillColor: '#22d3ee', fillOpacity: 1
+        }).bindTooltip(name, {direction:'top', offset:[0,-10]}));
+        if (e.geocode.bbox) {
+          map.fitBounds(e.geocode.bbox);
+        } else {
+          map.setView(center, 14);
+        }
+      });
+    }
 
     // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
     const gasLayer = overlays['گاز'];
+    const gasEffects = L.layerGroup();
     if (gasLayer) {
-      // هاله
-      const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } }).addTo(map);
+      const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } });
+      gasEffects.addLayer(halo);
       gasLayer.bringToFront();
 
-      // فلِش جهت
-      L.polylineDecorator(gasLayer, {
-        patterns: [{ offset: 0, repeat: '80px',
-          symbol: L.Symbol.arrowHead({ pixelSize: 8, pathOptions: { color: '#ef476f', weight: 1 }})
-        }]
-      }).addTo(map);
+      if (L && L.polylineDecorator && L.Symbol && L.Symbol.arrowHead) {
+        gasEffects.addLayer(L.polylineDecorator(gasLayer, {
+          patterns: [{ offset: 0, repeat: '80px',
+            symbol: L.Symbol.arrowHead({ pixelSize: 8, pathOptions: { color: '#ef476f', weight: 1 }})
+          }]
+        }));
+      }
 
-      // بافر فاصله (اختیاری)
-      try{
-        const unioned = gasLayer.toGeoJSON().features.reduce((acc,f)=> acc? turf.union(acc,f) : f, null);
-        const distancesKm = [10,30,50];
-        let prev = null;
-        distancesKm.forEach((km,i)=>{
-          const b = turf.buffer(unioned, km, {units:'kilometers'});
-          const ring = prev ? turf.difference(b, prev) : b;
-          prev = b;
-          if(ring) L.geoJSON(ring, { style:{ fillColor:'#ffd0cc', fillOpacity:0.25, color:'#e06b5f', weight:1 } }).addTo(map);
-        });
-      }catch(e){ /* اگر Turf در دسترس نبود یا داده نبود، سکوت */ }
+      if (typeof turf !== 'undefined') {
+        try{
+          const unioned = gasLayer.toGeoJSON().features.reduce((acc,f)=> acc? turf.union(acc,f) : f, null);
+          const distancesKm = [10,30,50];
+          let prev = null;
+          distancesKm.forEach((km,i)=>{
+            const b = turf.buffer(unioned, km, {units:'kilometers'});
+            const ring = prev ? turf.difference(b, prev) : b;
+            prev = b;
+            if(ring) gasEffects.addLayer(L.geoJSON(ring, { style:{ fillColor:'#ffd0cc', fillOpacity:0.25, color:'#e06b5f', weight:1 } }));
+          });
+        }catch(e){ /* اگر Turf در دسترس نبود یا داده نبود، سکوت */ }
+      }
+
+      if (map.hasLayer(gasLayer)) gasEffects.addTo(map);
+      map.on('overlayadd', e => { if (e.layer === gasLayer) gasEffects.addTo(map); });
+      map.on('overlayremove', e => { if (e.layer === gasLayer) map.removeLayer(gasEffects); });
     }
 
     document.getElementById('info').innerHTML = missing.length
