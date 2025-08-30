@@ -1,10 +1,10 @@
 function loadBundle(){
   if (window.__CLD_BUNDLE_INJECTED__) { console.debug('[CLD defer] bundle already injected'); return; }
-  if ([...document.scripts].some(s => (s.src||'').endsWith('/assets/dist/water-cld.bundle.js'))){
+  if ([...document.scripts].some(s => (s.src||'').endsWith('assets/dist/water-cld.bundle.js'))){
     window.__CLD_BUNDLE_INJECTED__ = true; console.debug('[CLD defer] bundle present by src'); return;
   }
   const s = document.createElement('script');
-  s.src = '/assets/dist/water-cld.bundle.js';
+  s.src = '../assets/dist/water-cld.bundle.js';
   s.defer = true;
   s.id = 'cld-bundle-loader';
   s.addEventListener('load', () => { window.__CLD_BUNDLE_INJECTED__ = true; console.debug('[CLD defer] bundle loaded'); });
