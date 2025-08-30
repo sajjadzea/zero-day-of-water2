@@ -46,9 +46,18 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
     }).addTo(map);
 
-    L.control.layers({'OpenStreetMap':base}, {
-      'مرز شهرستان‌ها': boundary, 'پُرشدگی شهرستان‌ها': polyFill, 'شهرها/نقاط': pointLayer
-    }, {collapsed:false}).addTo(map);
-    document.getElementById('info').textContent = 'پایه نقشه بارگذاری شد.';
+    const overlays = { 'مرز شهرستان‌ها': boundary, 'پُرشدگی شهرستان‌ها': polyFill, 'شهرها/نقاط': pointLayer };
+    const missing = [];
+    for(const th of (cfg?.themes || [])){
+      try{
+        const data = await loadJSON(th.file);
+        const layer = L.geoJSON(data,{ pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
+        overlays[th.title] = layer; layer.addTo(map);
+      }catch(e){ missing.push(th.title); }
+    }
+    L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
+    document.getElementById('info').innerHTML = missing.length
+      ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
+      : 'همه‌ی لایه‌ها بارگذاری شدند.';
   })().catch(()=>{ /* بدون خطا روی UI */ });
 })();
