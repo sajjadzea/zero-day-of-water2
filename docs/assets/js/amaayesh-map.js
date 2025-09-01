@@ -36,6 +36,37 @@
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+    // --- Province focus (mask outside province) ---
+    let maskLayer = null;
+    const provinceBounds = boundary.getBounds();
+    // keep user inside province by default
+    map.setMaxBounds(provinceBounds.pad(0.25));
+
+    // Build a world polygon with holes = county rings (province union as holes)
+    const worldRing = [[-180,-85],[-180,85],[180,85],[180,-85],[-180,-85]];
+    const holes = [];
+    polys.features.forEach(f=>{
+      const g = f.geometry;
+      if(!g) return;
+      if(g.type==='Polygon') holes.push(g.coordinates[0]);
+      if(g.type==='MultiPolygon') g.coordinates.forEach(r=>holes.push(r[0]));
+    });
+    const maskFeature = { type:'Feature', geometry:{ type:'Polygon', coordinates:[worldRing, ...holes] } };
+
+    // own pane so it sits above basemap and below boundaries
+    map.createPane('mask'); map.getPane('mask').style.zIndex = 350;
+    maskLayer = L.geoJSON(maskFeature, {
+      pane:'mask', interactive:false,
+      style:{ fillColor:'#0a0f1c', fillOpacity:0.55, stroke:false }
+    }).addTo(map);
+
+    // glow/halo on province edge for a modern feel
+    boundary.setStyle({ color:'#00e5ff', weight:2.6, fill:false, className:'neon-edge' });
+    (function(){
+      const s = document.createElement('style');
+      s.textContent = `.neon-edge{filter:drop-shadow(0 0 6px rgba(0,229,255,.55))}`;
+      document.head.appendChild(s);
+    })();
     map.on('zoomend', ()=> boundary.setStyle({ weight: map.getZoom()>=10 ? 3.2 : 2.4 }));
 
     const pointLayer = L.geoJSON(points, {
