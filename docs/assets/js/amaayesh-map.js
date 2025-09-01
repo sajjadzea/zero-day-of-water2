@@ -42,6 +42,17 @@
     // keep user inside province by default
     map.setMaxBounds(provinceBounds.pad(0.25));
 
+    // --- Focus helpers ---
+    function focusOnProvince(){
+      if(maskLayer && !map.hasLayer(maskLayer)) map.addLayer(maskLayer);
+      map.setMaxBounds(provinceBounds.pad(0.25));
+      map.fitBounds(provinceBounds, { padding:[12,12] });
+    }
+    function showNationalContext(){
+      if(maskLayer && map.hasLayer(maskLayer)) map.removeLayer(maskLayer);
+      map.setMaxBounds(null);
+    }
+
     // Build a world polygon with holes = county rings (province union as holes)
     const worldRing = [[-180,-85],[-180,85],[180,85],[180,-85],[-180,-85]];
     const holes = [];
@@ -107,6 +118,31 @@
         }
       });
     }
+
+    // --- UI control (Leaflet bar) ---
+    const focusCtl = L.control({ position:'topleft' });
+    focusCtl.onAdd = function(){
+      const div = L.DomUtil.create('div','leaflet-bar');
+      div.style.direction = 'rtl';
+      div.innerHTML = `
+        <a href="#" title="استان‌محور" id="btn-focus-on" style="padding:0 8px">استان</a>
+        <a href="#" title="زمینه کشور" id="btn-focus-off" style="padding:0 8px;border-top:1px solid #ccc">کشور</a>
+      `;
+      // prevent map drag/zoom on click
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(div.querySelector('#btn-focus-on'),'click',(e)=>{ e.preventDefault(); focusOnProvince(); });
+      L.DomEvent.on(div.querySelector('#btn-focus-off'),'click',(e)=>{ e.preventDefault(); showNationalContext(); });
+      return div;
+    };
+    focusCtl.addTo(map);
+
+    // default: province focus
+    focusOnProvince();
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='1') focusOnProvince();
+      if(e.key==='2') showNationalContext();
+    });
 
     // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
     const gasLayer = overlays['گاز'];
