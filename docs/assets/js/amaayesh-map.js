@@ -40,6 +40,15 @@
       ],
       source:'ساتبا + برآورد استان', confidence:'متوسط'
     };
+    const windLegendCfg = {
+      key:'wind', icon:'🌬️', title:'کلاس بادی', unit:'کلاس', type:'choropleth',
+      classes:[
+        {min:1, max:1, color:'#bdbdbd'},
+        {min:2, max:2, color:'#f6c945'},
+        {min:3, max:3, color:'#29cc7a'},
+      ],
+      source:'گزارش استان/جدول ۸', confidence:'متوسط'
+    };
     const scaleSolar = v => {
       const cls = solarLegendCfg.classes.find(c=>v>=c.min && v<=c.max);
       return cls?cls.color:'#f3f4f6';
@@ -50,6 +59,14 @@
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
     }).addTo(map);
     solarLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.solar_mw; });
+
+    const windLayer = L.geoJSON(polys, {
+      pane:'polygons',
+      style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
+                      fillOpacity:0.30, color:'#0a0a0a', weight:1 }),
+      onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
+    }).addTo(map);
+    windLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.wind_class_num; });
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
@@ -117,7 +134,10 @@
       });
     }
     document.querySelector('.legend-floating')?.remove();
-    legend.set([ solarLegendCfg ], (key,range)=>{ if(key==='solar') filterChoro(solarLayer,key,range); });
+    legend.set([ solarLegendCfg, windLegendCfg ], (key,range)=>{
+      if(key==='solar') filterChoro(solarLayer,key,range);
+      if(key==='wind')  filterChoro(windLayer,key,range);
+    });
     // --- Province focus (mask outside province) ---
     let maskLayer = null;
     const provinceBounds = boundary.getBounds();
@@ -172,7 +192,7 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
     }).addTo(map);
 
-    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'شهرها/نقاط': pointLayer };
+    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'شهرها/نقاط': pointLayer };
     const missing = [];
     for(const th of (cfg?.themes || [])){
       try{
