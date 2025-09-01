@@ -28,14 +28,96 @@
       else if(t==='Point') points.features.push(f);
     }
 
-    const polyFill = L.geoJSON(polys, {
+    const solarLegendCfg = {
+      key:'solar', icon:'☀️', title:'ظرفیت تجمیعی خورشیدی', unit:'MW', type:'choropleth',
+      period:'۱۴۰۳', method:'Jenks', help:'طبقه‌بندی Jenks روی توزیع درون‌استانی.',
+      classes:[
+        {min:10, max:38,  color:'#f3f4f6'},
+        {min:38, max:74,  color:'#e9d5ff'},
+        {min:74, max:233, color:'#c4b5fd'},
+        {min:233,max:774, color:'#8b5cf6'},
+        {min:774,max:1200,color:'#5b21b6'},
+      ],
+      source:'ساتبا + برآورد استان', confidence:'متوسط'
+    };
+    const scaleSolar = v => {
+      const cls = solarLegendCfg.classes.find(c=>v>=c.min && v<=c.max);
+      return cls?cls.color:'#f3f4f6';
+    };
+    const solarLayer = L.geoJSON(polys, {
       pane:'polygons',
-      style:{ color:'#374151', weight:1, fillColor:'#cfe8ff', fillOpacity:0.35, opacity:0.7 },
+      style: f => ({ color:'#374151', weight:1, fillColor:scaleSolar(f.properties.solar_mw), fillOpacity:0.35, opacity:0.7 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
     }).addTo(map);
+    solarLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.solar_mw; });
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+
+    // ===== LegendDock (reusable) =====
+    function LegendDock(){
+      const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
+      div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
+      const set = (groups,onFilter)=>{
+        const tabs = div.querySelector('.legend-tabs');
+        tabs.innerHTML = groups.map((g,i)=>`<button class="chip ${i?'':'active'}" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
+        const activate = (key)=>{
+          tabs.querySelectorAll('.chip').forEach(t=>t.classList.toggle('active', t.dataset.k===key));
+          const g = groups.find(x=>x.key===key); const body = div.querySelector('.legend-body');
+          if(g.type==='choropleth'){
+            body.innerHTML = `
+          <div class="legend-head">
+            <b>${g.title}</b><span class="unit">${g.unit||''}</span>
+            ${g.period?`<span class="chip">${g.period}</span>`:''}
+            ${g.method?`<span class="chip">${g.method}</span>`:''}
+            <a class="help" title="${g.help||''}">؟</a>
+          </div>
+          <ul class="swatches">${g.classes.map(c=>`
+            <li data-min="${c.min}" data-max="${c.max}">
+              <span class="sw" style="background:${c.color}"></span>
+              <span class="lbl">${c.min}–${c.max}</span>
+            </li>`).join('')}
+          </ul>`;
+          }
+          if(g.type==='size'){
+            body.innerHTML = `
+          <div class="legend-head"><b>${g.title}</b><span class="unit">${g.unit||''}</span></div>
+          <div class="bubbles">${g.samples.map(s=>`
+            <span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span>
+            <span class="lbl">${s.v}</span>`).join('')}</div>`;
+          }
+          div.querySelector('.legend-meta').innerHTML =
+            `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
+          // interactions
+          div.querySelectorAll('.swatches li').forEach(li=>{
+            li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
+            li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
+          });
+        };
+        tabs.querySelectorAll('.chip').forEach(t=>t.onclick=()=>activate(t.dataset.k));
+        activate(groups[0].key);
+      };
+      return { el:div, set };
+    }
+
+    // add control to map
+    const legend = new LegendDock();
+    L.control({position:'bottomright'}).onAdd = ()=> legend.el).addTo(map);
+
+    // helper to dim/iso choropleth layers by value range
+    function filterChoro(layer, key, range){
+      // expects feature.properties[keyField] or equivalent mapping; adapt inside switch if needed
+      const {min,max,isolate} = range||{};
+      layer.eachLayer(l=>{
+        const v = l.feature?.properties?.__legend_value ?? l.feature?.properties?.value ?? l.options?.value;
+        const inRange = (v>=min && v<=max);
+        const on = isolate ? inRange : true;
+        l.setStyle({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity: 1 });
+        if(!on && !isolate){ /* no-op */ }
+      });
+    }
+    document.querySelector('.legend-floating')?.remove();
+    legend.set([ solarLegendCfg ], (key,range)=>{ if(key==='solar') filterChoro(solarLayer,key,range); });
     // --- Province focus (mask outside province) ---
     let maskLayer = null;
     const provinceBounds = boundary.getBounds();
@@ -90,7 +172,7 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
     }).addTo(map);
 
-    const overlays = { 'مرز شهرستان‌ها': boundary, 'پُرشدگی شهرستان‌ها': polyFill, 'شهرها/نقاط': pointLayer };
+    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'شهرها/نقاط': pointLayer };
     const missing = [];
     for(const th of (cfg?.themes || [])){
       try{
