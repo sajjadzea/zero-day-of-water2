@@ -60,36 +60,36 @@
 
     const solarLegendCfg = {
       key:'solar', icon:'☀️', title:'ظرفیت تجمیعی خورشیدی', unit:'MW', type:'choropleth',
-      period:'۱۴۰۳', method:'Jenks', help:'طبقه‌بندی Jenks روی توزیع درون‌استانی.',
+      period:'۱۴۰۳', method:'Jenks',
       classes:[
-        {min:10, max:38,  color:'#f3f4f6'},
-        {min:38, max:74,  color:'#e9d5ff'},
-        {min:74, max:233, color:'#c4b5fd'},
-        {min:233,max:774, color:'#8b5cf6'},
-        {min:774,max:1200,color:'#5b21b6'},
+        {min:10, max:38,  color:'#f3f4f6', label:'۱۰–۳۸'},
+        {min:38, max:74,  color:'#e9d5ff', label:'۳۸–۷۴'},
+        {min:74, max:233, color:'#c4b5fd', label:'۷۴–۲۳۳'},
+        {min:233,max:774, color:'#8b5cf6', label:'۲۳۳–۷۷۴'},
+        {min:774,max:1200,color:'#5b21b6', label:'۷۷۴–۱۲۰۰'},
       ],
-      source:'ساتبا + برآورد استان', confidence:'متوسط'
+      source:'ساتبا (برآورد استانی)', confidence:'متوسط'
     };
     const windLegendCfg = {
       key:'wind', icon:'🌬️', title:'کلاس بادی', unit:'کلاس', type:'choropleth',
       classes:[
-        {min:1, max:1, color:'#bdbdbd'},
-        {min:2, max:2, color:'#f6c945'},
-        {min:3, max:3, color:'#29cc7a'},
+        {min:1,max:1,color:'#bdbdbd',label:'کلاس ۱'},
+        {min:2,max:2,color:'#f6c945',label:'کلاس ۲'},
+        {min:3,max:3,color:'#29cc7a',label:'کلاس ۳'},
       ],
-      source:'گزارش استان/جدول ۸', confidence:'متوسط'
+      source:'جدول ۸', confidence:'متوسط'
     };
     const damsLegendCfg = {
       key:'dams', icon:'🟦', title:'سدها', type:'dams',
       classes:[
-        {min:0,  max:20, label:'۰–۲۰٪',  color:'#ef4444'},
-        {min:20, max:40, label:'۲۰–۴۰٪', color:'#fb923c'},
-        {min:40, max:60, label:'۴۰–۶۰٪', color:'#f59e0b'},
-        {min:60, max:80, label:'۶۰–۸۰٪', color:'#84cc16'},
-        {min:80, max:100,label:'۸۰–۱۰۰٪',color:'#22c55e'},
+        {min:0,  max:20,  color:'#ef4444', label:'۰–۲۰٪'},
+        {min:20, max:40,  color:'#fb923c', label:'۲۰–۴۰٪'},
+        {min:40, max:60,  color:'#f59e0b', label:'۴۰–۶۰٪'},
+        {min:60, max:80,  color:'#84cc16', label:'۶۰–۸۰٪'},
+        {min:80, max:100, color:'#22c55e', label:'۸۰–۱۰۰٪'},
       ],
-      samples:[ {v:50, r:8}, {v:200, r:14}, {v:800, r:20} ],
-      source:'شرکت آب منطقه‌ای/پایش لحظه‌ای', confidence:'پایین'
+      samples:[{v:50,r:8},{v:200,r:14},{v:800,r:20}],
+      source:'پایش لحظه‌ای آب', confidence:'پایین'
     };
     const scaleSolar = v => {
       const cls = solarLegendCfg.classes.find(c=>v>=c.min && v<=c.max);
@@ -99,26 +99,23 @@
       pane:'polygons',
       style: f => ({ color:'#374151', weight:1, fillColor:scaleSolar(f.properties.solar_mw), fillOpacity:0.35, opacity:0.7 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-    }).addTo(map);
-    solarLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.solar_mw; });
+      }).addTo(map);
 
     const windLayer = L.geoJSON(polys, {
       pane:'polygons',
       style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
                       fillOpacity:0.30, color:'#0a0a0a', weight:1 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-    }).addTo(map);
-    windLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.wind_class_num; });
+      }).addTo(map);
 
     const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
     const rByMCM = v => Math.max(6, Math.sqrt(v)/2);
     const damsLayer = L.geoJSON(damsGeojson || {type:'FeatureCollection',features:[]},{
       pointToLayer:(f,latlng)=>{
         const p=f.properties, pct=p.dam_fill_pct||0, mcm=p.dam_storage_mcm||10;
-        const marker=L.circleMarker(latlng,{ radius:rByMCM(mcm), color:'#0a0a0a', weight:1,
-          fillColor:fillColorByPct(pct), fillOpacity:.85 });
-        p.__legend_value = pct; // for filterChoro
-        marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون مترمکعب`);
+          const marker=L.circleMarker(latlng,{ radius:rByMCM(mcm), color:'#0a0a0a', weight:1,
+            fillColor:fillColorByPct(pct), fillOpacity:.85 });
+          marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون مترمکعب`);
         return marker;
       }
     }).addTo(map);
@@ -126,91 +123,67 @@
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
 
-    // ===== LegendDock (reusable) =====
-    function LegendDock(){
-      const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
-      div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
-      const set = (groups,onFilter)=>{
-        const tabs = div.querySelector('.legend-tabs');
-        tabs.innerHTML = groups.map((g,i)=>`<button class="chip ${i?'':'active'}" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
-        const activate = (key)=>{
-          tabs.querySelectorAll('.chip').forEach(t=>t.classList.toggle('active', t.dataset.k===key));
-          const g = groups.find(x=>x.key===key); const body = div.querySelector('.legend-body');
-          if(g.type==='choropleth'){
-            body.innerHTML = `
-          <div class="legend-head">
-            <b>${g.title}</b><span class="unit">${g.unit||''}</span>
-            ${g.period?`<span class="chip">${g.period}</span>`:''}
-            ${g.method?`<span class="chip">${g.method}</span>`:''}
-            <a class="help" title="${g.help||''}">؟</a>
+      // ===== LegendDock =====
+      function LegendDock(){
+        const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
+        div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
+        const set = (groups,onFilter)=>{
+          const tabs = div.querySelector('.legend-tabs');
+          tabs.innerHTML = groups.map((g,i)=>`<button class="chip ${i?'':'active'}" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
+          const activate = (key)=>{
+            tabs.querySelectorAll('.chip').forEach(t=>t.classList.toggle('active', t.dataset.k===key));
+            const g = groups.find(x=>x.key===key), body = div.querySelector('.legend-body');
+            if(g.type==='choropleth'){
+              body.innerHTML = `
+          <div class="legend-head"><b>${g.title}</b><span class="unit">${g.unit||''}</span>
+            ${g.period?`<span class="chip">${g.period}</span>`:''}${g.method?`<span class="chip">${g.method}</span>`:''}
           </div>
           <ul class="swatches">${g.classes.map(c=>`
-            <li data-min="${c.min}" data-max="${c.max}">
-              <span class="sw" style="background:${c.color}"></span>
-              <span class="lbl">${c.min}–${c.max}</span>
-            </li>`).join('')}
+            <li data-min="${c.min}" data-max="${c.max}"><span class="sw" style="background:${c.color}"></span><span class="lbl">${c.label || (c.min+'–'+c.max)}</span></li>`).join('')}
           </ul>`;
-          }
-          if(g.type==='dams'){
-            body.innerHTML = `
+            }
+            if(g.type==='dams'){
+              body.innerHTML = `
           <div class="legend-head"><b>${g.title}</b></div>
           <div class="subhead">رنگ = درصد پرشدگی</div>
           <ul class="swatches">${g.classes.map(c=>`
-            <li data-min="${c.min}" data-max="${c.max}">
-              <span class="sw" style="background:${c.color}"></span>
-              <span class="lbl">${c.label}</span>
-            </li>`).join('')}
+            <li data-min="${c.min}" data-max="${c.max}"><span class="sw" style="background:${c.color}"></span><span class="lbl">${c.label}</span></li>`).join('')}
           </ul>
           <div class="subhead" style="margin-top:8px">اندازه = ظرفیت مخزن (میلیون m³)</div>
-          <div class="bubbles">${g.samples.map(s=>`
-            <span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span>
-            <span class="lbl">${s.v}</span>`).join('')}</div>`;
-          }
-          if(g.type==='size'){
-            body.innerHTML = `
-          <div class="legend-head"><b>${g.title}</b><span class="unit">${g.unit||''}</span></div>
-          <div class="bubbles">${g.samples.map(s=>`
-            <span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span>
-            <span class="lbl">${s.v}</span>`).join('')}</div>`;
-          }
-          div.querySelector('.legend-meta').innerHTML =
-            `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
-          // interactions
-          div.querySelectorAll('.swatches li').forEach(li=>{
-            li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
-            li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
-          });
+          <div class="bubbles">${g.samples.map(s=>`<span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span><span class="lbl">${s.v}</span>`).join('')}</div>`;
+            }
+            div.querySelector('.legend-meta').innerHTML = `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
+            // interactions
+            div.querySelectorAll('.swatches li').forEach(li=>{
+              li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
+              li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
+            });
+          };
+          tabs.querySelectorAll('.chip').forEach(t=>t.onclick=()=>activate(t.dataset.k));
+          activate(groups[0].key);
         };
-        tabs.querySelectorAll('.chip').forEach(t=>t.onclick=()=>activate(t.dataset.k));
-        activate(groups[0].key);
-      };
-      return { el:div, set };
-    }
+        return { el:div, set };
+      }
 
-    // add control to map
-    const legend = new LegendDock();
-    const legendCtl = L.control({position:'bottomright'});
-    legendCtl.onAdd = ()=> legend.el;
-    legendCtl.addTo(map);
+      const legend = new LegendDock();
+      const legendCtl = L.control({position:'bottomright'});
+      legendCtl.onAdd = ()=> legend.el;
+      legendCtl.addTo(map);
 
-    // helper to dim/iso choropleth layers by value range
-    function filterChoro(layer, key, range){
-      // expects feature.properties[keyField] or equivalent mapping; adapt inside switch if needed
-      const {min,max,isolate} = range||{};
-      layer.eachLayer(l=>{
-        const v = l.feature?.properties?.__legend_value ?? l.feature?.properties?.value ?? l.options?.value;
-        const inRange = (v>=min && v<=max);
-        const on = isolate ? inRange : true;
-        l.setStyle({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity: 1 });
-        if(!on && !isolate){ /* no-op */ }
+      // helper: تغییر شفافیت بر اساس بازه
+      function filterLayerByValue(leafletLayer, getter, {min,max,isolate}){
+        leafletLayer.eachLayer(l=>{
+          const v = getter(l);
+          const inRange = (v>=min && v<=max);
+          l.setStyle?.({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
+          if(l.setRadius && isolate){ l.setStyle?.({opacity: inRange?1:0.2}); }
+        });
+      }
+      legend.set([solarLegendCfg, windLegendCfg, damsLegendCfg], (key,range)=>{
+        if(key==='solar') filterLayerByValue(solarLayer, l=>l.feature.properties.solar_mw, range);
+        if(key==='wind')  filterLayerByValue(windLayer,  l=>l.feature.properties.wind_class_num, range);
+        if(key==='dams')  filterLayerByValue(damsLayer,  l=>l.feature.properties.dam_fill_pct, range);
       });
-    }
-    document.querySelector('.legend-floating')?.remove();
-    legend.set([ solarLegendCfg, windLegendCfg, damsLegendCfg ], (key,range)=>{
-      if(key==='solar') filterChoro(solarLayer,key,range);
-      if(key==='wind')  filterChoro(windLayer,key,range);
-      if(key==='dams')  filterChoro(damsLayer,key,range); // uses __legend_value = dam_fill_pct
-    });
     // --- Province focus (mask outside province) ---
     let maskLayer = null;
     const provinceBounds = boundary.getBounds();
