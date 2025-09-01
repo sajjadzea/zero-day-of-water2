@@ -103,6 +103,7 @@
       samples:[{v:50,r:8},{v:200,r:14},{v:800,r:20}],
       source:'پایش لحظه‌ای آب', confidence:'پایین'
     };
+    const tabs = [];
     const scaleSolar = v => {
       const cls = solarLegendCfg.classes.find(c=>v>=c.min && v<=c.max);
       return cls?cls.color:'#f3f4f6';
@@ -112,6 +113,8 @@
       style: f => ({ color:'#374151', weight:1, fillColor:scaleSolar(f.properties.solar_mw), fillOpacity:0.35, opacity:0.7 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       }).addTo(map);
+    solarLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.solar_mw);
+    tabs.push(solarLegendCfg);
 
     const windLayer = L.geoJSON(polys, {
       pane:'polygons',
@@ -119,18 +122,25 @@
                       fillOpacity:0.30, color:'#0a0a0a', weight:1 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       }).addTo(map);
+    windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
+    tabs.push(windLegendCfg);
 
-    const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
-    const rByMCM = v => Math.max(6, Math.sqrt(v)/2);
-    const damsLayer = L.geoJSON(damsGeojson || {type:'FeatureCollection',features:[]},{
-      pointToLayer:(f,latlng)=>{
-        const p=f.properties, pct=p.dam_fill_pct||0, mcm=p.dam_storage_mcm||10;
+    let damsLayer = null;
+    if(damsGeojson){
+      const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
+      const rByMCM = v => Math.max(6, Math.sqrt(v||1)/2);
+      damsLayer = L.geoJSON(damsGeojson, {
+        pointToLayer:(f,latlng)=>{
+          const p=f.properties, pct=+p.dam_fill_pct||0, mcm=+p.dam_storage_mcm||0;
           const marker=L.circleMarker(latlng,{ radius:rByMCM(mcm), color:'#0a0a0a', weight:1,
             fillColor:fillColorByPct(pct), fillOpacity:.85 });
-          marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون مترمکعب`);
-        return marker;
-      }
-    }).addTo(map);
+          p.__legend_value = pct;
+          marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون m³`);
+          return marker;
+        }
+      }).addTo(map);
+      tabs.push(damsLegendCfg);
+    }
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
@@ -139,63 +149,72 @@
       function LegendDock(){
         const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
         div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
-        const set = (groups,onFilter)=>{
+        let groups = [], onFilter = null;
+        function renderTabs(){
           const tabs = div.querySelector('.legend-tabs');
           tabs.innerHTML = groups.map((g,i)=>`<button class="chip ${i?'':'active'}" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
-          const activate = (key)=>{
-            tabs.querySelectorAll('.chip').forEach(t=>t.classList.toggle('active', t.dataset.k===key));
-            const g = groups.find(x=>x.key===key), body = div.querySelector('.legend-body');
-            if(g.type==='choropleth'){
-              body.innerHTML = `
-          <div class="legend-head"><b>${g.title}</b><span class="unit">${g.unit||''}</span>
-            ${g.period?`<span class="chip">${g.period}</span>`:''}${g.method?`<span class="chip">${g.method}</span>`:''}
-          </div>
-          <ul class="swatches">${g.classes.map(c=>`
-            <li data-min="${c.min}" data-max="${c.max}"><span class="sw" style="background:${c.color}"></span><span class="lbl">${c.label || (c.min+'–'+c.max)}</span></li>`).join('')}
-          </ul>`;
-            }
-            if(g.type==='dams'){
-              body.innerHTML = `
-          <div class="legend-head"><b>${g.title}</b></div>
-          <div class="subhead">رنگ = درصد پرشدگی</div>
-          <ul class="swatches">${g.classes.map(c=>`
-            <li data-min="${c.min}" data-max="${c.max}"><span class="sw" style="background:${c.color}"></span><span class="lbl">${c.label}</span></li>`).join('')}
-          </ul>
-          <div class="subhead" style="margin-top:8px">اندازه = ظرفیت مخزن (میلیون m³)</div>
-          <div class="bubbles">${g.samples.map(s=>`<span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span><span class="lbl">${s.v}</span>`).join('')}</div>`;
-            }
-            div.querySelector('.legend-meta').innerHTML = `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
-            // interactions
-            div.querySelectorAll('.swatches li').forEach(li=>{
-              li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
-              li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
-            });
-          };
           tabs.querySelectorAll('.chip').forEach(t=>t.onclick=()=>activate(t.dataset.k));
-          activate(groups[0].key);
+        }
+        function activate(key){
+          const tabs = div.querySelectorAll('.chip');
+          tabs.forEach(t=>t.classList.toggle('active', t.dataset.k===key));
+          const g = groups.find(x=>x.key===key), body = div.querySelector('.legend-body');
+          if(!g){ body.innerHTML=''; return; }
+          if(g.type==='choropleth'){
+            body.innerHTML = `
+        <div class="legend-head"><b>${g.title}</b>${g.unit?`<span class="unit">${g.unit}</span>`:''}
+          ${g.period?`<span class="chip">${g.period}</span>`:''}${g.method?`<span class="chip">${g.method}</span>`:''}
+        </div>
+        <ul class="swatches">${g.classes.map(c=>`
+          <li data-min="${c.min}" data-max="${c.max}">
+            <span class="sw" style="background:${c.color}"></span>
+            <span class="lbl">${c.label || (c.min+'–'+c.max)}</span>
+          </li>`).join('')}
+        </ul>`;
+          }
+          if(g.type==='dams'){
+            body.innerHTML = `
+        <div class="legend-head"><b>${g.title}</b></div>
+        <div class="subhead">رنگ = درصد پرشدگی</div>
+        <ul class="swatches">${g.classes.map(c=>`
+          <li data-min="${c.min}" data-max="${c.max}">
+            <span class="sw" style="background:${c.color}"></span><span class="lbl">${c.label}</span>
+          </li>`).join('')}
+        </ul>
+        <div class="subhead" style="margin-top:8px">اندازه = ظرفیت مخزن (میلیون m³)</div>
+        <div class="bubbles">${g.samples.map(s=>`<span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span><span class="lbl">${s.v}</span>`).join('')}</div>`;
+          }
+          div.querySelector('.legend-meta').innerHTML = `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
+          div.querySelectorAll('.swatches li').forEach(li=>{
+            li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
+            li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
+          });
+        }
+        return {
+          el: div,
+          set(newGroups, filterCb){
+            groups = newGroups; onFilter = filterCb; renderTabs(); activate(groups[0]?.key);
+          }
         };
-        return { el:div, set };
       }
-
       const legend = new LegendDock();
       const legendCtl = L.control({position:'bottomright'});
       legendCtl.onAdd = ()=> legend.el;
       legendCtl.addTo(map);
 
-      // helper: تغییر شفافیت بر اساس بازه
-      function filterLayerByValue(leafletLayer, getter, {min,max,isolate}){
-        leafletLayer.eachLayer(l=>{
-          const v = getter(l);
-          const inRange = (v>=min && v<=max);
-          l.setStyle?.({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
-          if(l.setRadius && isolate){ l.setStyle?.({opacity: inRange?1:0.2}); }
+      if(tabs.length){
+        function filterLayer(layer, get, {min,max,isolate}) {
+          layer?.eachLayer?.(l=>{
+            const v = get(l); const inRange = (v>=min && v<=max);
+            l.setStyle?.({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
+          });
+        }
+        legend.set(tabs, (key,range)=>{
+          if(key==='solar') filterLayer(solarLayer, l=>l.feature.properties.__legend_value, range);
+          if(key==='wind')  filterLayer(windLayer,  l=>l.feature.properties.__legend_value, range);
+          if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
         });
       }
-      legend.set([solarLegendCfg, windLegendCfg, damsLegendCfg], (key,range)=>{
-        if(key==='solar') filterLayerByValue(solarLayer, l=>l.feature.properties.solar_mw, range);
-        if(key==='wind')  filterLayerByValue(windLayer,  l=>l.feature.properties.wind_class_num, range);
-        if(key==='dams')  filterLayerByValue(damsLayer,  l=>l.feature.properties.dam_fill_pct, range);
-      });
     // --- Province focus (mask outside province) ---
     let maskLayer = null;
     const provinceBounds = boundary.getBounds();
@@ -240,7 +259,7 @@
     })();
     map.on('zoomend', ()=> boundary.setStyle({ weight: map.getZoom()>=10 ? 3.2 : 2.4 }));
 
-    const pointLayer = L.geoJSON(points, {
+      const pointLayer = L.geoJSON(points, {
       pane:'points',
       pointToLayer: (f, latlng) => {
         const inner = L.circleMarker(latlng, { radius:4, color:'#0ea5e9', weight:2, fillColor:'#0ea5e9', fillOpacity:1 });
@@ -248,10 +267,11 @@
         return L.layerGroup([outer, inner]);
       },
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
-    }).addTo(map);
+      }).addTo(map);
 
-    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'سدها': damsLayer,
-      'شهرها/نقاط': pointLayer };
+      const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer };
+      if (damsLayer) overlays['سدها'] = damsLayer;
+      overlays['شهرها/نقاط'] = pointLayer;
     const missing = [];
     for(const th of (cfg?.themes || [])){
       const rel = th.file.replace(/^\//,'').replace(/^data\//,'');
