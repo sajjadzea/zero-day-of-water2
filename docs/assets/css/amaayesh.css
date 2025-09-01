@@ -11,3 +11,4 @@
 .legend-dock .bubbles{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center}
 .legend-dock .bubble{display:inline-block; border-radius:999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.35)}
 .legend-dock .legend-meta{display:flex; justify-content:space-between; margin-top:8px; font-size:12px; opacity:.8}
+.legend-dock .subhead{font-size:12px; opacity:.9; margin:2px 0 6px}

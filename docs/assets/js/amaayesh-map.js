@@ -21,6 +21,8 @@
     const combined = await loadJSON(combinedPath).catch(()=>null);
     if(!combined || !Array.isArray(combined.features) || combined.features.length===0){ return; }
 
+    const damsGeojson = cfg?.baseData?.dams ? await loadJSON(cfg.baseData.dams).catch(()=>null) : null;
+
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
       const t = f.geometry?.type;
@@ -49,6 +51,18 @@
       ],
       source:'گزارش استان/جدول ۸', confidence:'متوسط'
     };
+    const damsLegendCfg = {
+      key:'dams', icon:'🟦', title:'سدها', type:'dams',
+      classes:[
+        {min:0,  max:20, label:'۰–۲۰٪',  color:'#ef4444'},
+        {min:20, max:40, label:'۲۰–۴۰٪', color:'#fb923c'},
+        {min:40, max:60, label:'۴۰–۶۰٪', color:'#f59e0b'},
+        {min:60, max:80, label:'۶۰–۸۰٪', color:'#84cc16'},
+        {min:80, max:100,label:'۸۰–۱۰۰٪',color:'#22c55e'},
+      ],
+      samples:[ {v:50, r:8}, {v:200, r:14}, {v:800, r:20} ],
+      source:'شرکت آب منطقه‌ای/پایش لحظه‌ای', confidence:'پایین'
+    };
     const scaleSolar = v => {
       const cls = solarLegendCfg.classes.find(c=>v>=c.min && v<=c.max);
       return cls?cls.color:'#f3f4f6';
@@ -67,6 +81,19 @@
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
     }).addTo(map);
     windLayer.eachLayer(l => { l.feature.properties.__legend_value = l.feature.properties.wind_class_num; });
+
+    const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
+    const rByMCM = v => Math.max(6, Math.sqrt(v)/2);
+    const damsLayer = L.geoJSON(damsGeojson || {type:'FeatureCollection',features:[]},{
+      pointToLayer:(f,latlng)=>{
+        const p=f.properties, pct=p.dam_fill_pct||0, mcm=p.dam_storage_mcm||10;
+        const marker=L.circleMarker(latlng,{ radius:rByMCM(mcm), color:'#0a0a0a', weight:1,
+          fillColor:fillColorByPct(pct), fillOpacity:.85 });
+        p.__legend_value = pct; // for filterChoro
+        marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون مترمکعب`);
+        return marker;
+      }
+    }).addTo(map);
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
@@ -96,6 +123,21 @@
             </li>`).join('')}
           </ul>`;
           }
+          if(g.type==='dams'){
+            body.innerHTML = `
+          <div class="legend-head"><b>${g.title}</b></div>
+          <div class="subhead">رنگ = درصد پرشدگی</div>
+          <ul class="swatches">${g.classes.map(c=>`
+            <li data-min="${c.min}" data-max="${c.max}">
+              <span class="sw" style="background:${c.color}"></span>
+              <span class="lbl">${c.label}</span>
+            </li>`).join('')}
+          </ul>
+          <div class="subhead" style="margin-top:8px">اندازه = ظرفیت مخزن (میلیون m³)</div>
+          <div class="bubbles">${g.samples.map(s=>`
+            <span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span>
+            <span class="lbl">${s.v}</span>`).join('')}</div>`;
+          }
           if(g.type==='size'){
             body.innerHTML = `
           <div class="legend-head"><b>${g.title}</b><span class="unit">${g.unit||''}</span></div>
@@ -119,7 +161,9 @@
 
     // add control to map
     const legend = new LegendDock();
-    L.control({position:'bottomright'}).onAdd = ()=> legend.el).addTo(map);
+    const legendCtl = L.control({position:'bottomright'});
+    legendCtl.onAdd = ()=> legend.el;
+    legendCtl.addTo(map);
 
     // helper to dim/iso choropleth layers by value range
     function filterChoro(layer, key, range){
@@ -134,9 +178,10 @@
       });
     }
     document.querySelector('.legend-floating')?.remove();
-    legend.set([ solarLegendCfg, windLegendCfg ], (key,range)=>{
+    legend.set([ solarLegendCfg, windLegendCfg, damsLegendCfg ], (key,range)=>{
       if(key==='solar') filterChoro(solarLayer,key,range);
       if(key==='wind')  filterChoro(windLayer,key,range);
+      if(key==='dams')  filterChoro(damsLayer,key,range); // uses __legend_value = dam_fill_pct
     });
     // --- Province focus (mask outside province) ---
     let maskLayer = null;
@@ -192,7 +237,7 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
     }).addTo(map);
 
-    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'شهرها/نقاط': pointLayer };
+    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'سدها': damsLayer, 'شهرها/نقاط': pointLayer };
     const missing = [];
     for(const th of (cfg?.themes || [])){
       try{
