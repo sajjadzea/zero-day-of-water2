@@ -7,21 +7,49 @@
 
   let searchLayer = L.layerGroup().addTo(map);
 
-  async function loadJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(u+' '+r.status); return r.json(); }
+  // base path = پوشه‌ای که index.html در آن است
+  const BASE_PATH = (()=>{
+    const p = location.pathname;
+    return p.endsWith('/') ? p : p.replace(/\/[^\/]*$/, '/');
+  })();
+  // ساخت URL دیتا با توجه به BASE_PATH
+  const dataUrl = rel => `${BASE_PATH}data/${rel}`;
+
+  // لودر مقاوم با fallback و هندل خطا
+  async function loadJSON(rel, {fallbacks=[]}={}){
+    const urls = [ dataUrl(rel), ...fallbacks ];
+    for (const u of urls){
+      try{
+        const res = await fetch(u, {cache:'no-cache'});
+        if(res.ok) return await res.json();
+        if(res.status===404) continue;
+      }catch(e){ /* ignore and try next */ }
+    }
+    console.info('Layer not available:', rel);
+    return null;
+  }
+  // ابزار غیرفعال‌کردن سوییچ UI لایه در صورت نبودن دیتا
+  function disableLayerToggle(layerKey){
+    const el = document.querySelector(`[data-layer-key="${layerKey}"]`);
+    if(el){ el.disabled = true; el.title = 'داده در این دیپلوی موجود نیست'; el.checked = false; }
+  }
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await loadJSON('./layers.config.json').catch(()=>null);
+    const cfg = await loadJSON('../layers.config.json', {fallbacks:['layers.config.json']});
     const combinedPath = cfg?.baseData?.combined;
 
     if(!combinedPath){ return; }
 
-    const combined = await loadJSON(combinedPath).catch(()=>null);
+    const combinedRel = combinedPath.replace(/^\//,'');
+    const combined = await loadJSON(combinedRel.startsWith('data/') ? combinedRel.replace(/^data\//,'') : combinedRel);
     if(!combined || !Array.isArray(combined.features) || combined.features.length===0){ return; }
 
-    const damsGeojson = cfg?.baseData?.dams ? await loadJSON(cfg.baseData.dams).catch(()=>null) : null;
+    const damsPath = cfg?.baseData?.dams;
+    const damsRel = damsPath ? damsPath.replace(/^\//,'') : null;
+    const damsGeojson = damsRel ? await loadJSON(damsRel.startsWith('data/') ? damsRel.replace(/^data\//,'') : damsRel) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
@@ -237,14 +265,15 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
     }).addTo(map);
 
-    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'سدها': damsLayer, 'شهرها/نقاط': pointLayer };
+    const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer, 'سدها': damsLayer,
+      'شهرها/نقاط': pointLayer };
     const missing = [];
     for(const th of (cfg?.themes || [])){
-      try{
-        const data = await loadJSON(th.file);
-        const layer = L.geoJSON(data,{ pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
-        overlays[th.title] = layer; layer.addTo(map);
-      }catch(e){ missing.push(th.title); }
+      const rel = th.file.replace(/^\//,'');
+      const j = await loadJSON(rel.startsWith('data/') ? rel.replace(/^data\//,'') : rel);
+      if(!j){ disableLayerToggle(th.key); missing.push(th.title); continue; }
+      const layer = L.geoJSON(j,{ pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
+      overlays[th.title] = layer; layer.addTo(map);
     }
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
