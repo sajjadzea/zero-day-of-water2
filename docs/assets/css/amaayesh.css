@@ -1,5 +1,5 @@
-.legend-dock{background:rgba(10,15,28,.88); color:#fff; padding:12px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.25); width: 280px; font-size:14px}
-.legend-dock .legend-tabs{display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap}
+.legend-dock{background:rgba(10,15,28,.88); color:#fff; padding:12px; border-radius:14px; box-shadow:0 8px 30px rgba(0,0,0,.25); width:290px; font-size:14px}
+.legend-dock .legend-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px}
 .legend-dock .chip{background:#0b1220; color:#e5e7eb; border:1px solid #324155; border-radius:10px; padding:6px 10px; cursor:pointer}
 .legend-dock .chip.active{background:#0ea5e9; color:#04121f; border-color:#0ea5e9}
 .legend-dock .legend-head{display:flex; gap:8px; align-items:center; margin:6px 0 8px}
@@ -8,7 +8,7 @@
 .legend-dock ul.swatches li{display:flex; align-items:center; gap:8px; padding:6px; border-radius:8px; cursor:pointer}
 .legend-dock ul.swatches li:hover{background:rgba(255,255,255,.06)}
 .legend-dock .sw{width:28px; height:14px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,.25)}
-.legend-dock .bubbles{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center}
+.legend-dock .bubbles{display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:center; margin-top:6px}
 .legend-dock .bubble{display:inline-block; border-radius:999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.35)}
 .legend-dock .legend-meta{display:flex; justify-content:space-between; margin-top:8px; font-size:12px; opacity:.8}
 .legend-dock .subhead{font-size:12px; opacity:.9; margin:2px 0 6px}
