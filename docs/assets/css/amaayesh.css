@@ -14,3 +14,11 @@
 .legend-dock .subhead{font-size:12px;opacity:.9;margin:2px 0 6px}
 
 .is-disabled{opacity:.5;pointer-events:none}
+
+/* Avoid control overlap: stack with gaps per corner */
+.leaflet-top.leaflet-right,
+.leaflet-top.leaflet-left,
+.leaflet-bottom.leaflet-right,
+.leaflet-bottom.leaflet-left{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.leaflet-top.leaflet-left,
+.leaflet-bottom.leaflet-left{align-items:flex-start}
