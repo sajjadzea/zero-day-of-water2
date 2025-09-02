@@ -12,29 +12,28 @@
   let boundary;
 
   // === AMAAYESH DATA LOADER (path-robust) ===
-  const AMA_DATA_BASE = "/data/";
-  async function fetchJSONWithFallback(name) {
-    const candidates = [
-      name.startsWith("/") ? name : AMA_DATA_BASE + name, // /data/first
-      name,                                               // as given
-      "./" + name,
-      "../data/" + name,
-      "/amaayesh/" + name,                                // ✅ manifest or assets under /amaayesh
-      "/amaayesh/data/" + name                            // legacy fallback
-    ];
-    for (const url of candidates) {
-      try {
-        const r = await fetch(url, { cache: "no-cache" });
-        if (r.ok) {
-          console.log("[ama-data] OK:", url);
-          return r.json();
-        }
-        console.warn("[ama-data] non-200:", url, r.status);
-      } catch (e) {
-        console.warn("[ama-data] fetch err:", url, e);
-      }
+  function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
+
+  async function fetchJSONWithFallback(name){
+    const isAbs = name.startsWith('/');
+    const candidates = uniq([
+      isAbs ? name : `/data/${name}`,
+      isAbs ? null : name,           // relative to /amaayesh/
+      isAbs ? null : `./${name}`,
+      isAbs ? null : `../data/${name}`,
+      isAbs ? null : `/amaayesh/${name}`,
+      isAbs ? null : `/amaayesh/data/${name}`,
+    ]);
+
+    let lastErr;
+    for (const url of candidates){
+      try{
+        const r = await fetch(url, {cache:'no-cache'});
+        if (r.ok) return await r.json();
+      }catch(e){ lastErr = e; }
     }
-    console.error("[ama-data] failed to load:", name, "candidates tried:", candidates);
+    console.error('[ama-data] failed to load:', name, 'candidates tried:', candidates);
+    if (lastErr) console.error(lastErr);
     return null;
   }
 
@@ -44,7 +43,7 @@
     __LAYER_MANIFEST = null;
     try {
       // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
-      const man = await fetchJSONWithFallback('amaayesh/layers.config.json');
+      const man = await fetchJSONWithFallback('/amaayesh/layers.config.json');
       if (man && Array.isArray(man.files)) {
         __LAYER_MANIFEST = new Set(man.files);
         console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
@@ -98,7 +97,7 @@
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await loadJSON('../layers.config.json');
+    const cfg = await loadJSON('/amaayesh/layers.config.json');
     const combined = await fetchJSONWithFallback('amaayesh/khorasan_razavi_combined.geojson');
     if(!combined?.features?.length){ return; }
 
