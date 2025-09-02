@@ -6,6 +6,7 @@
   map.setView([36.3, 59.6], 7);
 
   let searchLayer = L.layerGroup().addTo(map);
+  let boundary;
 
   // === AMAAYESH DATA LOADER (path-robust) ===
   const AMA_DATA_BASE = "/data/"; // سایتت ریشه‌اش docs/ است، پس /data/ درست است
@@ -181,7 +182,7 @@
       tabs.push(damsLegendCfg);
     }
 
-    const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
+    boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
 
     // === Province focus & toggle ===
@@ -513,20 +514,37 @@
     };
     ctl.addTo(map);
 
-    function applyMode(){
-      const wantTop = (currentMode==='invest' || currentMode==='ind');
-      if (wantTop) {
-        if (window.__AMA_topPanel && !window.__AMA_topPanel._map) {
-          window.__AMA_topPanel.addTo(map);
+      function applyMode(){
+        const wantTop = (currentMode==='invest' || currentMode==='ind');
+        // Top-10 control
+        if (wantTop) {
+          if (window.__AMA_topPanel && !window.__AMA_topPanel._map) window.__AMA_topPanel.addTo(map);
+          window.__AMA_renderTop10?.();
+        } else {
+          if (window.__AMA_topPanel && window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
         }
-        window.__AMA_renderTop10?.();
-      } else {
-        if (window.__AMA_topPanel && window.__AMA_topPanel._map) {
-          map.removeControl(window.__AMA_topPanel);
+
+        // layer presets (minimal defaults)
+        const show = (layer, yes) => { if (!layer) return; if (yes && !map.hasLayer(layer)) map.addLayer(layer); if (!yes && map.hasLayer(layer)) map.removeLayer(layer); };
+        switch (currentMode) {
+          case 'owner':     // 👤: پاسخ سریع و ساده
+            show(window.windChoroplethLayer, true);
+            show(window.windSitesLayer,     false);
+            show(boundary,                  true);
+            break;
+          case 'edu':       // 🎓: آزمودن آستانه‌ها
+            show(window.windChoroplethLayer, true);
+            show(window.windSitesLayer,      true);
+            show(boundary,                   true);
+            break;
+          case 'invest':    // 💼: غربال سریع + Top-10
+          case 'ind':       // 🏭: مشابه
+            show(window.windChoroplethLayer, true);
+            show(window.windSitesLayer,      true);
+            show(boundary,                   true);
+            break;
         }
       }
-      // TODO: در صورت نیاز اینجا CTAهای خاص هر مود یا فیلتر کلاس‌ها را هم سوییچ کن
-    }
     applyMode();
   })();
 })();
