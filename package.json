@@ -20,7 +20,8 @@
     "serve-docs": "npx http-server docs -p 5173",
     "build:wind": "python3 tools/build_wind_geojson.py",
     "vendor:supercluster": "node tools/vendorize_supercluster.js",
-    "audit:ama": "node tools/audit_amaayesh.js"
+    "audit:ama": "node tools/audit_amaayesh.js",
+    "verify:publish": "node tools/verify_publish_paths.js"
   },
   "keywords": [],
   "author": "",

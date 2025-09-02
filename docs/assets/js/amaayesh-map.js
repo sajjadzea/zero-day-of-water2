@@ -18,6 +18,21 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   };
 }
 
+window.addEventListener('unhandledrejection', e => {
+  const msg = e?.reason?.message || e?.reason || '';
+  if (/message channel closed/i.test(String(msg))) {
+    console.warn('[ama-ignore-ext]', msg);
+    e.preventDefault();
+  }
+});
+window.addEventListener('error', e => {
+  const msg = e?.message || e?.error?.message || '';
+  if (/message channel closed/i.test(String(msg))) {
+    console.warn('[ama-ignore-ext]', msg);
+    e.preventDefault();
+  }
+});
+
 // (IIFE wrapper) — must be async to allow top-level await inside
 (async function(){
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
@@ -44,6 +59,9 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
 
   async function fetchJSONWithFallback(name){
+    if (window.AMA_DEBUG) {
+      console.log('[ama:probe] pathname:', window.location.pathname, 'base:', window.AMA_DATA_BASE, 'name:', name);
+    }
     const isAbs = name.startsWith('/');
     const candidates = uniq([
       isAbs ? name : `/data/${name}`,
@@ -53,18 +71,60 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
       isAbs ? null : `/amaayesh/${name}`,
       isAbs ? null : `/amaayesh/data/${name}`,
     ]);
+    if (window.AMA_DEBUG) {
+      console.table(candidates.map((url, idx) => ({ idx, url })));
+    }
 
     let lastErr;
     for (const url of candidates){
       try{
         const r = await fetch(url, {cache:'no-cache'});
+        if (window.AMA_DEBUG) console.log(`[ama:probe] GET ${url} → ${r.status}`);
         if (r.ok) return await r.json();
-      }catch(e){ lastErr = e; }
+      }catch(e){
+        lastErr = e;
+        if (window.AMA_DEBUG) console.log(`[ama:probe] GET ${url} → err ${e?.message}`);
+      }
     }
-    console.error('[ama-data] failed to load:', name, 'candidates tried:', candidates);
-    if (lastErr) console.error(lastErr);
+    console.warn('[ama-data] failed to load:', name, 'candidates tried:', candidates);
+    if (lastErr) console.warn(lastErr);
     return null;
   }
+
+  window.__inspectDataPath = async function(name){
+    const candidates = uniq([
+      name,
+      '/' + name,
+      `/amaayesh/${name}`,
+      `amaayesh/${name}`,
+      `/data/${name}`,
+      `data/${name}`,
+      `../${name}`,
+      `../../${name}`,
+    ]);
+    const rows = [];
+    for (const url of candidates){
+      let method = 'HEAD';
+      let res = null;
+      try {
+        res = await fetch(url, { method:'HEAD', cache:'no-store' });
+        if (res.status === 405) throw new Error('HEAD not allowed');
+      } catch (_) {
+        method = 'GET';
+        try {
+          res = await fetch(url, { method:'GET', cache:'no-store' });
+        } catch (_) { }
+      }
+      rows.push({
+        url,
+        method,
+        status: res ? res.status : 'ERR',
+        ok: res ? res.ok : false,
+        redirected: res ? res.redirected : false,
+      });
+    }
+    console.table(rows);
+  };
 
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
@@ -99,6 +159,28 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
     }
   }
   await loadLayerManifest();
+
+  window.__dumpAmaState = function(){
+    const manifest = Array.from(window.__LAYER_MANIFEST || []);
+    const scriptEl = document.querySelector('script[type="module"][src*="amaayesh-map"]') || document.currentScript;
+    const scriptSrc = scriptEl ? scriptEl.src : '';
+    const servedFromAma = /\/amaayesh\//.test(new URL(scriptSrc, location.href).pathname);
+    console.group('[ama-dump]');
+    console.log('pathname:', window.location.pathname);
+    console.log('__LAYER_MANIFEST size:', manifest.length);
+    console.log('__LAYER_MANIFEST list:', manifest);
+    console.log('inManifest("data/counties.geojson"):', inManifest('data/counties.geojson'));
+    console.log('inManifest("data/wind_sites.geojson"):', inManifest('data/wind_sites.geojson'));
+    console.log('AMA_DATA_BASE:', window.AMA_DATA_BASE);
+    console.log('script src:', scriptSrc);
+    console.log('served from /amaayesh/?', servedFromAma);
+    console.groupEnd();
+  };
+  if (window.AMA_DEBUG) {
+    window.__dumpAmaState();
+    window.__inspectDataPath('data/counties.geojson');
+    window.__inspectDataPath('data/wind_sites.geojson');
+  }
 
   // load a GeoJSON file only if manifest allows it
   async function optionalGeoJSONFile(file, opts = {}) {
