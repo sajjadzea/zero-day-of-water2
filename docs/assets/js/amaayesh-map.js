@@ -179,6 +179,33 @@ window.addEventListener('error', e => {
     }
     map.setView([36.3, 59.6], 7);
 
+    const ToolDock = L.Control.extend({
+      options:{ position:'topleft' },
+      onAdd: function(){
+        const c = L.DomUtil.create('div','ama-dock');
+        c.innerHTML = `
+        <button class="btn" aria-label="لایه‌ها"    data-act="layers">🗂</button>
+        <button class="btn" aria-label="ابزارها"    data-act="tools">🛠</button>
+        <button class="btn" aria-label="جستجو"     data-act="search">🔎</button>
+        <button class="btn" aria-label="دانلود"    data-act="download">⬇️</button>
+        <button class="btn" aria-label="بازنشانی"  data-act="reset">↺</button>
+        `;
+        // stop map drag
+        L.DomEvent.disableClickPropagation(c); L.DomEvent.disableScrollPropagation(c);
+        // temp handlers
+        c.addEventListener('click',(e)=>{
+          const b = e.target.closest('button'); if(!b) return;
+          const act = b.dataset.act;
+          if(act==='reset' && window.__countiesLayer && window.__mapBounds){ map.fitBounds(window.__mapBounds); }
+          if(window.AMA_DEBUG) console.info('[dock]', act);
+        });
+        return c;
+      }
+    });
+    // remember map bounds once (to use with reset)
+    if(!window.__mapBounds) setTimeout(()=>{ try{ window.__mapBounds = map.getBounds(); }catch{} }, 500);
+    map.addControl(new ToolDock());
+
     if (window.AMA_DEBUG && map) {
       map.on('zoomend', () => console.log('[ama:event] zoomend =>', map.getZoom()));
       map.on('moveend', () => console.log('[ama:event] moveend =>', map.getCenter()));
