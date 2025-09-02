@@ -216,6 +216,47 @@
         map.removeLayer(windLayer);
       }
 
+      // === Top-10 panel (by P0) ===
+      window.__AMA_topPanel = L.control({position:"topright"});
+      window.__AMA_topPanel.onAdd = function() {
+        const wrap = L.DomUtil.create("div", "ama-panel");
+        wrap.innerHTML = `<div class="ama-panel-hd">Top-10 پتانسیل (P0)</div><div class="ama-panel-bd"><div id="ama-top10"></div></div>`;
+        return wrap;
+      };
+
+      window.__AMA_renderTop10 = function(){
+        const geo = countiesGeo;
+        if (!geo?.features?.length) return;
+        const rows = geo.features
+          .map(f => f.properties || {})
+          .filter(p => typeof p.P0 === 'number')
+          .sort((a,b) => (b.P0||0) - (a.P0||0))
+          .slice(0,10);
+        const el = document.getElementById("ama-top10");
+        if (!el) return;
+        el.innerHTML = rows.map((p,idx)=>`
+          <div class="ama-row" data-county="${p.county||""}">
+            <div class="c">${idx+1}</div>
+            <div class="n">${p.county||"—"}</div>
+            <div class="m">MW: ${Number(p.capacity_mw||0).toFixed(0)}</div>
+            <div class="h">MW/ha: ${Number(p.MW_per_ha||0).toFixed(2)}</div>
+            <div class="s">P0: ${Number(p.P0||0).toFixed(2)}</div>
+          </div>`).join("");
+        el.querySelectorAll(".ama-row").forEach(row=>{
+          row.addEventListener("click", ()=>{
+            const name = row.getAttribute("data-county");
+            let targetLayer = null;
+            (window.windChoroplethLayer || boundary)?.eachLayer?.(l=>{
+              if ((l.feature?.properties?.county||"") === name) targetLayer = l;
+            });
+            if (targetLayer) map.fitBounds(targetLayer.getBounds(), {maxZoom: 11});
+          });
+        });
+      };
+
+      window.__AMA_topPanel.addTo(map);
+      window.__AMA_renderTop10();
+
       if (windSitesGeo?.features?.length){
         windSitesLayer = L.geoJSON(windSitesGeo, {
           pane: 'points',
