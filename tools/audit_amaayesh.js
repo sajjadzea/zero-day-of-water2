@@ -12,7 +12,7 @@ const htmlPath     = p.join(root, 'docs/amaayesh/index.html');
 // 1) Manifest
 const manifest = readJSON(manifestPath);
 const files = Array.isArray(manifest?.files) ? manifest.files : [];
-const repoFiles = files.map(f => p.join(root, 'docs/amaayesh', f.replace(/^data\//,'data/')));
+const repoFiles = files.map(f => p.join(root, 'docs/amaayesh', f.includes('/') ? f : `data/${f}`));
 
 // 2) JS references (inManifest('...') و fetch ... .geojson)
 const js = fs.existsSync(jsPath) ? fs.readFileSync(jsPath,'utf8') : '';

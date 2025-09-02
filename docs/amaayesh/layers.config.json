@@ -1,4 +1,4 @@
 {
   "title": "مانیفست لایه‌های آمایش — خراسان رضوی",
-  "files": ["data/counties.geojson", "data/wind_sites.geojson"]
+  "files": ["counties.geojson", "wind_sites.geojson"]
 }

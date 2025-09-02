@@ -56,53 +56,57 @@ window.addEventListener('error', e => {
   let boundary;
 
   // === AMAAYESH DATA LOADER (path-robust) ===
-  function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
+  function normalizeName(name){
+    // 1) حذف ./ و / اضافی در ابتدا
+    let s = String(name).replace(/^\.\//,'').replace(/^\/+/,'');
+    // 2) حذف پیشوندهای قدیمی که ممکن است از مانیفست آمده باشد
+    s = s.replace(/^amaayesh\/data\//, '')
+         .replace(/^data\/amaayesh\//, '')
+         .replace(/^data\//, '')
+         .replace(/^amaayesh\//, '');
+    return s; // فقط filename.geojson
+  }
+
+  function resolveDataCandidates(name){
+    const file = normalizeName(name);
+    const canonical = `/data/amaayesh/${file}`;  // جدید
+    const legacy    = `/amaayesh/data/${file}`;  // قدیمی
+    const asIs      = `/${name.replace(/^\/+/,'')}`; // اگر کسی در مانیفست مسیر کامل داده باشد
+    // لیست یکتا
+    return Array.from(new Set([canonical, legacy, asIs]));
+  }
 
   async function fetchJSONWithFallback(name){
-    if (window.AMA_DEBUG) {
-      console.log('[ama:probe] pathname:', window.location.pathname, 'base:', window.AMA_DATA_BASE, 'name:', name);
-    }
-    const isAbs = name.startsWith('/');
-    const candidates = uniq([
-      isAbs ? name : `/data/${name}`,
-      isAbs ? null : name,           // relative to /amaayesh/
-      isAbs ? null : `./${name}`,
-      isAbs ? null : `../data/${name}`,
-      isAbs ? null : `/amaayesh/${name}`,
-      isAbs ? null : `/amaayesh/data/${name}`,
-    ]);
-    if (window.AMA_DEBUG) {
-      console.table(candidates.map((url, idx) => ({ idx, url })));
-    }
-
-    let lastErr;
+    const candidates = resolveDataCandidates(name);
+    let lastErr = null, okUrl = null;
     for (const url of candidates){
       try{
-        const r = await fetch(url, {cache:'no-cache'});
-        if (window.AMA_DEBUG) console.log(`[ama:probe] GET ${url} → ${r.status}`);
-        if (r.ok) return await r.json();
+        // در دیباگ قبلش یک HEAD سبک برای وجود فایل
+        if (window.AMA_DEBUG){
+          const h = await fetch(url, { method:'HEAD', cache:'no-store' });
+          if (!h.ok) { if (window.AMA_DEBUG) console.warn('[ama-probe] HEAD', url, h.status); throw new Error('HEAD not ok'); }
+        }
+        const r = await fetch(url, { cache:'no-cache' });
+        if (r.ok){ okUrl = url; const json = await r.json();
+          if (window.AMA_DEBUG) console.log('[ama:data] OK', url);
+          return json;
+        }
+        lastErr = new Error(`GET ${r.status}`);
+        if (window.AMA_DEBUG) console.warn('[ama:data] non-200:', url, r.status);
       }catch(e){
         lastErr = e;
-        if (window.AMA_DEBUG) console.log(`[ama:probe] GET ${url} → err ${e?.message}`);
+        if (window.AMA_DEBUG) console.warn('[ama:data] fetch err:', url, String(e.message||e));
       }
     }
-    console.warn('[ama-data] failed to load:', name, 'candidates tried:', candidates);
+    console.warn('[ama:data] failed to load:', name, 'candidates tried:', candidates);
     if (lastErr) console.warn(lastErr);
     return null;
   }
 
   window.__inspectDataPath = async function(name){
-    const candidates = uniq([
-      name,
-      '/' + name,
-      `/amaayesh/${name}`,
-      `amaayesh/${name}`,
-      `/data/${name}`,
-      `data/${name}`,
-      `../${name}`,
-      `../../${name}`,
-    ]);
+    const candidates = resolveDataCandidates(name);
     const rows = [];
+    if (!window.AMA_DEBUG) return rows;
     for (const url of candidates){
       let method = 'HEAD';
       let res = null;
@@ -111,9 +115,7 @@ window.addEventListener('error', e => {
         if (res.status === 405) throw new Error('HEAD not allowed');
       } catch (_) {
         method = 'GET';
-        try {
-          res = await fetch(url, { method:'GET', cache:'no-store' });
-        } catch (_) { }
+        try { res = await fetch(url, { method:'GET', cache:'no-store' }); } catch (_) { }
       }
       rows.push({
         url,
@@ -123,7 +125,8 @@ window.addEventListener('error', e => {
         redirected: res ? res.redirected : false,
       });
     }
-    console.table(rows);
+    if (window.AMA_DEBUG) console.table(rows);
+    return rows;
   };
 
   // --- manifest ---
@@ -132,8 +135,8 @@ window.addEventListener('error', e => {
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
     if (!S || typeof S.has !== 'function') return false;
-    const n1 = name.replace(/^\.\//,'');
-    return S.has(name) || S.has(n1);
+    const norm = normalizeName(name);
+    return S.has(norm);
   }
 
   async function loadLayerManifest() {
@@ -169,8 +172,8 @@ window.addEventListener('error', e => {
     console.log('pathname:', window.location.pathname);
     console.log('__LAYER_MANIFEST size:', manifest.length);
     console.log('__LAYER_MANIFEST list:', manifest);
-    console.log('inManifest("data/counties.geojson"):', inManifest('data/counties.geojson'));
-    console.log('inManifest("data/wind_sites.geojson"):', inManifest('data/wind_sites.geojson'));
+    console.log('inManifest("counties.geojson"):', inManifest('counties.geojson'));
+    console.log('inManifest("wind_sites.geojson"):', inManifest('wind_sites.geojson'));
     console.log('AMA_DATA_BASE:', window.AMA_DATA_BASE);
     console.log('script src:', scriptSrc);
     console.log('served from /amaayesh/?', servedFromAma);
@@ -178,8 +181,8 @@ window.addEventListener('error', e => {
   };
   if (window.AMA_DEBUG) {
     window.__dumpAmaState();
-    window.__inspectDataPath('data/counties.geojson');
-    window.__inspectDataPath('data/wind_sites.geojson');
+    window.__inspectDataPath('counties.geojson');
+    window.__inspectDataPath('wind_sites.geojson');
   }
 
   // load a GeoJSON file only if manifest allows it
@@ -355,8 +358,8 @@ window.addEventListener('error', e => {
       let windSitesGeo = null;
 
       // counties
-      if (inManifest('data/counties.geojson')) {
-        const polysFC = await fetchJSONWithFallback('data/counties.geojson');
+      if (inManifest('counties.geojson')) {
+        const polysFC = await fetchJSONWithFallback('counties.geojson');
         console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
@@ -420,8 +423,8 @@ window.addEventListener('error', e => {
       }
 
       // wind sites
-      if (inManifest('data/wind_sites.geojson')) {
-        const windSitesFC = await fetchJSONWithFallback('data/wind_sites.geojson');
+      if (inManifest('wind_sites.geojson')) {
+        const windSitesFC = await fetchJSONWithFallback('wind_sites.geojson');
         console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
