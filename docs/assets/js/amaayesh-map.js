@@ -7,32 +7,41 @@
 
   let searchLayer = L.layerGroup().addTo(map);
 
-  // کشف base path از مسیر صفحه (مثلاً /amaayesh/ یا /deploy-preview-XXX/amaayesh/)
-  const BASE_PATH = (() => {
-    const p = location.pathname;
-    return p.endsWith('/') ? p : p.replace(/\/[^\/]*$/, '/');
-  })();
-
-  // پاک‌سازی ورودی و ساخت مسیر نهایی: /<base>/data/<rel-clean>
-  function dataUrl(rel) {
-    // حذف هر / اول، و هر data/ اول، و هر ./ اول
-    const clean = String(rel).replace(/^(\/+|\.\/)/, '').replace(/^data\//, '');
-    return `${BASE_PATH}data/${clean}`;
+  // === AMAAYESH DATA LOADER (path-robust) ===
+  const AMA_DATA_BASE = "/data/"; // سایتت ریشه‌اش docs/ است، پس /data/ درست است
+  async function fetchJSONWithFallback(name) {
+    const candidates = [
+      name.startsWith("/") ? name : AMA_DATA_BASE + name,           // ✅ اول از ریشه /data/
+      name,                                                         // هرچه کد قبلی داده (نسبی)
+      "./" + name,
+      "../data/" + name,
+      "/amaayesh/data/" + name                                      // آخرین شانس (قدیمی)
+    ];
+    for (const url of candidates) {
+      try {
+        const r = await fetch(url, { cache: "no-cache" });
+        if (r.ok) {
+          console.log("[ama-data] OK:", url);
+          return r.json();
+        }
+        console.warn("[ama-data] non-200:", url, r.status);
+      } catch (e) {
+        console.warn("[ama-data] fetch err:", url, e);
+      }
+    }
+    console.error("[ama-data] failed to load:", name, "candidates tried:", candidates);
+    return null;
   }
 
   // لودر مقاوم با هندل 404 و فهرست fallbackها
   async function loadJSON(relOrList, { layerKey, fallbacks = [] } = {}) {
     const rels = Array.isArray(relOrList) ? relOrList : [relOrList];
-    const urls = [...rels.map(dataUrl), ...fallbacks];
-    for (const u of urls) {
-      try {
-        const res = await fetch(u, { cache: 'no-cache' });
-        if (res.ok) return await res.json();
-        if (res.status === 404) continue;
-      } catch (e) { /* try next */ }
+    for (const rel of [...rels, ...fallbacks]) {
+      const j = await fetchJSONWithFallback(rel);
+      if (j) return j;
     }
     if (layerKey) disableLayerToggle(layerKey);
-    console.info('⛔️ Dataset not found:', rels[0], '→ tried:', urls);
+    console.info('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
     return null;
   }
 
@@ -46,19 +55,6 @@
     }
   }
 
-  // helper: robust JSON loader (tries /data, ./data, ../data)
-  async function loadJSONSmart(name){
-    const candidates = [
-      name.startsWith('/data/') ? name : `/data/${name}`,
-      name.startsWith('./data/') ? name : `./data/${name}`,
-      new URL(`../data/${name}`, location).toString()
-    ];
-    for (const url of candidates){
-      try { const r = await fetch(url); if (r.ok) return r.json(); } catch(e){}
-    }
-    console.warn('[amaayesh] cannot load', name);
-    return null;
-  }
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
@@ -197,8 +193,8 @@
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(6, 1.8*Math.sqrt(Math.max(0, mw||0)));
 
-      const countiesGeo = await loadJSONSmart('counties.geojson');
-      const windSitesGeo = await loadJSONSmart('wind_sites.geojson');
+      const countiesGeo = await fetchJSONWithFallback('counties.geojson');
+      const windSitesGeo = await fetchJSONWithFallback('wind_sites.geojson');
 
       if (countiesGeo?.features?.length){
         windChoroplethLayer = L.geoJSON(countiesGeo, {
