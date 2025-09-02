@@ -16,7 +16,8 @@
     "prepare:agri": "mkdir -p docs/agrivoltaics/vendor && cp node_modules/react/umd/react.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/react-dom/umd/react-dom.production.min.js docs/agrivoltaics/vendor/ && cp node_modules/qrcode-generator/dist/qrcode.js docs/agrivoltaics/vendor/ && cp node_modules/jspdf/dist/jspdf.umd.min.js docs/agrivoltaics/vendor/",
     "build:cld": "node scripts/build-cld.js",
     "check:cld-html": "bash tools/check-cld-html.sh",
-    "serve-docs": "npx http-server docs -p 5173"
+    "serve-docs": "npx http-server docs -p 5173",
+    "build:wind": "python3 tools/build_wind_geojson.py"
   },
   "keywords": [],
   "author": "",
