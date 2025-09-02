@@ -18,7 +18,8 @@
     "build:cld": "node scripts/build-cld.js",
     "check:cld-html": "bash tools/check-cld-html.sh",
     "serve-docs": "npx http-server docs -p 5173",
-    "build:wind": "python3 tools/build_wind_geojson.py"
+    "build:wind": "python3 tools/build_wind_geojson.py",
+    "vendor:supercluster": "node tools/vendorize_supercluster.js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +32,7 @@
     "fs-extra": "^11.3.1",
     "glob": "^11.0.3",
     "puppeteer": "^22.15.0",
+    "supercluster": "^7.1.5",
     "tailwindcss": "^3.4.17",
     "terser": "^5.43.1"
   },
