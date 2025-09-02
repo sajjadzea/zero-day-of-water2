@@ -1,6 +1,6 @@
 .legend-dock{background:rgba(10,15,28,.88);color:#fff;padding:12px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:320px;font-size:14px}
-.legend-dock .legend-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.legend-dock .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:10px;padding:6px 10px;cursor:pointer}
+.legend-dock .legend-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.legend-dock .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:16px;padding:10px 12px;cursor:pointer}
 .legend-dock .chip.muted{opacity:.65}
 .legend-dock .chip .info{margin-right:4px;cursor:help;font-size:12px;opacity:.8}
 .legend-dock .chip.active{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
@@ -18,17 +18,21 @@
 
 /* Legend collapse state */
 .legend-dock.collapsed{width:auto;padding:8px 10px}
-.legend-dock .legend-body,
-.legend-dock .legend-meta{max-height:1000px;overflow:hidden;transition:max-height .3s ease,margin .3s ease,padding .3s ease}
-.legend-dock.collapsed .legend-body,
-.legend-dock.collapsed .legend-meta{max-height:0;margin:0;padding:0}
+.legend-dock .legend-body{max-height:1000px;overflow:hidden;transition:max-height .3s ease,margin .3s ease,padding .3s ease}
+.legend-dock.collapsed .legend-body{max-height:0;margin:0;padding:0}
 
 .is-disabled{opacity:.5;pointer-events:none}
 
+/* === Tool Dock === */
+.tool-dock{display:flex;flex-direction:column;background:rgba(10,15,28,.88);padding:8px;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);gap:8px}
+.tool-dock .dock-btn{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:9999px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tool-dock .dock-btn:hover{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
+.tool-dock .dock-reset{margin-top:auto}
+
 /* === Layers Dock === */
 .layers-dock{background:rgba(10,15,28,.88);color:#fff;padding:12px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:320px;font-size:14px}
-.layers-dock .ld-tabs{display:flex;gap:6px}
-.layers-dock .ld-tabs button{flex:1;background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:10px;padding:6px 10px;cursor:pointer}
+.layers-dock .ld-tabs{display:flex;gap:8px}
+.layers-dock .ld-tabs button{flex:1;background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:16px;padding:10px 12px;cursor:pointer}
 .layers-dock .ld-tabs button.active{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
 .layers-dock .ld-body{margin-top:8px}
 .layers-dock .ld-pane label{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;cursor:pointer;min-height:44px}
@@ -48,7 +52,7 @@
 .ama-kpi-switch{background:rgba(10,15,28,.88);color:#fff;padding:8px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;gap:6px}
 .ama-kpi-switch label{display:flex;align-items:center;position:relative}
 .ama-kpi-switch input{position:absolute;opacity:0}
-.ama-kpi-switch .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:10px;padding:6px 10px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.ama-kpi-switch .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:16px;padding:10px 12px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
 .ama-kpi-switch input:checked+.chip{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
 
 /* === Sidepanel === */
@@ -88,3 +92,6 @@
 /* === Reset control === */
 .ama-reset{background:rgba(10,15,28,.88);color:#e5e7eb;border:1px solid #324155;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;height:44px;padding:0 10px;margin:4px;display:flex;align-items:center;justify-content:center;}
 .ama-reset:hover{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
+
+/* site labels */
+.site-label{background:transparent;border:none;color:#e5e7eb;font-size:12px;text-shadow:0 0 2px #000;}
