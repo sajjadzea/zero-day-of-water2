@@ -27,3 +27,30 @@
 .leaflet-bottom.leaflet-left{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
 .leaflet-top.leaflet-left,
 .leaflet-bottom.leaflet-left{align-items:flex-start}
+
+/* === Sidepanel === */
+#ama-sidepanel{position:fixed;top:0;bottom:0;right:-380px;max-width:360px;width:100%;background:rgba(17,24,39,.97);color:#e5e7eb;z-index:1000;padding:20px;overflow-y:auto;transition:right .3s ease;box-shadow:-4px 0 20px rgba(0,0,0,.4);}
+#ama-sidepanel.open{right:0;}
+#ama-sidepanel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+#ama-sidepanel .close-btn{cursor:pointer;font-size:20px;line-height:1;}
+
+/* === Top-10 panel === */
+.ama-panel{background:rgba(10,15,28,.88);color:#fff;padding:10px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:320px;font-size:14px;}
+.ama-panel-hd{font-weight:700;margin-bottom:8px;}
+.ama-panel-hd .sort{cursor:pointer;margin-right:6px;user-select:none;}
+.ama-panel-bd{max-height:300px;overflow-y:auto;}
+.ama-row{display:grid;grid-template-columns:30px 1fr 1fr 1fr 1fr;gap:6px;padding:4px;border-radius:6px;cursor:pointer;}
+.ama-row.ama-head{font-weight:700;}
+.ama-row:hover{background:rgba(255,255,255,.06);}
+.ama-actions{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;}
+.ama-actions a{cursor:pointer;text-decoration:underline;}
+.ama-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1001;display:flex;align-items:center;justify-content:center;}
+.ama-modal .ama-modal-content{background:#0b1220;color:#e5e7eb;padding:20px;max-height:80vh;overflow:auto;border-radius:12px;width:90%;max-width:480px;}
+
+/* === Search control === */
+.ama-search{position:relative;}
+.ama-search input{background:#fff;color:#111;padding:6px 32px 6px 6px;border-radius:6px;border:1px solid #ccc;min-width:220px;}
+.ama-search button{position:absolute;left:0;top:0;bottom:0;width:32px;background:transparent;border:none;cursor:pointer;}
+.ama-suggestions{position:absolute;right:0;left:0;top:100%;background:#fff;color:#111;max-height:200px;overflow:auto;border:1px solid #ccc;border-top:none;z-index:1002;}
+.ama-suggestions div{padding:6px;cursor:pointer;}
+.ama-suggestions div.active,.ama-suggestions div:hover{background:#e5e7eb;}
