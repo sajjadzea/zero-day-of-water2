@@ -1,18 +1,17 @@
 [build]
   publish = "docs"
-  # CLD را بساز، بعد build اصلی سایت را اجرا کن
-  command = "npm ci && node scripts/build-cld.js && npm run build"
+  command = "npm ci && npm run -s vendor:supercluster || true"
+  node_version = "18"
 
 [build.processing]
   skip_processing = true
 
 [build.environment]
-  NODE_VERSION = "20"
   CI = "true"
 
 # همان دستور برای Deploy Preview تا PRها هم باندل درست داشته باشند
 [context.deploy-preview]
-  command = "npm ci && node scripts/build-cld.js && npm run build"
+  command = "npm ci && npm run -s vendor:supercluster || true"
 
 [functions]
   directory = "netlify/functions"

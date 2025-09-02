@@ -6,7 +6,7 @@
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
     map.setView([36.3, 59.6], 7);
 
-    const SuperclusterCtor = window?.Supercluster;
+    const SuperclusterCtor = window?.Supercluster || null;
 
   let searchLayer = L.layerGroup().addTo(map);
   let boundary;
@@ -171,7 +171,6 @@
     let damsLayer = null;
     let windChoroplethLayer = null;
     let windSitesLayer = null;
-    let windSitesClusterLayer = null, windSitesIndex = null;
     if(damsGeojson){
       const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
       const rByMCM = v => Math.max(6, Math.sqrt(v||1)/2);
@@ -322,125 +321,38 @@
         const onEachFeature = (f, layer) => {
           const p = f.properties || {};
           const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-          layer.bindPopup(`
-
-        // build supercluster index
-        windSitesIndex = new Supercluster({ radius: 80, maxZoom: 16 });
-        windSitesIndex.load(windSitesGeo.features.map(f=>({
-          type:'Feature',
-          properties: { ...f.properties },
-          geometry: { type:'Point', coordinates: f.geometry.coordinates }
-        })));
-
-        windSitesLayer = L.geoJSON(windSitesGeo, {
-          pane: 'points',
-          pointToLayer: (f, latlng) => {
-            const p = f.properties || {};
-            const low = (p.quality === 'low');
-            return L.circleMarker(latlng, {
-              radius: radiusFromMW(p.capacity_mw_est),
-              weight: 1, color:'#0f172a', opacity:.9,
-              fillColor:'#0f172a', fillOpacity:.55,
-              dashArray: low ? '2 4' : null
-            });
-          },
-          onEachFeature: (f, layer) => {
-            const p = f.properties || {};
-            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-            layer.bindPopup(`
- main
-          <div dir="rtl" style="min-width:220px">
+          layer.bindPopup(
+`<div dir="rtl" style="min-width:220px">
             <div style="font-weight:700">${p.name_fa || '—'}</div>
             <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
             <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
             <div>کیفیت مختصات: ${p.quality || '—'}</div>
             <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
-          </div>
-        `, {maxWidth: 320});
+          </div>`, {maxWidth: 320});
         };
 
-        if (SuperclusterCtor) {
-          const idx = new SuperclusterCtor({ radius: 80, maxZoom: 16 });
-          idx.load(windSitesGeo.features);
-          const clusterLayer = L.layerGroup().addTo(map);
-          const renderClusters = () => {
-            clusterLayer.clearLayers();
-            const b = map.getBounds();
-            const clusters = idx.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.round(map.getZoom()));
-            clusters.forEach(f => {
-              const [lng, lat] = f.geometry.coordinates;
-              if (f.properties.cluster) {
-                L.circleMarker([lat, lng], {
-                  radius: 10 + Math.log(f.properties.point_count),
-                  weight: 1, color:'#1e3a8a', fillColor:'#93c5fd', fillOpacity:0.7
-                }).addTo(clusterLayer).bindTooltip(String(f.properties.point_count), {direction:'center', className:'label'});
-              } else {
-                const layer = pointToLayer(f, L.latLng(lat, lng));
-                onEachFeature(f, layer);
-                clusterLayer.addLayer(layer);
-              }
-            });
-          };
-          renderClusters();
-          map.on('moveend', renderClusters);
-          windSitesLayer = clusterLayer;
-        } else {
-          console.info('[ama-sites] clustering disabled: Supercluster not present');
-          windSitesLayer = L.geoJSON(windSitesGeo, { pane:'points', pointToLayer, onEachFeature }).addTo(map);
-        }
-        window.windSitesLayer = windSitesLayer;
-      }
-    }
-
-    // after windSitesLayer and windChoroplethLayer creation
-    const Z_SITES_ON   = 9;
-    const Z_LABELS_ON  = 12;
-
-    function renderSiteClusters(){
-      if (!windSitesIndex) return;
-      const z = map.getZoom();
-      const b = map.getBounds();
-      const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-      const clusters = windSitesIndex.getClusters(bbox, Math.floor(z));
-      if (windSitesClusterLayer) { map.removeLayer(windSitesClusterLayer); windSitesClusterLayer = null; }
-      windSitesClusterLayer = L.geoJSON({type:'FeatureCollection', features:clusters}, {
-        pointToLayer: (f, latlng) => {
-          const isCluster = f.properties.cluster;
-          if (!isCluster) return L.circleMarker(latlng, { radius:6, weight:1, fillOpacity:.6 });
-          const count = f.properties.point_count;
-          const r = Math.max(10, Math.min(28, 8 + Math.log(count+1)*6));
-          return L.circleMarker(latlng, { radius:r, weight:1.5, color:'#0ea5e9', fillColor:'#0ea5e9', fillOpacity:.5 })
-            .bindTooltip(String(count), {direction:'center', permanent:true, className:'cluster-count'});
-        }
-      });
-      if (map.getZoom() < Z_SITES_ON) windSitesClusterLayer.addTo(map);
-    }
-    map.on('moveend zoomend', renderSiteClusters);
-    renderSiteClusters();
-
-    function syncZoomVisibility(){
-      const z = map.getZoom();
-      // sites
-      if (window.windSitesLayer) {
-        if (z >= Z_SITES_ON) { if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer); }
-        else                 { if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer); }
-      }
-      if (map.getZoom() < Z_SITES_ON) {
-        if (windSitesClusterLayer && !map.hasLayer(windSitesClusterLayer)) map.addLayer(windSitesClusterLayer);
-      }
-      else {
-        if (windSitesClusterLayer && map.hasLayer(windSitesClusterLayer)) map.removeLayer(windSitesClusterLayer);
-      }
-      // tooltips/popups density
-      if (window.windChoroplethLayer) {
-        window.windChoroplethLayer.eachLayer(l=>{
-          if (z >= Z_LABELS_ON) l.bindTooltip?.(l.getTooltip()?.getContent?.() || (l.feature?.properties?.county||""), {sticky:true});
-          else l.unbindTooltip?.();
+        windSitesLayer = L.geoJSON(windSitesGeo, {
+          pane: 'points',
+          pointToLayer,
+          onEachFeature
         });
+        window.windSitesLayer = windSitesLayer;
+
+        const Z_SITES_ON = 9;
+        function syncZoomVisibility(){
+          const z = map.getZoom();
+          if (window.windSitesLayer) {
+            if (z >= Z_SITES_ON) {
+              if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
+            } else {
+              if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+            }
+          }
+        }
+        map.on('zoomend', syncZoomVisibility);
+        syncZoomVisibility();
       }
     }
-    map.on('zoomend', syncZoomVisibility);
-    syncZoomVisibility();
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     const electricityLinesLayer = await optionalGeoJSONFile('amaayesh/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
