@@ -13,6 +13,11 @@
 .legend-dock .legend-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;opacity:.8}
 .legend-dock .subhead{font-size:12px;opacity:.9;margin:2px 0 6px}
 
+/* Legend collapse state */
+.legend-dock.collapsed{width:auto;padding:8px 10px}
+.legend-dock.collapsed .legend-body,
+.legend-dock.collapsed .legend-meta{display:none}
+
 .is-disabled{opacity:.5;pointer-events:none}
 
 /* Avoid control overlap: stack with gaps per corner */

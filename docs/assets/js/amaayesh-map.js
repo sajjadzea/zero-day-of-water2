@@ -547,8 +547,21 @@ window.addEventListener('error', e => {
         let groups = [], onFilter = null;
         function renderTabs(){
           const tabs = div.querySelector('.legend-tabs');
-          tabs.innerHTML = groups.map((g,i)=>`<button class="chip ${i?'':'active'}" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
+          tabs.innerHTML = groups.map((g,i)=>`<button class="chip" data-k="${g.key}">${g.icon||''} ${g.title}</button>`).join('');
           tabs.querySelectorAll('.chip').forEach(t=>t.onclick=()=>activate(t.dataset.k));
+
+          // add collapse/expand toggle
+          const toggle = document.createElement('button');
+          toggle.className = 'chip';
+          toggle.type = 'button';
+          toggle.setAttribute('aria-expanded', String(!div.classList.contains('collapsed')));
+          toggle.textContent = div.classList.contains('collapsed') ? 'باز کردن' : 'جمع کردن';
+          toggle.onclick = () => {
+            div.classList.toggle('collapsed');
+            toggle.textContent = div.classList.contains('collapsed') ? 'باز کردن' : 'جمع کردن';
+            toggle.setAttribute('aria-expanded', String(!div.classList.contains('collapsed')));
+          };
+          tabs.appendChild(toggle);
         }
         function activate(key){
           const tabs = div.querySelectorAll('.chip');
