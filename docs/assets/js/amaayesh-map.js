@@ -516,14 +516,14 @@
     function applyMode(){
       const wantTop = (currentMode==='invest' || currentMode==='ind');
       if (wantTop) {
-        if (!window.__AMA_topPanel._map) {
+        if (window.__AMA_topPanel && !window.__AMA_topPanel._map) {
           window.__AMA_topPanel.addTo(map);
-          window.__AMA_renderTop10?.();
-        } else {
-          window.__AMA_renderTop10?.();
         }
+        window.__AMA_renderTop10?.();
       } else {
-        if (window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
+        if (window.__AMA_topPanel && window.__AMA_topPanel._map) {
+          map.removeControl(window.__AMA_topPanel);
+        }
       }
       // TODO: در صورت نیاز اینجا CTAهای خاص هر مود یا فیلتر کلاس‌ها را هم سوییچ کن
     }
