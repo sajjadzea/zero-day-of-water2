@@ -157,7 +157,7 @@
     const windLayer = L.geoJSON(polys, {
       pane:'polygons',
       style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
-                      fillOpacity:0.30, color:'#0a0a0a', weight:1 }),
+                      fillOpacity:0.22, color:'rgba(39,48,63,.85)', weight:.8 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       }).addTo(map);
     windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
@@ -220,7 +220,7 @@
     {
       const classColors = {1:'#bdbdbd', 2:'#f6c945', 3:'#29cc7a'};
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
-      const radiusFromMW = mw => Math.max(6, 1.8*Math.sqrt(Math.max(0, mw||0)));
+      const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
       const countiesGeo = (__LAYER_MANIFEST && !__LAYER_MANIFEST.has('counties.geojson'))
         ? null : await fetchJSONWithFallback('counties.geojson');
@@ -232,7 +232,7 @@
           pane: 'polygons',
           style: f => ({
             fillColor: classColors[ +f.properties?.wind_class ] || '#9e9e9e',
-            fillOpacity: 0.30, color:'#0a0a0a', weight:1
+            fillOpacity: 0.22, color:'rgba(39,48,63,.85)', weight:.8
           }),
           onEachFeature: (f,l)=> l.bindTooltip(
             (f.properties?.county || f.properties?.name || '—'),
@@ -301,8 +301,8 @@
             const low = (p.quality === 'low');
             return L.circleMarker(latlng, {
               radius: radiusFromMW(p.capacity_mw_est),
-              weight: 1.5, color:'#111827', opacity:1,
-              fillColor:'#111827', fillOpacity:.85,
+              weight: 1, color:'#0f172a', opacity:.9,
+              fillColor:'#0f172a', fillOpacity:.55,
               dashArray: low ? '2 4' : null
             });
           },
