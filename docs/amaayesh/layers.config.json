@@ -5,5 +5,9 @@
     { "key":"water",      "title":"آب",   "type":"line", "file":"amaayesh/water_mains.geojson",      "style":{"color":"#118ab2","weight":3} },
     { "key":"gas",       "title":"گاز",  "type":"line", "file":"amaayesh/gas_transmission.geojson","style":{"color":"#ef476f","weight":4} },
     { "key":"oil",       "title":"نفت",  "type":"line", "file":"amaayesh/oil_pipelines.geojson",   "style":{"color":"#073b4c","weight":3} }
+  ],
+  "files": [
+    "counties.geojson",
+    "wind_sites.geojson"
   ]
 }
