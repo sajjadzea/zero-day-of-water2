@@ -1,6 +1,8 @@
-.legend-dock{background:rgba(10,15,28,.88);color:#fff;padding:12px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:290px;font-size:14px}
+.legend-dock{background:rgba(10,15,28,.88);color:#fff;padding:12px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:320px;font-size:14px}
 .legend-dock .legend-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
 .legend-dock .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:10px;padding:6px 10px;cursor:pointer}
+.legend-dock .chip.muted{opacity:.65}
+.legend-dock .chip .info{margin-right:4px;cursor:help;font-size:12px;opacity:.8}
 .legend-dock .chip.active{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
 .legend-dock .legend-head{display:flex;gap:8px;align-items:center;margin:6px 0 8px}
 .legend-dock .unit{opacity:.85}
@@ -15,8 +17,10 @@
 
 /* Legend collapse state */
 .legend-dock.collapsed{width:auto;padding:8px 10px}
+.legend-dock .legend-body,
+.legend-dock .legend-meta{max-height:1000px;overflow:hidden;transition:max-height .3s ease,margin .3s ease,padding .3s ease}
 .legend-dock.collapsed .legend-body,
-.legend-dock.collapsed .legend-meta{display:none}
+.legend-dock.collapsed .legend-meta{max-height:0;margin:0;padding:0}
 
 .is-disabled{opacity:.5;pointer-events:none}
 

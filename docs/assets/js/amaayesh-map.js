@@ -730,6 +730,7 @@ window.addEventListener('error', e => {
       function LegendDock(){
         const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
         div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
+        if(localStorage.getItem('ama-legend-collapsed')==='1') div.classList.add('collapsed');
         let groups = [], onFilter = null;
         function renderTabs(){
           const tabs = div.querySelector('.legend-tabs');
@@ -744,25 +745,30 @@ window.addEventListener('error', e => {
           toggle.textContent = div.classList.contains('collapsed') ? 'باز کردن' : 'جمع کردن';
           toggle.onclick = () => {
             div.classList.toggle('collapsed');
-            toggle.textContent = div.classList.contains('collapsed') ? 'باز کردن' : 'جمع کردن';
-            toggle.setAttribute('aria-expanded', String(!div.classList.contains('collapsed')));
+            const isCol = div.classList.contains('collapsed');
+            toggle.textContent = isCol ? 'باز کردن' : 'جمع کردن';
+            toggle.setAttribute('aria-expanded', String(!isCol));
+            localStorage.setItem('ama-legend-collapsed', isCol ? '1' : '0');
           };
           tabs.appendChild(toggle);
         }
         function activate(key){
-          const tabs = div.querySelectorAll('.chip');
+          const tabs = div.querySelectorAll('.legend-tabs .chip[data-k]');
           tabs.forEach(t=>t.classList.toggle('active', t.dataset.k===key));
           const g = groups.find(x=>x.key===key), body = div.querySelector('.legend-body');
           if(!g){ body.innerHTML=''; return; }
           if(g.type==='choropleth'){
+            const fmt = n => window.__AMA_fmtNumberFa ? __AMA_fmtNumberFa(n,{digits:0}) : n;
+            const k = Array.isArray(g.classes) ? g.classes.length : 0;
+            const periodChip = g.period?`<span class="chip muted">${g.period}</span>`:'';
+            const methodChip = g.method?`<span class="chip muted">${g.method}<span class="info" title="روش طبقه‌بندی: ${g.method} (k=${k})">ⓘ</span></span>`:'';
+            const classChip = `<span class="chip">کلاس‌ها: ${fmt(k)}</span>`;
             body.innerHTML = `
-        <div class="legend-head"><b>${g.title}</b>${g.unit?`<span class="unit">${g.unit}</span>`:''}
-          ${g.period?`<span class="chip">${g.period}</span>`:''}${g.method?`<span class="chip">${g.method}</span>`:''}
-        </div>
+        <div class="legend-head"><b>${g.title}</b>${g.unit?`<span class="unit">${g.unit}</span>`:''}${periodChip}${methodChip}${classChip}</div>
         <ul class="swatches">${g.classes.map(c=>`
-          <li data-min="${c.min}" data-max="${c.max}">
+          <li data-min="${c.min}" data-max="${c.max}" aria-label="از ${fmt(c.min)} تا ${fmt(c.max)}">
             <span class="sw" style="background:${c.color}"></span>
-            <span class="lbl">${c.label || (c.min+'–'+c.max)}</span>
+            <span class="lbl">${c.label || (`${fmt(c.min)}–${fmt(c.max)}`)}</span>
           </li>`).join('')}
         </ul>`;
           }
@@ -795,6 +801,22 @@ window.addEventListener('error', e => {
       const legendCtl = L.control({position:'bottomright'});
       legendCtl.onAdd = ()=> legend.el;
       legendCtl.addTo(map);
+
+      function setLegendPosition(pos){
+        legendCtl.setPosition(pos);
+        try { localStorage.setItem('ama-legend-pos', pos); } catch(_){ }
+      }
+      function reevaluateLegendPosition(){
+        const topRight = !!(window.__AMA_topPanel && window.__AMA_topPanel._map && window.__AMA_topPanel.options?.position==='topright');
+        const desired = (window.innerWidth < 768 || topRight) ? 'bottomleft' : 'bottomright';
+        const current = legendCtl.getPosition ? legendCtl.getPosition() : null;
+        if(current !== desired) setLegendPosition(desired);
+      }
+      const storedPos = localStorage.getItem('ama-legend-pos');
+      if(storedPos) legendCtl.setPosition(storedPos);
+      reevaluateLegendPosition();
+      window.addEventListener('resize', reevaluateLegendPosition);
+      map.on('overlayadd overlayremove', reevaluateLegendPosition);
 
       // === InfoChip: کارت اطلاعات سریع هنگام Hover ===
       const infoCtl = L.control({position:'topleft'});
@@ -1020,6 +1042,7 @@ window.addEventListener('error', e => {
         } else {
           if (window.__AMA_topPanel && window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
         }
+        reevaluateLegendPosition();
 
         // layer presets (minimal defaults)
         const show = (layer, yes) => { if (!layer) return; if (yes && !map.hasLayer(layer)) map.addLayer(layer); if (!yes && map.hasLayer(layer)) map.removeLayer(layer); };
