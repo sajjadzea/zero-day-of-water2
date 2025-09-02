@@ -382,6 +382,24 @@ window.addEventListener('error', e => {
           boundary.setStyle({ className: 'neon-edge' });
 
           let __focused = null;
+          const hoverLayer = window.windChoroplethLayer || windLayer;
+          const baseStyle = { fillOpacity:0.22, color:'rgba(39,48,63,.4)', weight:.8 };
+          hoverLayer?.eachLayer?.(l=>{
+            l.setStyle(baseStyle);
+            l.on('mouseover', ()=>{
+              const p = l.feature?.properties || {};
+              if (__focused !== l) l.setStyle({ fillOpacity:0.45, color:'#22d3ee', weight:1.2 });
+              const name = p.county || p.name || '—';
+              const cap = (p.capacity_mw!=null) ? __AMA_fmtNumberFa(p.capacity_mw,{digits:0})+' مگاوات' : '—';
+              const dens = (p.MW_per_ha!=null) ? __AMA_fmtNumberFa(p.MW_per_ha,{digits:2})+' MW/ha' : '—';
+              const p0 = (p.P0!=null) ? __AMA_fmtNumberFa(p.P0,{digits:2}) : '—';
+              showInfo(`<b>${name}</b><div>ظرفیت: ${cap}</div><div>بازده: ${dens}</div><div>P0: ${p0}</div>`);
+            });
+            l.on('mouseout', ()=>{
+              if (__focused !== l) l.setStyle(baseStyle);
+              hideInfo();
+            });
+          });
           window.windChoroplethLayer.eachLayer(l=>{
             l.on('click', ()=>{
               __focused = l;
@@ -393,8 +411,9 @@ window.addEventListener('error', e => {
           map.on('click keydown', (e)=>{
             if (e.key && e.key !== 'Escape') return;
             if (__focused){
-              window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.45, color:'rgba(39,48,63,.4)' }));
+              window.windChoroplethLayer.eachLayer(x=> x.setStyle(baseStyle));
               __focused = null;
+              hideInfo();
             }
           });
         }
@@ -472,11 +491,11 @@ window.addEventListener('error', e => {
         if (!el) return;
         el.innerHTML = rows.map((p,idx)=>`
           <div class="ama-row" data-county="${p.county||""}">
-            <div class="c">${idx+1}</div>
+            <div class="c">${__AMA_fmtNumberFa(idx+1)}</div>
             <div class="n">${p.county||"—"}</div>
-            <div class="m">MW: ${Number(p.capacity_mw||0).toFixed(0)}</div>
-            <div class="h">MW/ha: ${Number(p.MW_per_ha||0).toFixed(2)}</div>
-            <div class="s">P0: ${Number(p.P0||0).toFixed(2)}</div>
+            <div class="m">ظرفیت: ${__AMA_fmtNumberFa(p.capacity_mw||0, {digits:0})} مگاوات</div>
+            <div class="h">بازده: ${__AMA_fmtNumberFa(p.MW_per_ha||0, {digits:2})} MW/ha</div>
+            <div class="s">P0: ${__AMA_fmtNumberFa(p.P0||0, {digits:2})}</div>
           </div>`).join("");
         el.querySelectorAll(".ama-row").forEach(row=>{
           row.addEventListener("click", ()=>{
@@ -610,6 +629,18 @@ window.addEventListener('error', e => {
       legendCtl.onAdd = ()=> legend.el;
       legendCtl.addTo(map);
 
+      // === InfoChip: کارت اطلاعات سریع هنگام Hover ===
+      const infoCtl = L.control({position:'topleft'});
+      infoCtl.onAdd = function(){
+        const div = L.DomUtil.create('div','ama-infox');
+        div.style.cssText = 'background:rgba(17,24,39,.9);color:#e5e7eb;padding:8px 10px;border-radius:10px;font:12px Vazirmatn, sans-serif;display:none;backdrop-filter:blur(2px)';
+        div.setAttribute('dir','rtl');
+        return (infoCtl._div = div);
+      };
+      infoCtl.addTo(map);
+      function showInfo(html){ if(infoCtl._div){ infoCtl._div.innerHTML = html; infoCtl._div.style.display='block'; } }
+      function hideInfo(){ if(infoCtl._div){ infoCtl._div.style.display='none'; infoCtl._div.innerHTML=''; } }
+
     if(tabs.length){
         function filterLayer(layer, get, {min,max,isolate}) {
           layer?.eachLayer?.(l=>{
@@ -624,15 +655,47 @@ window.addEventListener('error', e => {
         });
       }
 
+      function markerRadiiForZoom(z){
+        // بازه‌ی منطقی برای سایزها: در زوم 7 کوچک، در زوم 12 بزرگ‌تر
+        const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+        const inner = clamp(1.5 + (z-7)*0.9, 2, 8);
+        const outer = clamp(inner*1.8, 4, 16);
+        return {inner, outer};
+      }
       const pointLayer = L.geoJSON(points, {
-      pane:'points',
-      pointToLayer: (f, latlng) => {
-        const inner = L.circleMarker(latlng, { radius:4, color:'#0ea5e9', weight:2, fillColor:'#0ea5e9', fillOpacity:1 });
-        const outer = L.circleMarker(latlng, { radius:8, color:'#0ea5e9', weight:2, fill:false });
-        return L.layerGroup([outer, inner]);
-      },
-      onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
+        pane:'points',
+        pointToLayer: (f, latlng) => {
+          const {inner, outer} = markerRadiiForZoom(map.getZoom());
+          const innerM = L.circleMarker(latlng, { radius: inner, color:'#0ea5e9', weight:2, fillColor:'#0ea5e9', fillOpacity:1 });
+          const outerM = L.circleMarker(latlng, { radius: outer, color:'#0ea5e9', weight:2, fill:false });
+          return L.layerGroup([outerM, innerM]);
+        },
+        onEachFeature: (f,l)=> {
+          const name = labelFa(f.properties);
+          l.bindTooltip(`مرکز شهرستان: ${name}`, {sticky:true, direction:'auto', className:'label'});
+        }
       }).addTo(map);
+
+      // به‌روزرسانی اندازه‌ی مارکرها هنگام تغییر زوم
+      function updatePointMarkerSizes(){
+        const {inner, outer} = markerRadiiForZoom(map.getZoom());
+        pointLayer.eachLayer(group=>{
+          if (!group || !group.getLayers) return;
+          const [outerM, innerM] = group.getLayers();
+          outerM?.setStyle?.({radius: outer});
+          innerM?.setStyle?.({radius: inner});
+        });
+      }
+      // نمایش/عدم‌نمایش در زوم مناسب
+      function togglePointsByZoom(){
+        const z = map.getZoom();
+        const shouldShow = z >= 8;
+        if (shouldShow && !map.hasLayer(pointLayer)) map.addLayer(pointLayer);
+        if (!shouldShow && map.hasLayer(pointLayer)) map.removeLayer(pointLayer);
+      }
+      map.on('zoomend', ()=>{ updatePointMarkerSizes(); togglePointsByZoom(); });
+      // اجرا در بار اول
+      togglePointsByZoom();
 
       const overlayEntries = [
         ['مرز شهرستان‌ها', boundary],
@@ -744,11 +807,21 @@ window.addEventListener('error', e => {
 
   // === Persona mode chips (owner/edu/invest/ind) ===
   (function(){
+    // ابزار فرمت عدد: 12345.6 -> "۱۲٬۳۴۶"
+    function toFaDigits(str){ return String(str).replace(/[0-9]/g, d=>'۰۱۲۳۴۵۶۷۸۹'[+d]); }
+    function fmtNumberFa(n, {digits=0}={}) {
+      const x = isFinite(+n) ? (+n).toFixed(digits) : '0';
+      const parts = x.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,'٬');
+      return toFaDigits(parts.join(parts[1] ? '٫' : ''));
+    }
+    window.__AMA_fmtNumberFa = fmtNumberFa;
+
     const modes = [
-      {id:'owner',  icon:'👤', label:'مالک'},
+      {id:'owner',  icon:'👤', label:'شهروند'},
       {id:'edu',    icon:'🎓', label:'یادگیری'},
       {id:'invest', icon:'💼', label:'سرمایه‌گذار'},
-      {id:'ind',    icon:'🏭', label:'صنایع'},
+      {id:'ind',    icon:'🏭', label:'صنعت'},
     ];
     let currentMode = localStorage.getItem('ama-mode') || 'owner';
 
