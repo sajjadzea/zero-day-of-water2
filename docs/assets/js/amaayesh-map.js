@@ -239,6 +239,7 @@
         }).addTo(map);
         windChoroplethLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class);
         map.removeLayer(windLayer);
+        window.windChoroplethLayer = windChoroplethLayer;
       }
 
       // === Top-10 panel (by P0) ===
@@ -309,8 +310,15 @@
         `, {maxWidth: 320});
           }
         }).addTo(map);
+        window.windSitesLayer = windSitesLayer;
       }
     }
+
+    // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
+    const electricityLinesLayer = await optionalGeoJSONFile('amaayesh/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
+    const waterMainsLayer      = await optionalGeoJSONFile('amaayesh/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
+    const gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
+    const oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
 
       // ===== LegendDock =====
       function LegendDock(){
@@ -393,26 +401,32 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
       }).addTo(map);
 
-      const overlays = {
-        'مرز شهرستان‌ها': boundary,
-        'ظرفیت تجمیعی خورشیدی': solarLayer,
-        'کلاس بادی (Choropleth)': windChoroplethLayer || windLayer
-      };
-      if (windSitesLayer) overlays['سایت‌های بادی (برآوردی)'] = windSitesLayer;
-      if (damsLayer) overlays['سدها'] = damsLayer;
-      overlays['شهرها/نقاط'] = pointLayer;
-    const missing = [];
-    for(const th of (cfg?.themes || [])){
-      const rel = th.file.replace(/^\//,'').replace(/^data\//,'');
-      const layer = await optionalGeoJSONFile(rel, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
-      if(layer){
-        overlays[th.title] = layer; layer.addTo(map);
-      } else if(!__LAYER_MANIFEST || __LAYER_MANIFEST.has(rel)){
-        missing.push(th.title);
+      const overlayEntries = [
+        ['مرز شهرستان‌ها', boundary],
+        ['ظرفیت تجمیعی خورشیدی', solarLayer],
+        ['کلاس بادی (Choropleth)', window.windChoroplethLayer ?? (typeof windLayer!=='undefined'? windLayer : null)],
+        ['سایت‌های بادی (برآوردی)', window.windSitesLayer],
+        ['سدها', damsLayer],
+        ['خطوط انتقال برق', electricityLinesLayer],
+        ['شبکه آبرسانی', waterMainsLayer],
+        ['خطوط انتقال گاز', gasTransmissionLayer],
+        ['خطوط لوله نفت', oilPipelinesLayer],
+        ['شهرها/نقاط', pointLayer],
+      ];
+      const missing = [];
+      for(const th of (cfg?.themes || [])){
+        const rel = th.file.replace(/^\//,'').replace(/^data\//,'');
+        const layer = await optionalGeoJSONFile(rel, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
+        if(layer){
+          overlayEntries.push([th.title, layer]);
+          layer.addTo(map);
+        } else if(!__LAYER_MANIFEST || __LAYER_MANIFEST.has(rel)){
+          missing.push(th.title);
+        }
       }
-    }
-    L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
-    L.control.scale({ metric:true, imperial:false }).addTo(map);
+      const overlays = Object.fromEntries(overlayEntries.filter(([_, layer]) => !!layer));
+      L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
+      L.control.scale({ metric:true, imperial:false }).addTo(map);
 
       if (L.Control && L.Control.geocoder) {
         const geocoder = L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
@@ -432,7 +446,7 @@
       }
 
       // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
-      const gasLayer = overlays['گاز'];
+      const gasLayer = overlays['خطوط انتقال گاز'];
       const gasEffects = L.layerGroup();
       if (gasLayer) {
         const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } });
