@@ -63,25 +63,35 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   }
 
   // --- manifest ---
-  let __LAYER_MANIFEST = new Set();
-  function inManifest(p){
-    const fname = p.split('/').pop();
-    return __LAYER_MANIFEST.has(fname);
+  let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
+
+  function inManifest(name){
+    const S = window.__LAYER_MANIFEST;
+    if (!S || typeof S.has !== 'function') return false;
+    const n1 = name.replace(/^\.\//,'');
+    return S.has(name) || S.has(n1);
   }
+
   async function loadLayerManifest() {
-    __LAYER_MANIFEST = new Set();
+    let set = new Set();
+    window.__LAYER_MANIFEST = set;
+    __LAYER_MANIFEST = set;
     try {
       // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
       const man = await fetchJSONWithFallback('/amaayesh/layers.config.json');
-      if (man && Array.isArray(man.files)) {
-        __LAYER_MANIFEST = new Set(man.files);
-        console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
+      set = new Set(Array.isArray(man?.files) ? man.files : []);
+      window.__LAYER_MANIFEST = set;
+      __LAYER_MANIFEST = set;
+      if (set.size) {
+        console.log('[ama-data] manifest loaded with', set.size, 'files');
       } else {
         console.warn('[ama-data] no manifest.files; will skip optional layers.');
       }
     } catch(e) {
       console.warn('[ama-data] manifest not found; will skip optional layers.');
-      __LAYER_MANIFEST = new Set();
+      set = new Set();
+      window.__LAYER_MANIFEST = set;
+      __LAYER_MANIFEST = set;
     }
   }
   await loadLayerManifest();
