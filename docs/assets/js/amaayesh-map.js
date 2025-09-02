@@ -1,6 +1,22 @@
+;(function(){
+  const BID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
+  window.__AMA_UI_VERSION = 'dock-probe-v1';
+  window.__AMA_BUILD_ID = BID;
+  console.info('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', BID, 'path=', location.pathname);
+  // tiny top-left badge for visual confirmation (removable later)
+  try {
+    const el = document.createElement('div');
+    el.id = 'ama-ui-probe';
+    el.style.cssText = 'position:fixed;left:8px;top:8px;z-index:9999;background:#111;color:#0ff;padding:4px 8px;border-radius:8px;font:12px/1 Vazirmatn,system-ui';
+    el.textContent = 'AMA UI • ' + window.__AMA_UI_VERSION;
+    document.addEventListener('DOMContentLoaded',()=>document.body.appendChild(el));
+    setTimeout(()=>{ const n=document.getElementById('ama-ui-probe'); n && n.remove(); }, 3000);
+  } catch(e){}
+})();
+
 // ===== BEGIN WIND DIAG BASICS =====
 window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
-window.AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || localStorage.getItem('AMA_BUILD_ID') || String(Date.now());
+window.AMA_BUILD_ID = window.__AMA_BUILD_ID;
 
 function normalizeFaName(s){
   if(!s) return '';
