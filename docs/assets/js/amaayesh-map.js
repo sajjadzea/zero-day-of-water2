@@ -63,7 +63,8 @@ window.addEventListener('error', e => {
 
   // wind weights / KPI state
   let __WIND_WEIGHTS_MISSING = false;
-  let windKpiKey = 'wind_wDensity';
+  let __WIND_DATA_READY = false;
+  let windKpiKey = localStorage.getItem('ama-kpi') || 'wind_wDensity';
   const windKpiLabels = {
     wind_N: 'N',
     wind_sumW: 'Σw',
@@ -683,7 +684,20 @@ window.addEventListener('error', e => {
 
           // KPI switcher
           const kpiCtl = L.control({position:'topright'});
-          kpiCtl.onAdd = function(){ const div=L.DomUtil.create('div','ama-kpi-switch'); div.innerHTML = Object.entries(windKpiLabels).map(([k,v])=>`<label${__WIND_WEIGHTS_MISSING?' class="is-disabled"':''}><input type="radio" name="ama-kpi" value="${k}" ${k===windKpiKey?'checked':''} ${__WIND_WEIGHTS_MISSING?'disabled title="داده وزن‌ها در دسترس نیست"':''}/><span class="chip">${v}</span></label>`).join(''); L.DomEvent.disableClickPropagation(div); if(!__WIND_WEIGHTS_MISSING){ div.addEventListener('change', e=>{ if(e.target && e.target.value){ windKpiKey=e.target.value; restyle(); window.__AMA_renderTop10?.(); }}); } return div; };
+          kpiCtl.onAdd = function(){
+            const div=L.DomUtil.create('div','ama-kpi-switch');
+            div.innerHTML = Object.entries(windKpiLabels).map(([k,v])=>`<label><input type="radio" name="ama-kpi" value="${k}" ${k===windKpiKey?'checked':''}/><span class="chip">${v}</span></label>`).join('');
+            if(!__WIND_DATA_READY) { div.classList.add('is-disabled'); div.title='داده باد آماده نیست'; }
+            L.DomEvent.disableClickPropagation(div);
+            div.addEventListener('change', e=>{
+              if(e.target && e.target.value){
+                windKpiKey=e.target.value;
+                localStorage.setItem('ama-kpi', windKpiKey);
+                map.fire('kpi:change', {kpi: windKpiKey});
+              }
+            });
+            return div;
+          };
           kpiCtl.addTo(map);
 
           // load raw site CSV for sidepanel
@@ -696,8 +710,18 @@ window.addEventListener('error', e => {
           window.__AMA_topPanel.addTo(map);
           window.__AMA_renderTop10();
 
+          map.on('kpi:change', ()=>{
+            restyle();
+            window.__AMA_renderTop10?.();
+          });
+
           // initial style
           restyle();
+          __WIND_DATA_READY = true;
+          window.__WIND_DATA_READY = true;
+          const kc = kpiCtl.getContainer ? kpiCtl.getContainer() : null;
+          if(kc){ kc.classList.remove('is-disabled'); kc.removeAttribute('title'); }
+          map.fire('kpi:change', {kpi: windKpiKey});
         } else {
           const infoEl = document.getElementById('info');
           if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
@@ -733,6 +757,7 @@ window.addEventListener('error', e => {
             <div>کیفیت مختصات: ${p.quality || '—'}</div>
             <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
           </div>`, {maxWidth: 320});
+            layer.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
           };
 
           windSitesLayer = L.geoJSON(windSitesFC, {
@@ -751,10 +776,18 @@ window.addEventListener('error', e => {
               } else {
                 if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
               }
+              window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
             }
           }
           map.on('zoomend', syncZoomVisibility);
           syncZoomVisibility();
+
+          function updateSiteOpacity(){
+            const op = map.hasLayer(windChoroplethLayer) ? 0.4 : 0.85;
+            window.windSitesLayer?.eachLayer(l=>l.setStyle({opacity:op, fillOpacity:op}));
+          }
+          map.on('overlayadd overlayremove', updateSiteOpacity);
+          updateSiteOpacity();
         }
       }
 
@@ -857,7 +890,7 @@ window.addEventListener('error', e => {
       // ===== LegendDock =====
       function LegendDock(){
         const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
-        div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div><div class="legend-meta"></div>`;
+        div.innerHTML = `<div class="legend-tabs"></div><div class="legend-body"></div>`;
         if(localStorage.getItem('ama-legend-collapsed')==='1') div.classList.add('collapsed');
         let groups = [], onFilter = null;
         function renderTabs(){
@@ -912,7 +945,8 @@ window.addEventListener('error', e => {
         <div class="subhead" style="margin-top:8px">اندازه = ظرفیت مخزن (میلیون m³)</div>
         <div class="bubbles">${g.samples.map(s=>`<span class="bubble" style="width:${s.r*2}px;height:${s.r*2}px"></span><span class="lbl">${s.v}</span>`).join('')}</div>`;
           }
-          div.querySelector('.legend-meta').innerHTML = `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
+          const meta = `<div class="legend-meta"><span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span></div>`;
+          body.insertAdjacentHTML('beforeend', meta);
           div.querySelectorAll('.swatches li').forEach(li=>{
             li.onclick = ()=>{
               div.querySelectorAll('.swatches li').forEach(x=>x.classList.remove('active'));
@@ -947,8 +981,8 @@ window.addEventListener('error', e => {
         try { localStorage.setItem('ama-legend-pos', pos); } catch(_){ }
       }
       function reevaluateLegendPosition(){
-        const topRight = !!(window.__AMA_topPanel && window.__AMA_topPanel._map && window.__AMA_topPanel.options?.position==='topright');
-        const desired = (window.innerWidth < 768 || topRight) ? 'bottomleft' : 'bottomright';
+        const topVisible = !!(window.__AMA_topPanel && window.__AMA_topPanel._map);
+        const desired = (window.innerWidth < 768 || topVisible) ? 'bottomleft' : 'bottomright';
         const current = legendCtl.getPosition ? legendCtl.getPosition() : null;
         if(current !== desired) setLegendPosition(desired);
       }
@@ -982,17 +1016,21 @@ window.addEventListener('error', e => {
             l.setStyle?.({ fillOpacity: range.isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
           });
         }
-        legend.set(tabs, (key,range)=>{
-          if(key==='solar') filterLayer(solarLayer, l=>l.feature.properties.__legend_value, range);
-          if(key==='wind')  filterLayer(windChoroplethLayer || windLayer,  l=>l.feature.properties.__legend_value, range);
-          if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
-        });
+        function applyLegend(){
+          legend.set(tabs, (key,range)=>{
+            if(key==='solar') filterLayer(solarLayer, l=>l.feature.properties.__legend_value, range);
+            if(key==='wind')  filterLayer(windChoroplethLayer || windLayer,  l=>l.feature.properties.__legend_value, range);
+            if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
+          });
+        }
+        applyLegend();
+        map.on('kpi:change', ()=>{ applyLegend(); });
         if(__WIND_WEIGHTS_MISSING){
           const warn = document.createElement('div');
           warn.className = 'ama-legend-warning';
           warn.setAttribute('aria-live','polite');
           warn.textContent = 'داده وزن‌ها در دسترس نیست';
-          legend.el.appendChild(warn);
+          legend.el.querySelector('.legend-body')?.appendChild(warn);
         }
       }
 
@@ -1322,19 +1360,52 @@ window.addEventListener('error', e => {
         window.__AMA_renderTop10?.();
       }
 
-      const resetCtl = L.control({position:'bottomleft'});
-      resetCtl.onAdd = function(){
-        const div = L.DomUtil.create('div');
-        const btn = L.DomUtil.create('button','ama-reset',div);
-        btn.type='button';
-        btn.title='بازنشانی نمای نقشه و لایه‌ها';
-        btn.textContent='↺ پیش‌فرض';
-        btn.setAttribute('aria-label','بازنشانی نمای نقشه و لایه‌ها');
-        btn.addEventListener('click', e=>{e.preventDefault(); resetAll();});
-        btn.addEventListener('keydown', e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); resetAll();}});
+      applyMode();
+
+      // === Tool Dock ===
+      function makePanel(title, bodyHtml){
+        const ctl = L.control({position:'topleft'});
+        ctl.onAdd = function(){
+          const wrap=L.DomUtil.create('div','ama-panel');
+          wrap.innerHTML=`<div class="ama-panel-hd">${title}<button class="close-btn" aria-label="بستن">×</button></div><div class="ama-panel-bd">${bodyHtml}</div>`;
+          const close=wrap.querySelector('.close-btn');
+          close.onclick=()=>{ map.removeControl(ctl); };
+          wrap.addEventListener('keydown',e=>{ if(e.key==='Escape'){ map.removeControl(ctl); }});
+          L.DomEvent.disableClickPropagation(wrap);
+          return wrap;
+        };
+        return ctl;
+      }
+
+      const panels={
+        layers: makePanel('لایه‌ها','<div id="ama-layer-panel"></div>'),
+        tools: makePanel('ابزارها','<div id="ama-tools-panel"></div>'),
+        search: makePanel('جستجو','<div class="ama-search"><input id="ama-search-input" type="text" aria-label="نام شهرستان"/><button id="ama-search-go">🔍</button></div>'),
+        download: makePanel('دانلود','<button id="ama-dl-csv">دانلود CSV</button>')
+      };
+
+      const dockCtl=L.control({position:'topleft'});
+      dockCtl.onAdd=function(){
+        const div=L.DomUtil.create('div','tool-dock');
+        div.innerHTML=`<button class="dock-btn" data-panel="layers" aria-label="لایه‌ها">🗂</button>
+        <button class="dock-btn" data-panel="tools" aria-label="ابزارها">🛠</button>
+        <button class="dock-btn" data-panel="search" aria-label="جستجو">🔍</button>
+        <button class="dock-btn" data-panel="download" aria-label="دانلود">⬇</button>
+        <button class="dock-btn dock-reset" data-action="reset" aria-label="بازنشانی">↺</button>`;
         return div;
       };
-      resetCtl.addTo(map);
-      applyMode();
+      dockCtl.addTo(map);
+      const dockEl=dockCtl.getContainer();
+      dockEl.querySelectorAll('button[data-panel]').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          const key=btn.dataset.panel; const p=panels[key];
+          if(!p._map) p.addTo(map); else map.removeControl(p);
+        });
+      });
+      dockEl.querySelector('button[data-action="reset"]').addEventListener('click',e=>{e.preventDefault(); resetAll();});
+
+      panels.search.onAdd = (function(orig){ return function(){ const wrap=orig.call(this); setTimeout(()=>{wrap.querySelector('#ama-search-input')?.focus();},0); const btn=wrap.querySelector('#ama-search-go'); btn?.addEventListener('click',()=>{ const val=wrap.querySelector('#ama-search-input').value.trim(); if(!val) return; const site = windSitesRaw.find(s=>s.name_fa===val); if(site){ map.setView([+site.lat,+site.lon],11); } else { focusCountyByName(val); } }); return wrap; }; })(panels.search.onAdd);
+      panels.layers.onAdd = (function(orig){ return function(){ const wrap=orig.call(this); const body=wrap.querySelector('.ama-panel-bd'); body.innerHTML='<label><input type="checkbox" data-layer="wind" checked/> لایه باد</label><label><input type="checkbox" data-layer="sites" checked/> سایت‌ها</label>'; body.querySelectorAll('input[data-layer]').forEach(ch=>{ ch.addEventListener('change',()=>{ const lay=ch.dataset.layer; const LAY = lay==='wind'?window.windChoroplethLayer:window.windSitesLayer; if(LAY){ if(ch.checked) map.addLayer(LAY); else map.removeLayer(LAY);} });}); return wrap; }; })(panels.layers.onAdd);
+      panels.download.onAdd = (function(orig){ return function(){ const wrap=orig.call(this); const btn=wrap.querySelector('#ama-dl-csv'); btn?.addEventListener('click',()=>{ const rows=polysFC.features.map(f=>f.properties); const csv=makeTopCSV(rows); downloadBlob('kpi.csv',csv); }); return wrap; }; })(panels.download.onAdd);
     })();
 })();
