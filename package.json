@@ -7,6 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
+    "prebuild": "node tools/build-wind-weights.mjs",
     "build:css": "tailwindcss -i docs/assets/tailwind.input.css -o docs/assets/tailwind.css --minify",
     "build": "npm run build:css && npm run build:agri && npm run prepare:agri",
     "test": "node tests/mapper.test.js && node tests/e2e-cld.test.js",
