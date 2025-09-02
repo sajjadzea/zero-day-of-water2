@@ -445,12 +445,12 @@ window.addEventListener('error', e => {
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await loadJSON('layers.config.json', { kind:'manifest' });
+    const cfg = await fetchJSONWithFallback('layers.config.json', { kind:'manifest' });
     const combined = await fetchJSONWithFallback('khorasan_razavi_combined.geojson', { kind:'data' });
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
-    const damsRel = damsPath ? damsPath.replace(/^\//,'').replace(/^data\//,'') : null;
+    const damsRel = damsPath ? normalizeName(damsPath) : null;
     const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams', kind:'data' }) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
@@ -811,19 +811,19 @@ window.addEventListener('error', e => {
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     let electricityLinesLayer = null;
     if (__LAYER_MANIFEST.has('electricity_lines.geojson')) {
-      electricityLinesLayer = await optionalGeoJSONFile('data/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
+      electricityLinesLayer = await optionalGeoJSONFile('electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
     }
     let waterMainsLayer = null;
     if (__LAYER_MANIFEST.has('water_mains.geojson')) {
-      waterMainsLayer      = await optionalGeoJSONFile('data/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
+      waterMainsLayer      = await optionalGeoJSONFile('water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
     }
     let gasTransmissionLayer = null;
     if (__LAYER_MANIFEST.has('gas_transmission.geojson')) {
-      gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
+      gasTransmissionLayer = await optionalGeoJSONFile('gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
     }
     let oilPipelinesLayer = null;
     if (__LAYER_MANIFEST.has('oil_pipelines.geojson')) {
-      oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
+      oilPipelinesLayer    = await optionalGeoJSONFile('oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
     }
 
     // Infra drawer control
