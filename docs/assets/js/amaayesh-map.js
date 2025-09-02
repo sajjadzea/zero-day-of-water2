@@ -27,6 +27,53 @@ window.setActiveWindKPI = function(k){
 };
 // ===== END WIND DIAG BASICS =====
 
+async function fetchCSVResolved(file){
+  const u = await resolveDataUrl(file); if(!u) return null;
+  const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return null;
+  return await r.text();
+}
+function parseCSV(text){
+  if(!text) return [];
+  const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
+  const headers = lines.shift().split(',').map(h=>h.trim());
+  return lines.map(line=>{
+    const cols = line.split(',');
+    const row = {};
+    headers.forEach((h,i)=> row[h] = (cols[i]||'').trim());
+    return row;
+  });
+}
+
+function styleForCounty(feature){
+  // Uses ACTIVE KPI, with clear zero/NoData behavior
+  const k = window.__activeWindKPI || 'wind_wDensity';
+  const has = !!feature.properties.__hasWindData;
+  const v = feature.properties[k];
+  if(!has) return {fillOpacity:.15, color:'#666', weight:.8, dashArray:'3', fillColor:'#ddd'};
+  if(v===0 || v===0.0) return {fillOpacity:.8, color:'#555', weight:.8, fillColor:'#f2f2f2'};
+  // simple 5-classes ramp (replace with your jenks if available)
+  const ramps = ['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
+  const breaks = feature.properties.__windBreaks || [0.2,0.4,0.6,0.8];  // fallback
+  let idx = 0; if(v>breaks[0]) idx=1; if(v>breaks[1]) idx=2; if(v>breaks[2]) idx=3; if(v>breaks[3]) idx=4;
+  return {fillOpacity:.85, color:'#555', weight:.8, fillColor:ramps[idx]};
+}
+
+window.runWindSelfCheck = function(){
+  try{
+    if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('no countiesLayer'); return; }
+    const rows=[]; let has=0, nod=0;
+    window.__countiesLayer.eachLayer(l=>{
+      const f=l.feature||{}; const p=f.properties||{};
+      const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
+      const hd = !!p.__hasWindData;
+      if(hd) has++; else nod++;
+      rows.push({name:nm, has:hd, N:p.wind_N, sumW:p.wind_sumW, wD:p.wind_wDensity, dN:p.wind_density, avgW:p.wind_avgW});
+    });
+    window.__WIND_SELF_CHECK = {mapCount:rows.length, hasData:has, noData:nod};
+    if(window.AMA_DEBUG){ console.group('WIND SELF-CHECK'); console.table(rows.slice(0,12)); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
+  }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
+};
+
 // Debug flag and fetch logger
 window.AMA_DEBUG = window.AMA_DEBUG || /\b(ama_debug|debug)=1\b/.test(location.search);
 if (window.AMA_DEBUG && typeof window.fetch === 'function') {
@@ -162,18 +209,6 @@ window.addEventListener('error', e => {
       }catch(e){ if(window.AMA_DEBUG) console.warn('[ama:data] CSV err', url, String(e)); }
     }
     throw new Error('CSV not found: '+name);
-  }
-
-  function parseCSV(text){
-    const lines = (text||'').trim().split(/\r?\n/);
-    if(!lines.length) return [];
-    const headers = lines.shift().split(',').map(h=>h.trim());
-    return lines.filter(l=>l.trim().length).map(line=>{
-      const cols = line.split(',');
-      const obj = {};
-      headers.forEach((h,i)=>{ obj[h] = cols[i]; });
-      return obj;
-    });
   }
 
   window.__inspectDataPath = async function(name){
@@ -671,16 +706,14 @@ window.addEventListener('error', e => {
             if(v===0){ return {...base, fillOpacity:0.2, fillColor:'#e5e7eb'}; }
             return {...base, fillOpacity:0.6, fillColor:getColor(v,stats)};
           }
-          window.styleForCounty = f => styleFor(f.properties || f);
           function restyle(){
-            stats = computeStats(windKpiKey);
-            windChoroplethLayer.eachLayer(l=>{ l.feature.properties.__legend_value = l.feature.properties[windKpiKey]; l.setStyle(styleFor(l.feature.properties)); });
-            if(__focused){ __focused.setStyle({...styleFor(__focused.feature.properties), color:'#22d3ee', weight:1.2, fillOpacity:0.75}); }
+            windChoroplethLayer.eachLayer(l=>{ l.feature.properties.__legend_value = l.feature.properties[windKpiKey]; l.setStyle(styleForCounty(l.feature)); });
+            if(__focused){ __focused.setStyle({...styleForCounty(__focused.feature), color:'#22d3ee', weight:1.2, fillOpacity:0.75}); }
           }
 
           windChoroplethLayer = L.geoJSON(polysFC, {
             pane:'polygons',
-            style: f => styleFor(f.properties),
+            style: f => styleForCounty(f),
             onEachFeature:(f,l)=> l.bindTooltip((f.properties?.county || f.properties?.name || '—'), {sticky:true, direction:'auto', className:'label'})
           }).addTo(map);
           // ===== BEGIN WIND LAYER REF =====
@@ -701,23 +734,23 @@ window.addEventListener('error', e => {
             if(el){ el.setAttribute('tabindex','0'); el.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' ') l.fire('click'); }); }
             l.on('mouseover', ()=>{
               const p=l.feature.properties||{};
-              if(__focused!==l) l.setStyle({...styleFor(p), color:'#22d3ee', weight:1.2, fillOpacity:0.65});
+              if(__focused!==l) l.setStyle({...styleForCounty(l.feature), color:'#22d3ee', weight:1.2, fillOpacity:0.65});
               const name=p.county||p.name||'—';
               if(!p.__hasWindData){ showInfo(`<b>${name}</b><div>بدون داده</div>`); }
               else {
                 showInfo(`<b>${name}</b><div>N: ${__AMA_fmtNumberFa(p.wind_N,{digits:0})}</div><div>Σw: ${__AMA_fmtNumberFa(p.wind_sumW,{digits:3})}</div><div>N/km²: ${__AMA_fmtNumberFa(p.wind_density,{digits:3})}</div><div>Σw/km²: ${__AMA_fmtNumberFa(p.wind_wDensity,{digits:3})}</div><div>avgW: ${__AMA_fmtNumberFa(p.wind_avgW,{digits:3})}</div>`);
               }
             });
-            l.on('mouseout', ()=>{ if(__focused!==l) l.setStyle(styleFor(l.feature.properties)); hideInfo(); });
+            l.on('mouseout', ()=>{ if(__focused!==l) l.setStyle(styleForCounty(l.feature)); hideInfo(); });
             l.on('click', ()=>{
               __focused=l;
-              windChoroplethLayer.eachLayer(x=>x.setStyle(styleFor(x.feature.properties)));
-              l.setStyle({...styleFor(l.feature.properties), color:'#22d3ee', weight:1.2, fillOpacity:0.75});
+              windChoroplethLayer.eachLayer(x=>x.setStyle(styleForCounty(x.feature)));
+              l.setStyle({...styleForCounty(l.feature), color:'#22d3ee', weight:1.2, fillOpacity:0.75});
               openSidepanel(l.feature.properties||{});
             });
           });
           function clearFocus(){
-            if(__focused){ windChoroplethLayer.eachLayer(x=>x.setStyle(styleFor(x.feature.properties))); __focused=null; }
+            if(__focused){ windChoroplethLayer.eachLayer(x=>x.setStyle(styleForCounty(x.feature))); __focused=null; }
             hideInfo();
             closeSidepanel();
           }
@@ -735,6 +768,7 @@ window.addEventListener('error', e => {
               if(e.target && e.target.value){
                 windKpiKey=e.target.value;
                 localStorage.setItem('ama-kpi', windKpiKey);
+                window.setActiveWindKPI(windKpiKey);
                 map.fire('kpi:change', {kpi: windKpiKey});
               }
             });
@@ -769,6 +803,59 @@ window.addEventListener('error', e => {
           if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
         }
       }
+
+      (async function attachWindWeights(){
+        const csvText = await fetchCSVResolved('wind_weights_by_county.csv');
+        if(!csvText){ if(window.AMA_DEBUG) console.warn('weights CSV missing'); return; }
+        const rows = parseCSV(csvText);
+        const idx = Object.create(null);
+        rows.forEach(r => { idx[ normalizeFaName(r['county']) ] = r; });
+        window.__weightsIdx = idx;
+
+        if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('no counties layer to join'); return; }
+
+        window.__countiesLayer.eachLayer(l=>{
+          const f=l.feature||{}; const p=f.properties||(f.properties={});
+          const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
+          const w = idx[nm];
+          // compute a rough area if missing (km²)
+          if(!p.area_km2 || p.area_km2<=0){
+            try{
+              const g=f.geometry;
+              const ring = (g.type==='Polygon')? g.coordinates[0] : (g.type==='MultiPolygon'? g.coordinates[0][0] : null);
+              if(ring){
+                let A=0; for(let i=0;i<ring.length-1;i++){ const [x1,y1]=ring[i], [x2,y2]=ring[i+1]; A += (x1*y2 - x2*y1); }
+                const km2 = Math.abs(A) * (111.32*111.32) * Math.cos((ring[0][1]*Math.PI)/180) / 2e4;
+                p.area_km2 = km2;
+              }
+            }catch{}
+          }
+          if(w){
+            const n = +w.n_sites || 0;
+            const s = +w.sum_w || 0;
+            const avg = +w.w_avg || 0;
+            p.wind_N        = n;
+            p.wind_sumW     = s;
+            p.wind_avgW     = avg;
+            const a = p.area_km2>0 ? p.area_km2 : 0;
+            p.wind_density  = a? (n/a) : 0;
+            p.wind_wDensity = a? (s/a) : 0;
+            p.__hasWindData = true;
+          }else{
+            p.wind_N=p.wind_sumW=p.wind_avgW=0;
+            p.wind_density=p.wind_wDensity=0;
+            p.__hasWindData=false;
+          }
+          l.setStyle(styleForCounty(f));
+        });
+
+        // force repaint + legend/top10 refresh
+        if(typeof renderLegend==='function') renderLegend();
+        if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+        if(window.AMA_DEBUG) console.info('[wind] joined rows:', Object.keys(idx).length);
+        // run self-check
+        window.runWindSelfCheck();
+      })();
 
       // wind sites
 
