@@ -1,5 +1,34 @@
+// ===== BEGIN WIND DIAG BASICS =====
+window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
+window.AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || localStorage.getItem('AMA_BUILD_ID') || String(Date.now());
+
+function normalizeFaName(s){
+  if(!s) return '';
+  return String(s).replace(/\u200c/g,' ')
+    .replace(/ي/g,'ی').replace(/ك/g,'ک')
+    .replace(/\s+/g,' ').trim();
+}
+async function resolveDataUrl(file){
+  const bases = ['data/','./data/','amaayesh/data/','/amaayesh/data/'];
+  for(const b of bases){
+    const url = `${b}${file}?v=${window.AMA_BUILD_ID}`;
+    try{ const r = await fetch(url,{method:'GET',cache:'no-store'}); if(r.ok){ if(window.AMA_DEBUG) console.info('[resolve]',file,'→',url); return url; } }catch{}
+  }
+  if(window.AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
+  return null;
+}
+// expose active KPI (default)
+window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
+window.setActiveWindKPI = function(k){
+  window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
+  if(window.__countiesLayer){ window.__countiesLayer.setStyle(f => styleForCounty(f)); }
+  if(typeof renderLegend==='function') renderLegend();
+  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+};
+// ===== END WIND DIAG BASICS =====
+
 // Debug flag and fetch logger
-window.AMA_DEBUG = /\b(ama_debug|debug)=1\b/.test(location.search);
+window.AMA_DEBUG = window.AMA_DEBUG || /\b(ama_debug|debug)=1\b/.test(location.search);
 if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   const _origFetch = window.fetch;
   window.fetch = async function(...args){
@@ -642,6 +671,7 @@ window.addEventListener('error', e => {
             if(v===0){ return {...base, fillOpacity:0.2, fillColor:'#e5e7eb'}; }
             return {...base, fillOpacity:0.6, fillColor:getColor(v,stats)};
           }
+          window.styleForCounty = f => styleFor(f.properties || f);
           function restyle(){
             stats = computeStats(windKpiKey);
             windChoroplethLayer.eachLayer(l=>{ l.feature.properties.__legend_value = l.feature.properties[windKpiKey]; l.setStyle(styleFor(l.feature.properties)); });
@@ -653,6 +683,9 @@ window.addEventListener('error', e => {
             style: f => styleFor(f.properties),
             onEachFeature:(f,l)=> l.bindTooltip((f.properties?.county || f.properties?.name || '—'), {sticky:true, direction:'auto', className:'label'})
           }).addTo(map);
+          // ===== BEGIN WIND LAYER REF =====
+          window.__countiesLayer = windChoroplethLayer;
+          // ===== END WIND LAYER REF =====
           map.removeLayer(windLayer);
           window.windChoroplethLayer = windChoroplethLayer;
 
