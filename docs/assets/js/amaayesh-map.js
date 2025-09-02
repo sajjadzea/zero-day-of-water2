@@ -188,8 +188,9 @@
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(6, 1.8*Math.sqrt(Math.max(0, mw||0)));
 
-      const countiesGeo = await fetchJSONWithFallback('counties.geojson');
-      const windSitesGeo = await fetchJSONWithFallback('wind_sites.geojson');
+      const v = (window.BUILD_SHA || Date.now()); // برای بستن کش
+      const countiesGeo = await fetchJSONWithFallback('counties.geojson?v='+v);
+      const windSitesGeo = await fetchJSONWithFallback('wind_sites.geojson?v='+v);
 
       if (countiesGeo?.features?.length){
         windChoroplethLayer = L.geoJSON(countiesGeo, {
