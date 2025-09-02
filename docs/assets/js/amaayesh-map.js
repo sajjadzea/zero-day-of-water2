@@ -135,6 +135,73 @@ window.addEventListener('error', e => {
     return rows;
   };
 
+  window.__amaRCA = async function(){
+    const rows = [];
+    const names = ['layers.config.json', 'counties.geojson', 'wind_sites.geojson'];
+    for (const name of names) {
+      const candidates = resolveDataCandidates(name);
+      for (const url of candidates) {
+        let method = 'HEAD';
+        let res = null;
+        try {
+          res = await fetch(url, { method:'HEAD', cache:'no-store' });
+          if (res.status === 405) throw new Error('HEAD not allowed');
+        } catch (_) {
+          method = 'GET';
+          try { res = await fetch(url, { method:'GET', cache:'no-store' }); } catch (_) {}
+        }
+        rows.push({
+          name,
+          url,
+          method,
+          status: res ? res.status : 'ERR',
+          ok: res ? res.ok : false,
+          redirected: res ? res.redirected : false,
+          finalUrl: res ? res.url : ''
+        });
+      }
+    }
+
+    const manifestRow = rows.find(r => r.name === 'layers.config.json' && r.ok);
+    const manifestUrl = manifestRow ? manifestRow.finalUrl : null;
+    let manifestJson = null;
+    try {
+      if (manifestUrl) {
+        const r = await fetch(manifestUrl, { cache:'no-store' });
+        if (r.ok) manifestJson = await r.json();
+      }
+    } catch (_) {}
+
+    const manifestFiles = Array.isArray(manifestJson?.files) ? manifestJson.files : [];
+    const manifestSet = Array.from(window.__LAYER_MANIFEST || []);
+    const boundaryOnMap = !!(boundary && map && map.hasLayer(boundary));
+    const windSitesOnMap = !!(window.windSitesLayer && map && map.hasLayer(window.windSitesLayer));
+
+    const symbols = [];
+    const hasReeval = (typeof window.reevaluateLegendPosition === 'function');
+    symbols.push({ name:'reevaluateLegendPosition', ok: hasReeval });
+    if (!hasReeval && window.AMA_DEBUG) {
+      console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
+    }
+
+    console.groupCollapsed('AMA · RCA');
+    console.table(rows);
+    console.groupEnd();
+
+    return {
+      rows,
+      symbols,
+      manifest: {
+        exists: !!manifestUrl,
+        url: manifestUrl,
+        __LAYER_MANIFEST: manifestSet,
+        files: manifestFiles,
+        boundaryOnMap,
+        windSitesOnMap
+      }
+    };
+  };
+
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
 
@@ -1142,7 +1209,11 @@ window.addEventListener('error', e => {
         } else {
           if (window.__AMA_topPanel && window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
         }
-        reevaluateLegendPosition();
+        if (typeof window.reevaluateLegendPosition === 'function') {
+          reevaluateLegendPosition();
+        } else if (window.AMA_DEBUG) {
+          console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
+        }
 
         // layer presets (minimal defaults)
         const show = (layer, yes) => { if (!layer) return; if (yes && !map.hasLayer(layer)) map.addLayer(layer); if (!yes && map.hasLayer(layer)) map.removeLayer(layer); };
