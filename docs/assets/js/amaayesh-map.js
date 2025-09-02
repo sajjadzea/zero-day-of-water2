@@ -443,4 +443,49 @@
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
       : 'همه‌ی لایه‌ها بارگذاری شدند.';
   })().catch(()=>{ /* بدون خطا روی UI */ });
+
+  // === Persona mode chips (owner/edu/invest/ind) ===
+  (function(){
+    const modes = [
+      {id:'owner',  icon:'👤', label:'مالک'},
+      {id:'edu',    icon:'🎓', label:'یادگیری'},
+      {id:'invest', icon:'💼', label:'سرمایه‌گذار'},
+      {id:'ind',    icon:'🏭', label:'صنایع'},
+    ];
+    let currentMode = localStorage.getItem('ama-mode') || 'owner';
+
+    const ctl = L.control({position:'topleft'});
+    ctl.onAdd = function() {
+      const div = L.DomUtil.create('div','ama-modes');
+      div.innerHTML = modes.map(m=>
+        `\n      <button class="chip ${m.id===currentMode?'active':''}" data-mode="${m.id}" title="${m.label}">\n        <span class="i">${m.icon}</span><span class="l">${m.label}</span>\n      </button>`).join('');
+      L.DomEvent.disableClickPropagation(div);
+      div.querySelectorAll('.chip').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          currentMode = btn.getAttribute('data-mode');
+          localStorage.setItem('ama-mode', currentMode);
+          div.querySelectorAll('.chip').forEach(b=>b.classList.toggle('active', b===btn));
+          applyMode();
+        });
+      });
+      return div;
+    };
+    ctl.addTo(map);
+
+    function applyMode(){
+      const wantTop = (currentMode==='invest' || currentMode==='ind');
+      if (wantTop) {
+        if (!window.__AMA_topPanel._map) {
+          window.__AMA_topPanel.addTo(map);
+          window.__AMA_renderTop10?.();
+        } else {
+          window.__AMA_renderTop10?.();
+        }
+      } else {
+        if (window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
+      }
+      // TODO: در صورت نیاز اینجا CTAهای خاص هر مود یا فیلتر کلاس‌ها را هم سوییچ کن
+    }
+    applyMode();
+  })();
 })();
