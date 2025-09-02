@@ -19,7 +19,8 @@
     "check:cld-html": "bash tools/check-cld-html.sh",
     "serve-docs": "npx http-server docs -p 5173",
     "build:wind": "python3 tools/build_wind_geojson.py",
-    "vendor:supercluster": "node tools/vendorize_supercluster.js"
+    "vendor:supercluster": "node tools/vendorize_supercluster.js",
+    "audit:ama": "node tools/audit_amaayesh.js"
   },
   "keywords": [],
   "author": "",
