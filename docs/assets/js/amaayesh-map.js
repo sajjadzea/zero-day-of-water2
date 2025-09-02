@@ -38,10 +38,13 @@
   }
 
   // --- manifest ---
-  let __LAYER_MANIFEST = null;
-  function inManifest(p){ return __LAYER_MANIFEST && __LAYER_MANIFEST.has(p); }
+  let __LAYER_MANIFEST = new Set();
+  function inManifest(p){
+    const fname = p.split('/').pop();
+    return __LAYER_MANIFEST.has(fname);
+  }
   async function loadLayerManifest() {
-    __LAYER_MANIFEST = null;
+    __LAYER_MANIFEST = new Set();
     try {
       // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
       const man = await fetchJSONWithFallback('/amaayesh/layers.config.json');
@@ -49,17 +52,18 @@
         __LAYER_MANIFEST = new Set(man.files);
         console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
       } else {
-        console.warn('[ama-data] no manifest.files; will probe defaults');
+        console.warn('[ama-data] no manifest.files; will skip optional layers.');
       }
     } catch(e) {
-      console.warn('[ama-data] manifest not found; will probe defaults');
+      console.warn('[ama-data] manifest not found; will skip optional layers.');
+      __LAYER_MANIFEST = new Set();
     }
   }
   await loadLayerManifest();
 
-  // load a GeoJSON file only if manifest allows it (or no manifest present)
+  // load a GeoJSON file only if manifest allows it
   async function optionalGeoJSONFile(file, opts = {}) {
-    if (__LAYER_MANIFEST && !inManifest(file)) {
+    if (!inManifest(file)) {
       console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
@@ -361,15 +365,21 @@
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     let electricityLinesLayer = null;
-    if (inManifest('data/electricity_lines.geojson')) {
+    if (__LAYER_MANIFEST.has('electricity_lines.geojson')) {
       electricityLinesLayer = await optionalGeoJSONFile('data/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
     }
     let waterMainsLayer = null;
-    if (inManifest('data/water_mains.geojson')) {
+    if (__LAYER_MANIFEST.has('water_mains.geojson')) {
       waterMainsLayer      = await optionalGeoJSONFile('data/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
     }
-    const gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
-    const oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
+    let gasTransmissionLayer = null;
+    if (__LAYER_MANIFEST.has('gas_transmission.geojson')) {
+      gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
+    }
+    let oilPipelinesLayer = null;
+    if (__LAYER_MANIFEST.has('oil_pipelines.geojson')) {
+      oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
+    }
 
     // Infra drawer control
     const infraCtl = L.control({position:'topleft'});
@@ -497,7 +507,7 @@
         if(layer){
           overlayEntries.push([th.title, layer]);
           layer.addTo(map);
-        } else if(!__LAYER_MANIFEST || inManifest(file)){
+        } else if(inManifest(file)){
           missing.push(th.title);
         }
       }
