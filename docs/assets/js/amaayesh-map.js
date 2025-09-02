@@ -1,22 +1,26 @@
-(function(){
+// (IIFE wrapper) — must be async to allow top-level await inside
+(async function(){
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
 
-  const map = L.map('map', { preferCanvas:true, zoomControl:true });
-  const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
-  map.setView([36.3, 59.6], 7);
+    const map = L.map('map', { preferCanvas:true, zoomControl:true });
+    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+    map.setView([36.3, 59.6], 7);
+
+    const SuperclusterCtor = window?.Supercluster;
 
   let searchLayer = L.layerGroup().addTo(map);
   let boundary;
 
   // === AMAAYESH DATA LOADER (path-robust) ===
-  const AMA_DATA_BASE = "/data/"; // سایتت ریشه‌اش docs/ است، پس /data/ درست است
+  const AMA_DATA_BASE = "/data/";
   async function fetchJSONWithFallback(name) {
     const candidates = [
-      name.startsWith("/") ? name : AMA_DATA_BASE + name,           // ✅ اول از ریشه /data/
-      name,                                                         // هرچه کد قبلی داده (نسبی)
+      name.startsWith("/") ? name : AMA_DATA_BASE + name, // /data/first
+      name,                                               // as given
       "./" + name,
       "../data/" + name,
-      "/amaayesh/data/" + name                                      // آخرین شانس (قدیمی)
+      "/amaayesh/" + name,                                // ✅ manifest or assets under /amaayesh
+      "/amaayesh/data/" + name                            // legacy fallback
     ];
     for (const url of candidates) {
       try {
@@ -39,7 +43,8 @@
   async function loadLayerManifest() {
     __LAYER_MANIFEST = null;
     try {
-      const man = await fetchJSONWithFallback('layers.config.json');
+      // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
+      const man = await fetchJSONWithFallback('amaayesh/layers.config.json');
       if (man && Array.isArray(man.files)) {
         __LAYER_MANIFEST = new Set(man.files);
         console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
@@ -285,22 +290,20 @@
       window.__AMA_renderTop10();
 
       if (windSitesGeo?.features?.length){
-        windSitesLayer = L.geoJSON(windSitesGeo, {
-          pane: 'points',
-          pointToLayer: (f, latlng) => {
-            const p = f.properties || {};
-            const low = (p.quality === 'low');
-            return L.circleMarker(latlng, {
-              radius: radiusFromMW(p.capacity_mw_est),
-              weight: 1.5, color:'#111827', opacity:1,
-              fillColor:'#111827', fillOpacity:.85,
-              dashArray: low ? '2 4' : null
-            });
-          },
-          onEachFeature: (f, layer) => {
-            const p = f.properties || {};
-            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-            layer.bindPopup(`
+        const pointToLayer = (f, latlng) => {
+          const p = f.properties || {};
+          const low = (p.quality === 'low');
+          return L.circleMarker(latlng, {
+            radius: radiusFromMW(p.capacity_mw_est),
+            weight: 1.5, color:'#111827', opacity:1,
+            fillColor:'#111827', fillOpacity:.85,
+            dashArray: low ? '2 4' : null
+          });
+        };
+        const onEachFeature = (f, layer) => {
+          const p = f.properties || {};
+          const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+          layer.bindPopup(`
           <div dir="rtl" style="min-width:220px">
             <div style="font-weight:700">${p.name_fa || '—'}</div>
             <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
@@ -309,8 +312,37 @@
             <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
           </div>
         `, {maxWidth: 320});
-          }
-        }).addTo(map);
+        };
+
+        if (SuperclusterCtor) {
+          const idx = new SuperclusterCtor({ radius: 80, maxZoom: 16 });
+          idx.load(windSitesGeo.features);
+          const clusterLayer = L.layerGroup().addTo(map);
+          const renderClusters = () => {
+            clusterLayer.clearLayers();
+            const b = map.getBounds();
+            const clusters = idx.getClusters([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], Math.round(map.getZoom()));
+            clusters.forEach(f => {
+              const [lng, lat] = f.geometry.coordinates;
+              if (f.properties.cluster) {
+                L.circleMarker([lat, lng], {
+                  radius: 10 + Math.log(f.properties.point_count),
+                  weight: 1, color:'#1e3a8a', fillColor:'#93c5fd', fillOpacity:0.7
+                }).addTo(clusterLayer).bindTooltip(String(f.properties.point_count), {direction:'center', className:'label'});
+              } else {
+                const layer = pointToLayer(f, L.latLng(lat, lng));
+                onEachFeature(f, layer);
+                clusterLayer.addLayer(layer);
+              }
+            });
+          };
+          renderClusters();
+          map.on('moveend', renderClusters);
+          windSitesLayer = clusterLayer;
+        } else {
+          console.info('[ama-sites] clustering disabled: Supercluster not present');
+          windSitesLayer = L.geoJSON(windSitesGeo, { pane:'points', pointToLayer, onEachFeature }).addTo(map);
+        }
         window.windSitesLayer = windSitesLayer;
       }
     }
