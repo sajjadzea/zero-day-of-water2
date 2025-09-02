@@ -138,11 +138,7 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
 
   (async () => {
     const cfg = await loadJSON('/amaayesh/layers.config.json');
-    let combined = await fetchJSONWithFallback('amaayesh/khorasan_razavi_combined.geojson');
-    if(!combined){
-      // real path in repo is under /data/amaayesh/
-      combined = await fetchJSONWithFallback('/data/amaayesh/khorasan_razavi_combined.geojson');
-    }
+    const combined = await fetchJSONWithFallback('/data/amaayesh/khorasan_razavi_combined.geojson');
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
