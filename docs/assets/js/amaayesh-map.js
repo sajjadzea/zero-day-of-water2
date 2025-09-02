@@ -166,6 +166,7 @@
     let damsLayer = null;
     let windChoroplethLayer = null;
     let windSitesLayer = null;
+    let windSitesClusterLayer = null, windSitesIndex = null;
     if(damsGeojson){
       const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
       const rByMCM = v => Math.max(6, Math.sqrt(v||1)/2);
@@ -285,6 +286,14 @@
       window.__AMA_renderTop10();
 
       if (windSitesGeo?.features?.length){
+        // build supercluster index
+        windSitesIndex = new Supercluster({ radius: 80, maxZoom: 16 });
+        windSitesIndex.load(windSitesGeo.features.map(f=>({
+          type:'Feature',
+          properties: { ...f.properties },
+          geometry: { type:'Point', coordinates: f.geometry.coordinates }
+        })));
+
         windSitesLayer = L.geoJSON(windSitesGeo, {
           pane: 'points',
           pointToLayer: (f, latlng) => {
@@ -319,12 +328,40 @@
     const Z_SITES_ON   = 9;
     const Z_LABELS_ON  = 12;
 
+    function renderSiteClusters(){
+      if (!windSitesIndex) return;
+      const z = map.getZoom();
+      const b = map.getBounds();
+      const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+      const clusters = windSitesIndex.getClusters(bbox, Math.floor(z));
+      if (windSitesClusterLayer) { map.removeLayer(windSitesClusterLayer); windSitesClusterLayer = null; }
+      windSitesClusterLayer = L.geoJSON({type:'FeatureCollection', features:clusters}, {
+        pointToLayer: (f, latlng) => {
+          const isCluster = f.properties.cluster;
+          if (!isCluster) return L.circleMarker(latlng, { radius:6, weight:1, fillOpacity:.6 });
+          const count = f.properties.point_count;
+          const r = Math.max(10, Math.min(28, 8 + Math.log(count+1)*6));
+          return L.circleMarker(latlng, { radius:r, weight:1.5, color:'#0ea5e9', fillColor:'#0ea5e9', fillOpacity:.5 })
+            .bindTooltip(String(count), {direction:'center', permanent:true, className:'cluster-count'});
+        }
+      });
+      if (map.getZoom() < Z_SITES_ON) windSitesClusterLayer.addTo(map);
+    }
+    map.on('moveend zoomend', renderSiteClusters);
+    renderSiteClusters();
+
     function syncZoomVisibility(){
       const z = map.getZoom();
       // sites
       if (window.windSitesLayer) {
         if (z >= Z_SITES_ON) { if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer); }
         else                 { if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer); }
+      }
+      if (map.getZoom() < Z_SITES_ON) {
+        if (windSitesClusterLayer && !map.hasLayer(windSitesClusterLayer)) map.addLayer(windSitesClusterLayer);
+      }
+      else {
+        if (windSitesClusterLayer && map.hasLayer(windSitesClusterLayer)) map.removeLayer(windSitesClusterLayer);
       }
       // tooltips/popups density
       if (window.windChoroplethLayer) {
