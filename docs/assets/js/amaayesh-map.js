@@ -33,6 +33,38 @@
     return null;
   }
 
+  // --- manifest ---
+  let __LAYER_MANIFEST = null;
+  async function loadLayerManifest() {
+    __LAYER_MANIFEST = null;
+    try {
+      const man = await fetchJSONWithFallback('layers.config.json');
+      if (man && Array.isArray(man.files)) {
+        __LAYER_MANIFEST = new Set(man.files);
+        console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
+      } else {
+        console.warn('[ama-data] no manifest.files; will probe defaults');
+      }
+    } catch(e) {
+      console.warn('[ama-data] manifest not found; will probe defaults');
+    }
+  }
+  await loadLayerManifest();
+
+  // load a GeoJSON file only if manifest allows it (or no manifest present)
+  async function optionalGeoJSONFile(file, opts = {}) {
+    if (__LAYER_MANIFEST && !__LAYER_MANIFEST.has(file)) {
+      console.info('[ama-layer] skip (not in manifest):', file);
+      return null;
+    }
+    const geo = await fetchJSONWithFallback(file);
+    if (!geo?.features?.length) {
+      console.warn('[ama-layer] missing or empty:', file);
+      return null;
+    }
+    return L.geoJSON(geo, opts);
+  }
+
   // لودر مقاوم با هندل 404 و فهرست fallbackها
   async function loadJSON(relOrList, { layerKey, fallbacks = [] } = {}) {
     const rels = Array.isArray(relOrList) ? relOrList : [relOrList];
@@ -188,9 +220,10 @@
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(6, 1.8*Math.sqrt(Math.max(0, mw||0)));
 
-      const v = (window.BUILD_SHA || Date.now()); // برای بستن کش
-      const countiesGeo = await fetchJSONWithFallback('counties.geojson?v='+v);
-      const windSitesGeo = await fetchJSONWithFallback('wind_sites.geojson?v='+v);
+      const countiesGeo = (__LAYER_MANIFEST && !__LAYER_MANIFEST.has('counties.geojson'))
+        ? null : await fetchJSONWithFallback('counties.geojson');
+      const windSitesGeo = (__LAYER_MANIFEST && !__LAYER_MANIFEST.has('wind_sites.geojson'))
+        ? null : await fetchJSONWithFallback('wind_sites.geojson');
 
       if (countiesGeo?.features?.length){
         windChoroplethLayer = L.geoJSON(countiesGeo, {
@@ -371,10 +404,12 @@
     const missing = [];
     for(const th of (cfg?.themes || [])){
       const rel = th.file.replace(/^\//,'').replace(/^data\//,'');
-      const j = await loadJSON(rel, { layerKey: th.key });
-      if(!j){ missing.push(th.title); continue; }
-      const layer = L.geoJSON(j,{ pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
-      overlays[th.title] = layer; layer.addTo(map);
+      const layer = await optionalGeoJSONFile(rel, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
+      if(layer){
+        overlays[th.title] = layer; layer.addTo(map);
+      } else if(!__LAYER_MANIFEST || __LAYER_MANIFEST.has(rel)){
+        missing.push(th.title);
+      }
     }
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
