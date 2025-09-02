@@ -17,6 +17,48 @@ async function resolveDataUrl(file){
   if(window.AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
   return null;
 }
+function isPolyFeature(f){
+  if(!f || !f.geometry) return false;
+  const t=f.geometry.type; return t==='Polygon' || t==='MultiPolygon';
+}
+function featureHasCountyProp(f){
+  const p=f.properties||{}; return !!(p.county || p.name_fa || p.name);
+}
+function layerFeatures(layer){
+  // extract features from GeoJSON layer
+  const arr=[];
+  if(layer && layer.feature && isPolyFeature(layer.feature)) arr.push(layer.feature);
+  if(layer && typeof layer.eachLayer==='function'){
+    layer.eachLayer(l=>{
+      if(l.feature && isPolyFeature(l.feature)) arr.push(l.feature);
+    });
+  }
+  return arr;
+}
+function collectGeoJsonLayersDeep(root){
+  const out=[];
+  function dfs(l){
+    if(!l) return;
+    if(typeof l.getLayers==='function'){ l.getLayers().forEach(dfs); }
+    if(l instanceof L.GeoJSON) out.push(l);
+  }
+  // scan map._layers if root is map
+  if(root && root._layers) Object.values(root._layers).forEach(dfs);
+  // also direct
+  dfs(root);
+  return out;
+}
+function pickBestCountiesLayer(map){
+  const cands = collectGeoJsonLayersDeep(map).map(l=>{
+    const feats = layerFeatures(l);
+    const polys = feats.filter(isPolyFeature);
+    const withNames = polys.filter(featureHasCountyProp);
+    return {layer:l, total:polys.length, named:withNames.length};
+  }).filter(x=>x.total>0);
+  // prefer the one with most named polygon features
+  cands.sort((a,b)=> (b.named - a.named) || (b.total - a.total));
+  return cands[0]?.layer || null;
+}
 // expose active KPI (default)
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
 window.setActiveWindKPI = function(k){
@@ -1226,8 +1268,27 @@ window.addEventListener('error', e => {
         } else if(inManifest(file)){
           missing.push(th.title);
         }
-      }
+      } 
       const overlays = Object.fromEntries(overlayEntries.filter(([_, layer]) => !!layer));
+      if (!window.__countiesLayer) {
+        const best = pickBestCountiesLayer(map);
+        if (best) {
+          window.__countiesLayer = best;
+          if (window.AMA_DEBUG) {
+            let names = [];
+            best.eachLayer(l => {
+              const f = l.feature; if(!f) return;
+              if(isPolyFeature(f) && featureHasCountyProp(f)){
+                const n = normalizeFaName(f.properties.county || f.properties.name_fa || f.properties.name);
+                names.push(n);
+              }
+            });
+            console.info('[counties pick]', 'features:', names.length, 'sample:', names.slice(0,12));
+          }
+        } else if (window.AMA_DEBUG){
+          console.warn('[counties pick] no suitable layer found');
+        }
+      }
       // original Leaflet layers control kept for debugging only
       const __defaultLayersCtl = L.control.layers({'OpenStreetMap':base}, overlays, { position:'topleft', collapsed:false }).addTo(map);
 
