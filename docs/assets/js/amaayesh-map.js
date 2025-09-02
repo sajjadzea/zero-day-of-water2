@@ -59,11 +59,19 @@ function pickBestCountiesLayer(map){
   cands.sort((a,b)=> (b.named - a.named) || (b.total - a.total));
   return cands[0]?.layer || null;
 }
+function eachPolyFeatureLayer(root, fn){
+  function walk(l){
+    if(!l) return;
+    if(typeof l.getLayers==='function'){ l.getLayers().forEach(walk); return; }
+    if(l.feature && isPolyFeature(l.feature)) fn(l);
+  }
+  walk(root);
+}
 // expose active KPI (default)
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
 window.setActiveWindKPI = function(k){
   window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
-  if(window.__countiesLayer){ window.__countiesLayer.setStyle(f => styleForCounty(f)); }
+  if(window.__countiesLayer){ eachPolyFeatureLayer(window.__countiesLayer, leaf=>leaf.setStyle(styleForCounty(leaf.feature))); }
   if(typeof renderLegend==='function') renderLegend();
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 };
@@ -104,7 +112,7 @@ window.runWindSelfCheck = function(){
   try{
     if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('no countiesLayer'); return; }
     const rows=[]; let has=0, nod=0;
-    window.__countiesLayer.eachLayer(l=>{
+    eachPolyFeatureLayer(window.__countiesLayer, l=>{
       const f=l.feature||{}; const p=f.properties||{};
       const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
       const hd = !!p.__hasWindData;
@@ -115,6 +123,66 @@ window.runWindSelfCheck = function(){
     if(window.AMA_DEBUG){ console.group('WIND SELF-CHECK'); console.table(rows.slice(0,12)); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
   }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
 };
+
+async function joinWindWeightsOnAll(){
+  const u = await resolveDataUrl('wind_weights_by_county.csv');
+  if(!u){ if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); __WIND_WEIGHTS_MISSING=true; return; }
+  const txt = await fetch(u,{cache:'no-store'}).then(r=>r.ok?r.text():null);
+  if(!txt){ if(window.AMA_DEBUG) console.warn('[join] empty CSV'); __WIND_WEIGHTS_MISSING=true; return; }
+
+  // build index
+  const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
+  const headers = lines.shift().split(',').map(h=>h.trim());
+  const idx = Object.create(null);
+  lines.forEach(line=>{
+    const cols = line.split(',');
+    const obj={}; headers.forEach((h,i)=>obj[h]=(cols[i]||'').trim());
+    idx[ normalizeFaName(obj.county) ] = obj;
+  });
+  window.__weightsIdx = idx;
+
+  if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('[join] no counties layer'); return; }
+
+  let mapCount=0, hasData=0, noData=0;
+  const onlyInMap=[], onlyInIdx=[];
+  const mapNames=[];
+
+  eachPolyFeatureLayer(window.__countiesLayer, (leaf)=>{
+    const f=leaf.feature, p=f.properties||(f.properties={});
+    const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
+    if(nm) mapNames.push(nm);
+    mapCount++;
+    const w = idx[nm];
+    if(w){
+      const n=+w.n_sites||0, s=+w.sum_w||0, avg=+w.w_avg||0;
+      p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
+      const a = p.area_km2>0 ? p.area_km2 : 0;
+      p.wind_density = a? (n/a):0;
+      p.wind_wDensity= a? (s/a):0;
+      p.__hasWindData=true; hasData++;
+    }else{
+      p.wind_N=p.wind_sumW=p.wind_avgW=0;
+      p.wind_density=p.wind_wDensity=0;
+      p.__hasWindData=false; noData++; onlyInMap.push(nm);
+    }
+    p.__legend_value = p[window.__activeWindKPI || 'wind_wDensity'];
+    leaf.setStyle(styleForCounty(f));
+  });
+
+  // names present in CSV but not on map
+  Object.keys(idx).forEach(k=>{ if(!mapNames.includes(k)) onlyInIdx.push(k); });
+
+  window.__WIND_SELF_CHECK = {mapCount, hasData, noData, onlyInMap, onlyInIdx};
+  if(window.AMA_DEBUG){
+    console.group('[join report]');
+    console.log(window.__WIND_SELF_CHECK);
+    console.groupEnd();
+  }
+
+  if(typeof renderLegend==='function') renderLegend();
+  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  __WIND_WEIGHTS_MISSING=false;
+}
 
 // Debug flag and fetch logger
 window.AMA_DEBUG = window.AMA_DEBUG || /\b(ama_debug|debug)=1\b/.test(location.search);
@@ -696,60 +764,14 @@ window.addEventListener('error', e => {
         if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
-          // join with wind weights CSV
-          let rows = [];
-          try {
-            const txt = await fetchCSV('wind_weights_by_county.csv');
-            rows = parseCSV(txt);
-          } catch (_) {
-            __WIND_WEIGHTS_MISSING = true;
-          }
-          const weightsMap = {};
-          rows.forEach(r=>{
-            const name = (r.county||'').trim();
-            if(!name) return;
-            const n = +r.n_sites || 0;
-            const sumW = +r.sum_w || 0;
-            const area = +r.site_area_ha || 0;
-            const density = area>0 ? n/(area/100) : 0;
-            const wDensity = area>0 ? sumW/(area/100) : 0;
-            const avgW = +r.w_avg || 0;
-            weightsMap[name] = { wind_N:n, wind_sumW:sumW, wind_density:density, wind_wDensity:wDensity, wind_avgW:avgW };
-          });
-          if (!rows.length || Object.values(weightsMap).every(v=> (v.wind_N||0)===0 && (v.wind_sumW||0)===0)) {
-            __WIND_WEIGHTS_MISSING = true;
-          }
-          polysFC.features.forEach(f=>{
-            const name=f.properties?.county || f.properties?.name || '';
-            const w=weightsMap[name];
-            if(w){ Object.assign(f.properties, w, {__hasWindData:true}); }
-            else { f.properties.__hasWindData=false; }
-          });
-
           createSidepanel();
 
-          function computeStats(key){
-            const vals=polysFC.features.map(f=>f.properties[key]).filter(v=>typeof v==='number');
-            return {min:Math.min(...vals), max:Math.max(...vals)};
-          }
-          function getColor(v,stats){
-            if(v==null||isNaN(v)) return '#d1d5db';
-            if(stats.max===stats.min) return '#0ea5e9';
-            const t=(v-stats.min)/(stats.max-stats.min);
-            const colors=['#f3f4f6','#dbeafe','#bfdbfe','#93c5fd','#60a5fa','#3b82f6','#1d4ed8'];
-            const idx=Math.max(0,Math.min(colors.length-1,Math.floor(t*(colors.length-1))));
-            return colors[idx];
-          }
-          let stats = computeStats(windKpiKey);
-          function styleFor(p){
-            const base={color:'rgba(39,48,63,.4)',weight:.8};
-            if(__WIND_WEIGHTS_MISSING || !p.__hasWindData){ return {...base, fillOpacity:0.1, dashArray:'4 4', fillColor:'#9ca3af'}; }
-            const v=p[windKpiKey];
-            if(v===0){ return {...base, fillOpacity:0.2, fillColor:'#e5e7eb'}; }
-            return {...base, fillOpacity:0.6, fillColor:getColor(v,stats)};
-          }
           function restyle(){
-            windChoroplethLayer.eachLayer(l=>{ l.feature.properties.__legend_value = l.feature.properties[windKpiKey]; l.setStyle(styleForCounty(l.feature)); });
+            if(!window.__countiesLayer) return;
+            eachPolyFeatureLayer(window.__countiesLayer, l=>{
+              l.feature.properties.__legend_value = l.feature.properties[windKpiKey];
+              l.setStyle(styleForCounty(l.feature));
+            });
             if(__focused){ __focused.setStyle({...styleForCounty(__focused.feature), color:'#22d3ee', weight:1.2, fillOpacity:0.75}); }
           }
 
@@ -833,71 +855,18 @@ window.addEventListener('error', e => {
             window.__AMA_renderTop10?.();
           });
 
-          // initial style
-          restyle();
-          __WIND_DATA_READY = true;
-          window.__WIND_DATA_READY = true;
-          const kc = kpiCtl.getContainer ? kpiCtl.getContainer() : null;
-          if(kc){ kc.classList.remove('is-disabled'); kc.removeAttribute('title'); }
-          map.fire('kpi:change', {kpi: windKpiKey});
+          joinWindWeightsOnAll().then(()=>{
+            __WIND_DATA_READY = true;
+            window.__WIND_DATA_READY = true;
+            const kc = kpiCtl.getContainer ? kpiCtl.getContainer() : null;
+            if(kc){ kc.classList.remove('is-disabled'); kc.removeAttribute('title'); }
+            map.fire('kpi:change', {kpi: windKpiKey});
+          });
         } else {
           const infoEl = document.getElementById('info');
           if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
         }
       }
-
-      (async function attachWindWeights(){
-        const csvText = await fetchCSVResolved('wind_weights_by_county.csv');
-        if(!csvText){ if(window.AMA_DEBUG) console.warn('weights CSV missing'); return; }
-        const rows = parseCSV(csvText);
-        const idx = Object.create(null);
-        rows.forEach(r => { idx[ normalizeFaName(r['county']) ] = r; });
-        window.__weightsIdx = idx;
-
-        if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('no counties layer to join'); return; }
-
-        window.__countiesLayer.eachLayer(l=>{
-          const f=l.feature||{}; const p=f.properties||(f.properties={});
-          const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
-          const w = idx[nm];
-          // compute a rough area if missing (km²)
-          if(!p.area_km2 || p.area_km2<=0){
-            try{
-              const g=f.geometry;
-              const ring = (g.type==='Polygon')? g.coordinates[0] : (g.type==='MultiPolygon'? g.coordinates[0][0] : null);
-              if(ring){
-                let A=0; for(let i=0;i<ring.length-1;i++){ const [x1,y1]=ring[i], [x2,y2]=ring[i+1]; A += (x1*y2 - x2*y1); }
-                const km2 = Math.abs(A) * (111.32*111.32) * Math.cos((ring[0][1]*Math.PI)/180) / 2e4;
-                p.area_km2 = km2;
-              }
-            }catch{}
-          }
-          if(w){
-            const n = +w.n_sites || 0;
-            const s = +w.sum_w || 0;
-            const avg = +w.w_avg || 0;
-            p.wind_N        = n;
-            p.wind_sumW     = s;
-            p.wind_avgW     = avg;
-            const a = p.area_km2>0 ? p.area_km2 : 0;
-            p.wind_density  = a? (n/a) : 0;
-            p.wind_wDensity = a? (s/a) : 0;
-            p.__hasWindData = true;
-          }else{
-            p.wind_N=p.wind_sumW=p.wind_avgW=0;
-            p.wind_density=p.wind_wDensity=0;
-            p.__hasWindData=false;
-          }
-          l.setStyle(styleForCounty(f));
-        });
-
-        // force repaint + legend/top10 refresh
-        if(typeof renderLegend==='function') renderLegend();
-        if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
-        if(window.AMA_DEBUG) console.info('[wind] joined rows:', Object.keys(idx).length);
-        // run self-check
-        window.runWindSelfCheck();
-      })();
 
       // wind sites
 
