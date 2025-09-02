@@ -908,7 +908,94 @@ window.addEventListener('error', e => {
         }
       }
       const overlays = Object.fromEntries(overlayEntries.filter(([_, layer]) => !!layer));
-      L.control.layers({'OpenStreetMap':base}, overlays, { position:'topleft', collapsed:false }).addTo(map);
+      // original Leaflet layers control kept for debugging only
+      const __defaultLayersCtl = L.control.layers({'OpenStreetMap':base}, overlays, { position:'topleft', collapsed:false }).addTo(map);
+
+      // --- Custom Layers Dock Control ---
+      const LayersDock = L.Control.extend({
+        options: { position:'topleft', dir:'rtl' },
+        onAdd: function(m){
+          const container = L.DomUtil.create('div', 'layers-dock leaflet-control');
+          container.setAttribute('dir', this.options.dir);
+
+          const tabsEl = L.DomUtil.create('div', 'ld-tabs', container);
+          tabsEl.setAttribute('role','tablist');
+
+          const tabDataBtn = L.DomUtil.create('button', 'ld-tab active', tabsEl);
+          tabDataBtn.type = 'button';
+          tabDataBtn.setAttribute('role','tab');
+          tabDataBtn.textContent = 'لایه‌ها';
+          tabDataBtn.setAttribute('aria-selected','true');
+
+          const tabDispBtn = L.DomUtil.create('button', 'ld-tab', tabsEl);
+          tabDispBtn.type = 'button';
+          tabDispBtn.setAttribute('role','tab');
+          tabDispBtn.textContent = 'نمایش';
+          tabDispBtn.setAttribute('aria-selected','false');
+          tabDispBtn.tabIndex = -1;
+
+          const body = L.DomUtil.create('div', 'ld-body', container);
+          const dataPane = L.DomUtil.create('div', 'ld-pane', body);
+          const displayPane = L.DomUtil.create('div', 'ld-pane', body);
+          displayPane.style.display = 'none';
+
+          function makeSwitch(parent, label, layer, disabled){
+            const lbl = L.DomUtil.create('label', '', parent);
+            if(disabled){ lbl.classList.add('is-disabled'); lbl.title='غیرفعال'; }
+            const inp = L.DomUtil.create('input', '', lbl);
+            inp.type='checkbox';
+            inp.setAttribute('role','switch');
+            if(disabled){ inp.disabled=true; }
+            else {
+              const init = m.hasLayer(layer);
+              inp.checked = init; inp.setAttribute('aria-checked', init);
+              inp.addEventListener('change', ()=>{
+                const ch = inp.checked; inp.setAttribute('aria-checked', ch);
+                ch ? m.addLayer(layer) : m.removeLayer(layer);
+              });
+              const sync = e => { if(e.layer===layer){ const p=m.hasLayer(layer); inp.checked=p; inp.setAttribute('aria-checked',p); } };
+              m.on('layeradd', sync); m.on('layerremove', sync);
+              m.on('overlayadd', sync); m.on('overlayremove', sync);
+            }
+            const span = L.DomUtil.create('span', '', lbl); span.textContent = label;
+          }
+
+          // data overlays (exclude boundary)
+          overlayEntries.filter(([t,_])=>t!=='مرز شهرستان‌ها').forEach(([t,l])=>{
+            makeSwitch(dataPane, t, l, !l);
+          });
+
+          // display/basemap tab
+          makeSwitch(displayPane, 'مرز شهرستان‌ها', boundary, !boundary);
+          makeSwitch(displayPane, 'شبکه راهنما', window.gridLayer, !window.gridLayer);
+          makeSwitch(displayPane, 'برچسب‌ها', window.labelsLayer, !window.labelsLayer);
+
+          function activate(which){
+            const isData = which==='data';
+            tabDataBtn.classList.toggle('active', isData);
+            tabDispBtn.classList.toggle('active', !isData);
+            tabDataBtn.setAttribute('aria-selected', isData?'true':'false');
+            tabDispBtn.setAttribute('aria-selected', !isData?'true':'false');
+            tabDataBtn.tabIndex = isData?0:-1;
+            tabDispBtn.tabIndex = !isData?0:-1;
+            dataPane.style.display = isData?'block':'none';
+            displayPane.style.display = isData?'none':'block';
+          }
+          tabDataBtn.addEventListener('click', ()=>activate('data'));
+          tabDispBtn.addEventListener('click', ()=>activate('disp'));
+
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+          return container;
+        }
+      });
+
+      new LayersDock().addTo(map);
+      if (__defaultLayersCtl && typeof __defaultLayersCtl.remove === 'function') {
+        __defaultLayersCtl.remove();
+      }
+      // --- end custom layers dock ---
+
       L.control.scale({ metric:true, imperial:false }).addTo(map);
 
       if (L.Control && L.Control.geocoder) {
