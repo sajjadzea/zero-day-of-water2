@@ -1,3 +1,23 @@
+// Debug flag and fetch logger
+window.AMA_DEBUG = /\b(ama_debug|debug)=1\b/.test(location.search);
+if (window.AMA_DEBUG && typeof window.fetch === 'function') {
+  const _origFetch = window.fetch;
+  window.fetch = async function(...args){
+    const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+    const t0 = performance.now();
+    try {
+      const res = await _origFetch.apply(this, args);
+      const dt = Math.round(performance.now() - t0);
+      console.log('[ama:fetch]', res.status, url, `${dt}ms`);
+      return res;
+    } catch (e) {
+      const dt = Math.round(performance.now() - t0);
+      console.warn('[ama:fetch-err]', url, e?.message, `${dt}ms`);
+      throw e;
+    }
+  };
+}
+
 // (IIFE wrapper) — must be async to allow top-level await inside
 (async function(){
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
@@ -5,6 +25,11 @@
     const map = L.map('map', { preferCanvas:true, zoomControl:true });
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
     map.setView([36.3, 59.6], 7);
+
+    if (window.AMA_DEBUG && map) {
+      map.on('zoomend', () => console.log('[ama:event] zoomend =>', map.getZoom()));
+      map.on('moveend', () => console.log('[ama:event] moveend =>', map.getCenter()));
+    }
 
     const SuperclusterCtor = window?.Supercluster || null;
 
@@ -567,10 +592,30 @@
       map.on('layerremove', e => { if (e.layer === gasLayer) map.removeLayer(gasEffects); });
     }
 
+    window.__AMA__combined = combined;
+    window.__AMA__windSitesFC = windSitesGeo || {};
+    window.__AMA__boundary = boundary || null;
+    __amaHealthReport(map);
+
     document.getElementById('info').innerHTML = missing.length
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
       : 'همه‌ی لایه‌ها بارگذاری شدند.';
   })().catch(()=>{ /* بدون خطا روی UI */ });
+
+  function __amaHealthReport(mapCtx){
+    if (!window.AMA_DEBUG) return;
+    const h = {};
+    try { h.manifest_loaded = !!(window.__LAYER_MANIFEST && window.__LAYER_MANIFEST.size); } catch(_) { h.manifest_loaded = false; }
+    try { h.manifest_files = window.__LAYER_MANIFEST ? Array.from(window.__LAYER_MANIFEST) : []; } catch(_) { h.manifest_files = []; }
+    try { h.counties_features = (window.__AMA__combined?.features?.length) || 0; } catch(_) { h.counties_features = 0; }
+    try { h.wind_sites_features = (window.__AMA__windSitesFC?.features?.length) || 0; } catch(_) { h.wind_sites_features = 0; }
+    try { h.boundary_layer = !!window.__AMA__boundary; } catch(_) { h.boundary_layer = false; }
+    try { h.points_layer_present = !!window.windSitesLayer; } catch(_) { h.points_layer_present = false; }
+    try { h.points_layer_on_map = h.points_layer_present && mapCtx && mapCtx.hasLayer(window.windSitesLayer); } catch(_) { h.points_layer_on_map = false; }
+    try { h.panes = mapCtx ? Object.keys(mapCtx._panes||{}) : []; } catch(_) { h.panes = []; }
+    try { h.zoom = mapCtx ? mapCtx.getZoom() : null; } catch(_) { h.zoom = null; }
+    console.group('%cAMA · Health','color:#0bf'); console.table(h); console.groupEnd();
+  }
 
   // === Persona mode chips (owner/edu/invest/ind) ===
   (function(){
@@ -591,6 +636,7 @@
       div.querySelectorAll('.chip').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           currentMode = btn.getAttribute('data-mode');
+          if (window.AMA_DEBUG) console.log('[ama:mode]', currentMode);
           localStorage.setItem('ama-mode', currentMode);
           div.querySelectorAll('.chip').forEach(b=>b.classList.toggle('active', b===btn));
           applyMode();
