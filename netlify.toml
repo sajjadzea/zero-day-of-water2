@@ -1,6 +1,6 @@
 [build]
   publish = "docs"
-  command = "npm ci && npm run -s vendor:supercluster || true"
+  command = "npm ci && npm run build || true && npm run verify:publish || true"
   node_version = "18"
 
 [build.processing]
@@ -11,7 +11,7 @@
 
 # همان دستور برای Deploy Preview تا PRها هم باندل درست داشته باشند
 [context.deploy-preview]
-  command = "npm ci && npm run -s vendor:supercluster || true"
+  command = "npm ci && npm run build || true && npm run verify:publish || true"
 
 [functions]
   directory = "netlify/functions"
