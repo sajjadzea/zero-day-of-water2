@@ -786,14 +786,26 @@ window.addEventListener('error', e => {
           }
           div.querySelector('.legend-meta').innerHTML = `<span>منبع: ${g.source||'—'}</span><span>اعتماد داده: ${g.confidence||'—'}</span>`;
           div.querySelectorAll('.swatches li').forEach(li=>{
-            li.onclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
-            li.ondblclick = ()=> onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
+            li.onclick = ()=>{
+              div.querySelectorAll('.swatches li').forEach(x=>x.classList.remove('active'));
+              li.classList.add('active');
+              onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max});
+            };
+            li.ondblclick = ()=>{
+              div.querySelectorAll('.swatches li').forEach(x=>x.classList.remove('active'));
+              li.classList.add('active');
+              onFilter?.(g.key, {min:+li.dataset.min, max:+li.dataset.max, isolate:true});
+            };
           });
         }
         return {
           el: div,
           set(newGroups, filterCb){
             groups = newGroups; onFilter = filterCb; renderTabs(); activate(groups[0]?.key);
+          },
+          reset(){
+            div.querySelectorAll('.swatches li').forEach(li=>li.classList.remove('active'));
+            groups.forEach(g=> onFilter?.(g.key, null));
           }
         };
       }
@@ -831,10 +843,11 @@ window.addEventListener('error', e => {
       function hideInfo(){ if(infoCtl._div){ infoCtl._div.style.display='none'; infoCtl._div.innerHTML=''; } }
 
     if(tabs.length){
-        function filterLayer(layer, get, {min,max,isolate}) {
+        function filterLayer(layer, get, range) {
           layer?.eachLayer?.(l=>{
-            const v = get(l); const inRange = (v>=min && v<=max);
-            l.setStyle?.({ fillOpacity: isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
+            if(!range){ layer.resetStyle?.(l); return; }
+            const v = get(l); const inRange = (v>=range.min && v<=range.max);
+            l.setStyle?.({ fillOpacity: range.isolate ? (inRange?0.75:0.05) : (inRange?0.6:0.25), opacity:1 });
           });
         }
         legend.set(tabs, (key,range)=>{
@@ -1152,6 +1165,36 @@ window.addEventListener('error', e => {
             break;
         }
       }
-    applyMode();
-  })();
+
+      function resetAll(){
+        if(boundary?.getBounds) map.fitBounds(boundary.getBounds(), {padding:[12,12]});
+        else map.setView([36.3,59.6],7);
+
+        currentMode = 'owner';
+        localStorage.setItem('ama-mode', currentMode);
+        const modeDiv = ctl.getContainer ? ctl.getContainer() : null;
+        modeDiv?.querySelectorAll('.chip').forEach(b=>b.classList.toggle('active', b.dataset.mode==='owner'));
+        applyMode();
+
+        legend?.reset?.();
+        searchLayer?.clearLayers?.();
+        currentSort.key='P0'; currentSort.dir='desc';
+        window.__AMA_renderTop10?.();
+      }
+
+      const resetCtl = L.control({position:'bottomleft'});
+      resetCtl.onAdd = function(){
+        const div = L.DomUtil.create('div');
+        const btn = L.DomUtil.create('button','ama-reset',div);
+        btn.type='button';
+        btn.title='بازنشانی نمای نقشه و لایه‌ها';
+        btn.textContent='↺ پیش‌فرض';
+        btn.setAttribute('aria-label','بازنشانی نمای نقشه و لایه‌ها');
+        btn.addEventListener('click', e=>{e.preventDefault(); resetAll();});
+        btn.addEventListener('keydown', e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); resetAll();}});
+        return div;
+      };
+      resetCtl.addTo(map);
+      applyMode();
+    })();
 })();
