@@ -21,14 +21,14 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
 window.addEventListener('unhandledrejection', e => {
   const msg = e?.reason?.message || e?.reason || '';
   if (/message channel closed/i.test(String(msg))) {
-    console.warn('[ama-ignore-ext]', msg);
+    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
     e.preventDefault();
   }
 });
 window.addEventListener('error', e => {
   const msg = e?.message || e?.error?.message || '';
   if (/message channel closed/i.test(String(msg))) {
-    console.warn('[ama-ignore-ext]', msg);
+    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
     e.preventDefault();
   }
 });
@@ -101,8 +101,14 @@ window.addEventListener('error', e => {
     const candidates = resolveCandidates(name, kind);
     for (const url of candidates) {
       try {
-        const h = await fetch(url, { method:'HEAD', cache:'no-store' });
-        if (!h.ok) continue;
+        let ok = true;
+        if (window.AMA_DEBUG) {
+          try {
+            const h = await fetch(url, { method:'HEAD', cache:'no-store' });
+            ok = h.ok;
+          } catch (e) { ok = false; }
+        }
+        if (!ok) continue;
         const r = await fetch(url, { cache:'no-cache' });
         if (r.ok) { if (window.AMA_DEBUG) console.log('[ama-probe] GET', url, r.status); return r.json(); }
       } catch (e) {
@@ -217,9 +223,11 @@ window.addEventListener('error', e => {
       console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
     }
 
-    console.groupCollapsed('AMA · RCA');
-    console.table(rows);
-    console.groupEnd();
+    if (window.AMA_DEBUG) {
+      console.groupCollapsed('AMA · RCA');
+      console.table(rows);
+      console.groupEnd();
+    }
 
     return {
       rows,
@@ -256,12 +264,12 @@ window.addEventListener('error', e => {
       window.__LAYER_MANIFEST = set;
       __LAYER_MANIFEST = set;
       if (set.size) {
-        console.log('[ama-data] manifest loaded with', set.size, 'files');
+        if (window.AMA_DEBUG) console.log('[ama-data] manifest loaded with', set.size, 'files');
       } else {
-        console.warn('[ama-data] no manifest.files; will skip optional layers.');
+        if (window.AMA_DEBUG) console.warn('[ama-data] no manifest.files; will skip optional layers.');
       }
     } catch(e) {
-      console.warn('[ama-data] manifest not found; will skip optional layers.');
+      if (window.AMA_DEBUG) console.warn('[ama-data] manifest not found; will skip optional layers.');
       set = new Set();
       window.__LAYER_MANIFEST = set;
       __LAYER_MANIFEST = set;
@@ -277,6 +285,7 @@ window.addEventListener('error', e => {
   await loadLayerManifest();
 
   window.__dumpAmaState = function(){
+    if (!window.AMA_DEBUG) return;
     const manifest = Array.from(window.__LAYER_MANIFEST || []);
     const scriptEl = document.querySelector('script[type="module"][src*="amaayesh-map"]') || document.currentScript;
     const scriptSrc = scriptEl ? scriptEl.src : '';
@@ -301,12 +310,12 @@ window.addEventListener('error', e => {
   // load a GeoJSON file only if manifest allows it
   async function optionalGeoJSONFile(file, opts = {}) {
     if (!inManifest(file)) {
-      console.info('[ama-layer] skip (not in manifest):', file);
+      if (window.AMA_DEBUG) console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
     const geo = await fetchJSONWithFallback(file, { kind:'data' });
     if (!geo?.features?.length) {
-      console.warn('[ama-layer] missing or empty:', file);
+      if (window.AMA_DEBUG) console.warn('[ama-layer] missing or empty:', file);
       return null;
     }
     return L.geoJSON(geo, opts);
@@ -320,7 +329,7 @@ window.addEventListener('error', e => {
       if (j) return j;
     }
     if (layerKey) disableLayerToggle(layerKey);
-    console.info('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
+    if (window.AMA_DEBUG) console.info('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
     return null;
   }
 
@@ -577,7 +586,7 @@ window.addEventListener('error', e => {
       // counties
       if (inManifest('counties.geojson')) {
         const polysFC = await fetchJSONWithFallback('counties.geojson', { kind:'data' });
-        console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
+        if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
           // join with wind weights CSV
@@ -709,7 +718,7 @@ window.addEventListener('error', e => {
       // wind sites
       if (inManifest('wind_sites.geojson')) {
         const windSitesFC = await fetchJSONWithFallback('wind_sites.geojson', { kind:'data' });
-        console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
+        if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
           const pointToLayer = (f, latlng) => {
@@ -953,6 +962,7 @@ window.addEventListener('error', e => {
         if(current !== desired) setLegendPosition(desired);
       }
       window.reevaluateLegendPosition = window.reevaluateLegendPosition || reevaluateLegendPosition;
+      window.reEvaluateLegendPosition = window.reEvaluateLegendPosition || window.reevaluateLegendPosition || (() => {});
       const storedPos = localStorage.getItem('ama-legend-pos');
       if(storedPos) legendCtl.setPosition(storedPos);
       {
