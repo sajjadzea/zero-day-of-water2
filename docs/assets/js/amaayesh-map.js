@@ -287,7 +287,7 @@ window.addEventListener('error', e => {
     const windLayer = L.geoJSON(polys, {
       pane:'polygons',
       style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
-                      fillOpacity:0.22, color:'rgba(39,48,63,.85)', weight:.8 }),
+                      fillOpacity:0.35, color:'rgba(39,48,63,.4)', weight:.8 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       }).addTo(map);
     windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
@@ -312,7 +312,7 @@ window.addEventListener('error', e => {
       tabs.push(damsLegendCfg);
     }
 
-    boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
+    boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'rgba(31,41,55,.6)', weight:1.2, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
 
     // === Province focus & toggle ===
@@ -364,7 +364,7 @@ window.addEventListener('error', e => {
             pane: 'polygons',
             style: f => ({
               fillColor: classColors[ +f.properties?.wind_class ] || '#9e9e9e',
-              fillOpacity: 0.22, color:'rgba(39,48,63,.85)', weight:.8
+              fillOpacity: 0.45, color:'rgba(39,48,63,.4)', weight:.8
             }),
             onEachFeature: (f,l)=> l.bindTooltip(
               (f.properties?.county || f.properties?.name || '—'),
@@ -376,7 +376,7 @@ window.addEventListener('error', e => {
           window.windChoroplethLayer = windChoroplethLayer;
 
           if (boundary) map.removeLayer(boundary);
-          boundary = L.geoJSON(polysFC, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
+          boundary = L.geoJSON(polysFC, { pane:'boundary', style:{ color:'rgba(31,41,55,.6)', weight:1.2, fill:false } }).addTo(map);
           map.fitBounds(boundary.getBounds(), { padding:[12,12] });
           map.setMaxBounds(boundary.getBounds().pad(0.25));
           boundary.setStyle({ className: 'neon-edge' });
@@ -386,14 +386,14 @@ window.addEventListener('error', e => {
             l.on('click', ()=>{
               __focused = l;
               window.windChoroplethLayer.eachLayer(x=>{
-                x.setStyle({ fillOpacity:(x===l?0.35:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
+                x.setStyle({ fillOpacity:(x===l?0.65:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
               });
             });
           });
           map.on('click keydown', (e)=>{
             if (e.key && e.key !== 'Escape') return;
             if (__focused){
-              window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.22, color:'rgba(39,48,63,.85)' }));
+              window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.45, color:'rgba(39,48,63,.4)' }));
               __focused = null;
             }
           });
