@@ -1,16 +1,23 @@
-const fs = require('fs');
 const paths = [
-  'docs/amaayesh/layers.config.json',
-  'docs/amaayesh/data/counties.geojson',
-  'docs/amaayesh/data/wind_sites.geojson',
-  'docs/data/amaayesh/khorasan_razavi_combined.geojson'
+  '/amaayesh/layers.config.json',
+  '/data/amaayesh/counties.geojson',
+  '/data/amaayesh/wind_sites.geojson'
 ];
 
-const rows = paths.map(filePath => {
-  const exists = fs.existsSync(filePath);
-  const size = exists ? fs.statSync(filePath).size : 0;
-  const urlExpected = filePath.startsWith('docs/') ? '/' + filePath.slice(5) : '';
-  return { filePath, exists, size, urlExpected };
-});
+const base = process.env.VERIFY_BASE || 'http://localhost:8888';
 
-console.table(rows);
+async function check(url){
+  const full = base.replace(/\/$/, '') + url;
+  try{
+    const res = await fetch(full, { method:'HEAD' });
+    return { url: full, status: res.status, ok: res.ok };
+  }catch(e){
+    return { url: full, status: 'ERR', ok: false };
+  }
+}
+
+(async () => {
+  const rows = [];
+  for(const p of paths){ rows.push(await check(p)); }
+  console.table(rows);
+})();
