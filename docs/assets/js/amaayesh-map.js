@@ -93,7 +93,10 @@ window.addEventListener('error', e => {
           if (!h.ok) { if (window.AMA_DEBUG) console.warn('[ama-probe] HEAD', url, h.status); throw new Error('HEAD not ok'); }
         }
         const r = await fetch(url, { cache:'no-cache' });
-        if (r.ok){ okUrl = url; const json = await r.json();
+        if (r.ok){
+          okUrl = url;
+          window.__AMA_LAST_OK_URL = url;
+          const json = await r.json();
           if (window.AMA_DEBUG) console.log('[ama:data] OK', url);
           return json;
         }
@@ -204,6 +207,7 @@ window.addEventListener('error', e => {
 
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
+  let lastLoadedManifestUrl = null;
 
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
@@ -216,9 +220,11 @@ window.addEventListener('error', e => {
     let set = new Set();
     window.__LAYER_MANIFEST = set;
     __LAYER_MANIFEST = set;
+    lastLoadedManifestUrl = null;
     try {
       // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
       const man = await fetchJSONWithFallback('/amaayesh/layers.config.json');
+      lastLoadedManifestUrl = window.__AMA_LAST_OK_URL || null;
       set = new Set(Array.isArray(man?.files) ? man.files : []);
       window.__LAYER_MANIFEST = set;
       __LAYER_MANIFEST = set;
@@ -232,7 +238,14 @@ window.addEventListener('error', e => {
       set = new Set();
       window.__LAYER_MANIFEST = set;
       __LAYER_MANIFEST = set;
+      if (window.AMA_DEBUG) {
+        console.warn('[ama:rca] manifest not loaded; __LAYER_MANIFEST is', !!window.__LAYER_MANIFEST);
+      }
     }
+    window.__amaManifestSnapshot = {
+      files: Array.from(set || []),
+      origin: lastLoadedManifestUrl
+    };
   }
   await loadLayerManifest();
 
