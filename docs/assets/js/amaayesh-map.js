@@ -24,6 +24,10 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
 
     const map = L.map('map', { preferCanvas:true, zoomControl:true });
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+    // move attribution to bottom-left to avoid colliding with legend
+    if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
+      map.attributionControl.setPosition('bottomleft');
+    }
     map.setView([36.3, 59.6], 7);
 
     if (window.AMA_DEBUG && map) {
@@ -557,7 +561,7 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
         }
       }
       const overlays = Object.fromEntries(overlayEntries.filter(([_, layer]) => !!layer));
-      L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
+      L.control.layers({'OpenStreetMap':base}, overlays, { position:'topleft', collapsed:false }).addTo(map);
       L.control.scale({ metric:true, imperial:false }).addTo(map);
 
       if (L.Control && L.Control.geocoder) {
