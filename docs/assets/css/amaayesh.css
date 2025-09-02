@@ -95,3 +95,8 @@
 
 /* site labels */
 .site-label{background:transparent;border:none;color:#e5e7eb;font-size:12px;text-shadow:0 0 2px #000;}
+
+.ama-dock { display:flex; flex-direction:column; gap:8px; background:#0b1220cc; padding:10px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25); }
+.ama-dock .btn { width:44px; height:44px; border-radius:10px; background:#111827; color:#e5e7eb; border:1px solid #374151; font-size:18px; display:grid; place-items:center; cursor:pointer; }
+.ama-dock .btn:hover { background:#1f2937; }
+.ama-dock .btn:active { transform: translateY(1px); }
