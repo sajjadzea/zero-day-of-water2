@@ -1,4 +1,5 @@
-(function(){
+// (IIFE wrapper) — must be async to allow top-level await inside
+(async function(){
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
 
   const map = L.map('map', { preferCanvas:true, zoomControl:true });
@@ -9,14 +10,15 @@
   let boundary;
 
   // === AMAAYESH DATA LOADER (path-robust) ===
-  const AMA_DATA_BASE = "/data/"; // سایتت ریشه‌اش docs/ است، پس /data/ درست است
+  const AMA_DATA_BASE = "/data/";
   async function fetchJSONWithFallback(name) {
     const candidates = [
-      name.startsWith("/") ? name : AMA_DATA_BASE + name,           // ✅ اول از ریشه /data/
-      name,                                                         // هرچه کد قبلی داده (نسبی)
+      name.startsWith("/") ? name : AMA_DATA_BASE + name, // /data/first
+      name,                                               // as given
       "./" + name,
       "../data/" + name,
-      "/amaayesh/data/" + name                                      // آخرین شانس (قدیمی)
+      "/amaayesh/" + name,                                // ✅ manifest or assets under /amaayesh
+      "/amaayesh/data/" + name                            // legacy fallback
     ];
     for (const url of candidates) {
       try {
@@ -39,7 +41,8 @@
   async function loadLayerManifest() {
     __LAYER_MANIFEST = null;
     try {
-      const man = await fetchJSONWithFallback('layers.config.json');
+      // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
+      const man = await fetchJSONWithFallback('amaayesh/layers.config.json');
       if (man && Array.isArray(man.files)) {
         __LAYER_MANIFEST = new Set(man.files);
         console.log('[ama-data] manifest loaded with', __LAYER_MANIFEST.size, 'files');
