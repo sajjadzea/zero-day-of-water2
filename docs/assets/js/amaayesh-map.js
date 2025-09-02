@@ -61,13 +61,8 @@
 
   (async () => {
     const cfg = await loadJSON('../layers.config.json');
-    const combinedPath = cfg?.baseData?.combined;
-
-    if(!combinedPath){ return; }
-
-    const combinedRel = combinedPath.replace(/^\//,'').replace(/^data\//,'');
-    const combined = await loadJSON(combinedRel, { layerKey:'province' });
-    if(!combined || !Array.isArray(combined.features) || combined.features.length===0){ return; }
+    const combined = await fetchJSONWithFallback('amaayesh/khorasan_razavi_combined.geojson');
+    if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
     const damsRel = damsPath ? damsPath.replace(/^\//,'').replace(/^data\//,'') : null;
