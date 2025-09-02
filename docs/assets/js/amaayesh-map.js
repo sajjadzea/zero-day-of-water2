@@ -315,6 +315,28 @@
       }
     }
 
+    // after windSitesLayer and windChoroplethLayer creation
+    const Z_SITES_ON   = 9;
+    const Z_LABELS_ON  = 12;
+
+    function syncZoomVisibility(){
+      const z = map.getZoom();
+      // sites
+      if (window.windSitesLayer) {
+        if (z >= Z_SITES_ON) { if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer); }
+        else                 { if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer); }
+      }
+      // tooltips/popups density
+      if (window.windChoroplethLayer) {
+        window.windChoroplethLayer.eachLayer(l=>{
+          if (z >= Z_LABELS_ON) l.bindTooltip?.(l.getTooltip()?.getContent?.() || (l.feature?.properties?.county||""), {sticky:true});
+          else l.unbindTooltip?.();
+        });
+      }
+    }
+    map.on('zoomend', syncZoomVisibility);
+    syncZoomVisibility();
+
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     const electricityLinesLayer = await optionalGeoJSONFile('amaayesh/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
     const waterMainsLayer      = await optionalGeoJSONFile('amaayesh/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
