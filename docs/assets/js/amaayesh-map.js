@@ -620,6 +620,11 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
     window.__AMA__windSitesFC = windSitesGeo || {};
     window.__AMA__boundary = boundary || null;
     __amaHealthReport(map);
+    map.on('layeradd', e => {
+      if (e.layer === boundary || e.layer === window.windSitesLayer || e.layer === window.windChoroplethLayer) {
+        __amaHealthReport(map);
+      }
+    });
 
     document.getElementById('info').innerHTML = missing.length
       ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
@@ -640,6 +645,7 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
     try { h.zoom = mapCtx ? mapCtx.getZoom() : null; } catch(_) { h.zoom = null; }
     console.group('%cAMA · Health','color:#0bf'); console.table(h); console.groupEnd();
   }
+  window.__amaHealthReport = __amaHealthReport;
 
   // === Persona mode chips (owner/edu/invest/ind) ===
   (function(){
