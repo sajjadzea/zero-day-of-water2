@@ -380,6 +380,34 @@
     const gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
     const oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
 
+    // Infra drawer control
+    const infraCtl = L.control({position:'topleft'});
+    infraCtl.onAdd = function(){
+      const d = L.DomUtil.create('div','ama-infra');
+      d.innerHTML = `
+        <button class="chip" id="btn-infra">زیرساخت ▾</button>
+        <div id="infra-box" class="box" style="display:none">
+          <label><input type="checkbox" data-layer="electricity"> خطوط انتقال برق</label>
+          <label><input type="checkbox" data-layer="water"> شبکه آب‌رسانی</label>
+          <label><input type="checkbox" data-layer="gas"> خطوط انتقال گاز</label>
+          <label><input type="checkbox" data-layer="oil"> خطوط لوله نفت</label>
+        </div>`;
+      L.DomEvent.disableClickPropagation(d);
+      d.querySelector('#btn-infra').onclick = ()=> {
+        const el = d.querySelector('#infra-box');
+        el.style.display = (el.style.display==='none'?'block':'none');
+      };
+      d.querySelectorAll('input[type=checkbox]').forEach(ch=>{
+        ch.addEventListener('change', ()=>{
+          const LAY = { electricity:electricityLinesLayer, water:waterMainsLayer, gas:gasTransmissionLayer, oil:oilPipelinesLayer }[ch.dataset.layer];
+          if (!LAY) return;
+          if (ch.checked) map.addLayer(LAY); else map.removeLayer(LAY);
+        });
+      });
+      return d;
+    };
+    infraCtl.addTo(map);
+
       // ===== LegendDock =====
       function LegendDock(){
         const div = L.DomUtil.create('div','legend-dock'); div.dir='rtl';
@@ -467,10 +495,6 @@
         ['کلاس بادی (Choropleth)', window.windChoroplethLayer ?? (typeof windLayer!=='undefined'? windLayer : null)],
         ['سایت‌های بادی (برآوردی)', window.windSitesLayer],
         ['سدها', damsLayer],
-        ['خطوط انتقال برق', electricityLinesLayer],
-        ['شبکه آبرسانی', waterMainsLayer],
-        ['خطوط انتقال گاز', gasTransmissionLayer],
-        ['خطوط لوله نفت', oilPipelinesLayer],
         ['شهرها/نقاط', pointLayer],
       ];
       const missing = [];
@@ -506,7 +530,7 @@
       }
 
       // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
-      const gasLayer = overlays['خطوط انتقال گاز'];
+      const gasLayer = gasTransmissionLayer;
       const gasEffects = L.layerGroup();
       if (gasLayer) {
         const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } });
@@ -536,8 +560,8 @@
       }
 
       if (map.hasLayer(gasLayer)) gasEffects.addTo(map);
-      map.on('overlayadd', e => { if (e.layer === gasLayer) gasEffects.addTo(map); });
-      map.on('overlayremove', e => { if (e.layer === gasLayer) map.removeLayer(gasEffects); });
+      map.on('layeradd', e => { if (e.layer === gasLayer) gasEffects.addTo(map); });
+      map.on('layerremove', e => { if (e.layer === gasLayer) map.removeLayer(gasEffects); });
     }
 
     document.getElementById('info').innerHTML = missing.length
