@@ -46,6 +46,20 @@
     }
   }
 
+  // helper: robust JSON loader (tries /data, ./data, ../data)
+  async function loadJSONSmart(name){
+    const candidates = [
+      name.startsWith('/data/') ? name : `/data/${name}`,
+      name.startsWith('./data/') ? name : `./data/${name}`,
+      new URL(`../data/${name}`, location).toString()
+    ];
+    for (const url of candidates){
+      try { const r = await fetch(url); if (r.ok) return r.json(); } catch(e){}
+    }
+    console.warn('[amaayesh] cannot load', name);
+    return null;
+  }
+
   // لایه‌ها در پن‌های جدا برای کنترل z-index
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
@@ -126,6 +140,8 @@
     tabs.push(windLegendCfg);
 
     let damsLayer = null;
+    let windChoroplethLayer = null;
+    let windSitesLayer = null;
     if(damsGeojson){
       const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
       const rByMCM = v => Math.max(6, Math.sqrt(v||1)/2);
@@ -144,6 +160,61 @@
 
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+
+    // === WIND: load computed datasets (counties.geojson + wind_sites.geojson) ===
+    {
+      const classColors = {1:'#bdbdbd', 2:'#f6c945', 3:'#29cc7a'};
+      const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
+      const radiusFromMW = mw => Math.max(6, 1.8*Math.sqrt(Math.max(0, mw||0)));
+
+      const countiesGeo = await loadJSONSmart('counties.geojson');
+      const windSitesGeo = await loadJSONSmart('wind_sites.geojson');
+
+      if (countiesGeo?.features?.length){
+        windChoroplethLayer = L.geoJSON(countiesGeo, {
+          pane: 'polygons',
+          style: f => ({
+            fillColor: classColors[ +f.properties?.wind_class ] || '#9e9e9e',
+            fillOpacity: 0.30, color:'#0a0a0a', weight:1
+          }),
+          onEachFeature: (f,l)=> l.bindTooltip(
+            (f.properties?.county || f.properties?.name || '—'),
+            {sticky:true, direction:'auto', className:'label'}
+          )
+        }).addTo(map);
+        windChoroplethLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class);
+        map.removeLayer(windLayer);
+      }
+
+      if (windSitesGeo?.features?.length){
+        windSitesLayer = L.geoJSON(windSitesGeo, {
+          pane: 'points',
+          pointToLayer: (f, latlng) => {
+            const p = f.properties || {};
+            const low = (p.quality === 'low');
+            return L.circleMarker(latlng, {
+              radius: radiusFromMW(p.capacity_mw_est),
+              weight: 1.5, color:'#111827', opacity:1,
+              fillColor:'#111827', fillOpacity:.85,
+              dashArray: low ? '2 4' : null
+            });
+          },
+          onEachFeature: (f, layer) => {
+            const p = f.properties || {};
+            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+            layer.bindPopup(`
+          <div dir="rtl" style="min-width:220px">
+            <div style="font-weight:700">${p.name_fa || '—'}</div>
+            <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
+            <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
+            <div>کیفیت مختصات: ${p.quality || '—'}</div>
+            <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
+          </div>
+        `, {maxWidth: 320});
+          }
+        }).addTo(map);
+      }
+    }
 
       // ===== LegendDock =====
       function LegendDock(){
@@ -211,7 +282,7 @@
         }
         legend.set(tabs, (key,range)=>{
           if(key==='solar') filterLayer(solarLayer, l=>l.feature.properties.__legend_value, range);
-          if(key==='wind')  filterLayer(windLayer,  l=>l.feature.properties.__legend_value, range);
+          if(key==='wind')  filterLayer(windChoroplethLayer || windLayer,  l=>l.feature.properties.__legend_value, range);
           if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
         });
       }
@@ -269,7 +340,12 @@
       onEachFeature: (f,l)=> l.bindPopup(`<b>${labelFa(f.properties)}</b>`)
       }).addTo(map);
 
-      const overlays = { 'مرز شهرستان‌ها': boundary, 'ظرفیت تجمیعی خورشیدی': solarLayer, 'کلاس بادی': windLayer };
+      const overlays = {
+        'مرز شهرستان‌ها': boundary,
+        'ظرفیت تجمیعی خورشیدی': solarLayer,
+        'کلاس بادی (Choropleth)': windChoroplethLayer || windLayer
+      };
+      if (windSitesLayer) overlays['سایت‌های بادی (برآوردی)'] = windSitesLayer;
       if (damsLayer) overlays['سدها'] = damsLayer;
       overlays['شهرها/نقاط'] = pointLayer;
     const missing = [];
