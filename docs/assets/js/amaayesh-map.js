@@ -161,6 +161,36 @@
     const boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
     map.fitBounds(boundary.getBounds(), { padding:[12,12] });
 
+    // === Province focus & toggle ===
+    map.setMaxBounds(boundary.getBounds().pad(0.25));
+    boundary.setStyle({ className: 'neon-edge' });
+
+    (function(){
+      const ctl = L.control({position:"topleft"});
+      ctl.onAdd = function() {
+        const div = L.DomUtil.create("div","ama-modes");
+        div.innerHTML = `
+          <button class="chip active" id="btn-prov">استان</button>
+          <button class="chip" id="btn-nat">کشور</button>`;
+        L.DomEvent.disableClickPropagation(div);
+        const toProv = ()=>{
+          map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+          map.setMaxBounds(boundary.getBounds().pad(0.25));
+          div.querySelector("#btn-prov").classList.add("active");
+          div.querySelector("#btn-nat").classList.remove("active");
+        };
+        const toNat = ()=>{
+          map.setMaxBounds(null);
+          div.querySelector("#btn-nat").classList.add("active");
+          div.querySelector("#btn-prov").classList.remove("active");
+        };
+        div.querySelector("#btn-prov").addEventListener("click", toProv);
+        div.querySelector("#btn-nat").addEventListener("click", toNat);
+        return div;
+      };
+      ctl.addTo(map);
+    })();
+
     // === WIND: load computed datasets (counties.geojson + wind_sites.geojson) ===
     {
       const classColors = {1:'#bdbdbd', 2:'#f6c945', 3:'#29cc7a'};
@@ -273,7 +303,7 @@
       legendCtl.onAdd = ()=> legend.el;
       legendCtl.addTo(map);
 
-      if(tabs.length){
+    if(tabs.length){
         function filterLayer(layer, get, {min,max,isolate}) {
           layer?.eachLayer?.(l=>{
             const v = get(l); const inRange = (v>=min && v<=max);
@@ -286,49 +316,6 @@
           if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
         });
       }
-    // --- Province focus (mask outside province) ---
-    let maskLayer = null;
-    const provinceBounds = boundary.getBounds();
-    // keep user inside province by default
-    map.setMaxBounds(provinceBounds.pad(0.25));
-
-    // --- Focus helpers ---
-    function focusOnProvince(){
-      if(maskLayer && !map.hasLayer(maskLayer)) map.addLayer(maskLayer);
-      map.setMaxBounds(provinceBounds.pad(0.25));
-      map.fitBounds(provinceBounds, { padding:[12,12] });
-    }
-    function showNationalContext(){
-      if(maskLayer && map.hasLayer(maskLayer)) map.removeLayer(maskLayer);
-      map.setMaxBounds(null);
-    }
-
-    // Build a world polygon with holes = county rings (province union as holes)
-    const worldRing = [[-180,-85],[-180,85],[180,85],[180,-85],[-180,-85]];
-    const holes = [];
-    polys.features.forEach(f=>{
-      const g = f.geometry;
-      if(!g) return;
-      if(g.type==='Polygon') holes.push(g.coordinates[0]);
-      if(g.type==='MultiPolygon') g.coordinates.forEach(r=>holes.push(r[0]));
-    });
-    const maskFeature = { type:'Feature', geometry:{ type:'Polygon', coordinates:[worldRing, ...holes] } };
-
-    // own pane so it sits above basemap and below boundaries
-    map.createPane('mask'); map.getPane('mask').style.zIndex = 350;
-    maskLayer = L.geoJSON(maskFeature, {
-      pane:'mask', interactive:false,
-      style:{ fillColor:'#0a0f1c', fillOpacity:0.55, stroke:false }
-    }).addTo(map);
-
-    // glow/halo on province edge for a modern feel
-    boundary.setStyle({ color:'#00e5ff', weight:2.6, fill:false, className:'neon-edge' });
-    (function(){
-      const s = document.createElement('style');
-      s.textContent = `.neon-edge{filter:drop-shadow(0 0 6px rgba(0,229,255,.55))}`;
-      document.head.appendChild(s);
-    })();
-    map.on('zoomend', ()=> boundary.setStyle({ weight: map.getZoom()>=10 ? 3.2 : 2.4 }));
 
       const pointLayer = L.geoJSON(points, {
       pane:'points',
@@ -359,54 +346,29 @@
     L.control.layers({'OpenStreetMap':base}, overlays, {collapsed:false}).addTo(map);
     L.control.scale({ metric:true, imperial:false }).addTo(map);
 
-    if (L.Control && L.Control.geocoder) {
-      const geocoder = L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
-      geocoder.on('markgeocode', e => {
-        const center = e.geocode.center;
-        const name = e.geocode.name;
-        searchLayer.clearLayers();
-        searchLayer.addLayer(L.circleMarker(center, {
-          radius: 7, color: '#22d3ee', weight: 2, fillColor: '#22d3ee', fillOpacity: 1
-        }).bindTooltip(name, {direction:'top', offset:[0,-10]}));
-        if (e.geocode.bbox) {
-          map.fitBounds(e.geocode.bbox);
-        } else {
-          map.setView(center, 14);
-        }
-      });
-    }
+      if (L.Control && L.Control.geocoder) {
+        const geocoder = L.Control.geocoder({ defaultMarkGeocode:false }).addTo(map);
+        geocoder.on('markgeocode', e => {
+          const center = e.geocode.center;
+          const name = e.geocode.name;
+          searchLayer.clearLayers();
+          searchLayer.addLayer(L.circleMarker(center, {
+            radius: 7, color: '#22d3ee', weight: 2, fillColor: '#22d3ee', fillOpacity: 1
+          }).bindTooltip(name, {direction:'top', offset:[0,-10]}));
+          if (e.geocode.bbox) {
+            map.fitBounds(e.geocode.bbox);
+          } else {
+            map.setView(center, 14);
+          }
+        });
+      }
 
-    // --- UI control (Leaflet bar) ---
-    const focusCtl = L.control({ position:'topleft' });
-    focusCtl.onAdd = function(){
-      const div = L.DomUtil.create('div','leaflet-bar');
-      div.style.direction = 'rtl';
-      div.innerHTML = `
-        <a href="#" title="استان‌محور" id="btn-focus-on" style="padding:0 8px">استان</a>
-        <a href="#" title="زمینه کشور" id="btn-focus-off" style="padding:0 8px;border-top:1px solid #ccc">کشور</a>
-      `;
-      // prevent map drag/zoom on click
-      L.DomEvent.disableClickPropagation(div);
-      L.DomEvent.on(div.querySelector('#btn-focus-on'),'click',(e)=>{ e.preventDefault(); focusOnProvince(); });
-      L.DomEvent.on(div.querySelector('#btn-focus-off'),'click',(e)=>{ e.preventDefault(); showNationalContext(); });
-      return div;
-    };
-    focusCtl.addTo(map);
-
-    // default: province focus
-    focusOnProvince();
-
-    document.addEventListener('keydown', (e)=>{
-      if(e.key==='1') focusOnProvince();
-      if(e.key==='2') showNationalContext();
-    });
-
-    // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
-    const gasLayer = overlays['گاز'];
-    const gasEffects = L.layerGroup();
-    if (gasLayer) {
-      const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } });
-      gasEffects.addLayer(halo);
+      // اگر لایه گاز موجود است، جلوه‌های اضافه اعمال شود
+      const gasLayer = overlays['گاز'];
+      const gasEffects = L.layerGroup();
+      if (gasLayer) {
+        const halo = L.geoJSON(gasLayer.toGeoJSON(), { style:{ color:'#ffe0d6', weight:8, opacity:1 } });
+        gasEffects.addLayer(halo);
       gasLayer.bringToFront();
 
       if (L && L.polylineDecorator && L.Symbol && L.Symbol.arrowHead) {
