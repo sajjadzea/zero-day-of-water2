@@ -269,45 +269,105 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-      const countiesGeo = inManifest('data/counties.geojson')
-        ? await fetchJSONWithFallback('data/counties.geojson')
-        : null;
-      const windSitesGeo = inManifest('data/wind_sites.geojson')
-        ? await fetchJSONWithFallback('data/wind_sites.geojson')
-        : null;
+      let countiesGeo = null;
+      let windSitesGeo = null;
 
-      if (countiesGeo?.features?.length){
-        windChoroplethLayer = L.geoJSON(countiesGeo, {
-          pane: 'polygons',
-          style: f => ({
-            fillColor: classColors[ +f.properties?.wind_class ] || '#9e9e9e',
-            fillOpacity: 0.22, color:'rgba(39,48,63,.85)', weight:.8
-          }),
-          onEachFeature: (f,l)=> l.bindTooltip(
-            (f.properties?.county || f.properties?.name || '—'),
-            {sticky:true, direction:'auto', className:'label'}
-          )
-        }).addTo(map);
-        windChoroplethLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class);
-        map.removeLayer(windLayer);
-        window.windChoroplethLayer = windChoroplethLayer;
+      // counties
+      if (inManifest('data/counties.geojson')) {
+        const polysFC = await fetchJSONWithFallback('data/counties.geojson');
+        console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
+        countiesGeo = polysFC;
+        if (polysFC?.features?.length) {
+          windChoroplethLayer = L.geoJSON(polysFC, {
+            pane: 'polygons',
+            style: f => ({
+              fillColor: classColors[ +f.properties?.wind_class ] || '#9e9e9e',
+              fillOpacity: 0.22, color:'rgba(39,48,63,.85)', weight:.8
+            }),
+            onEachFeature: (f,l)=> l.bindTooltip(
+              (f.properties?.county || f.properties?.name || '—'),
+              {sticky:true, direction:'auto', className:'label'}
+            )
+          }).addTo(map);
+          windChoroplethLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class);
+          map.removeLayer(windLayer);
+          window.windChoroplethLayer = windChoroplethLayer;
 
-        let __focused = null;
-        window.windChoroplethLayer.eachLayer(l=>{
-          l.on('click', ()=>{
-            __focused = l;
-            window.windChoroplethLayer.eachLayer(x=>{
-              x.setStyle({ fillOpacity:(x===l?0.35:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
+          if (boundary) map.removeLayer(boundary);
+          boundary = L.geoJSON(polysFC, { pane:'boundary', style:{ color:'#111827', weight:2.4, fill:false } }).addTo(map);
+          map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+          map.setMaxBounds(boundary.getBounds().pad(0.25));
+          boundary.setStyle({ className: 'neon-edge' });
+
+          let __focused = null;
+          window.windChoroplethLayer.eachLayer(l=>{
+            l.on('click', ()=>{
+              __focused = l;
+              window.windChoroplethLayer.eachLayer(x=>{
+                x.setStyle({ fillOpacity:(x===l?0.35:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
+              });
             });
           });
-        });
-        map.on('click keydown', (e)=>{
-          if (e.key && e.key !== 'Escape') return;
-          if (__focused){
-            window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.22, color:'rgba(39,48,63,.85)' }));
-            __focused = null;
+          map.on('click keydown', (e)=>{
+            if (e.key && e.key !== 'Escape') return;
+            if (__focused){
+              window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.22, color:'rgba(39,48,63,.85)' }));
+              __focused = null;
+            }
+          });
+        }
+      }
+
+      // wind sites
+      if (inManifest('data/wind_sites.geojson')) {
+        const windSitesFC = await fetchJSONWithFallback('data/wind_sites.geojson');
+        console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
+        windSitesGeo = windSitesFC;
+        if (windSitesFC?.features?.length) {
+          const pointToLayer = (f, latlng) => {
+            const p = f.properties || {};
+            const low = (p.quality === 'low');
+            return L.circleMarker(latlng, {
+              radius: radiusFromMW(p.capacity_mw_est),
+              weight: 1.5, color:'#111827', opacity:1,
+              fillColor:'#111827', fillOpacity:.85,
+              dashArray: low ? '2 4' : null
+            });
+          };
+          const onEachFeature = (f, layer) => {
+            const p = f.properties || {};
+            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+            layer.bindPopup(
+`<div dir="rtl" style="min-width:220px">
+            <div style="font-weight:700">${p.name_fa || '—'}</div>
+            <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
+            <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
+            <div>کیفیت مختصات: ${p.quality || '—'}</div>
+            <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
+          </div>`, {maxWidth: 320});
+          };
+
+          windSitesLayer = L.geoJSON(windSitesFC, {
+            pane: 'points',
+            pointToLayer,
+            onEachFeature
+          });
+          window.windSitesLayer = windSitesLayer;
+
+          const Z_SITES_ON = 9;
+          function syncZoomVisibility(){
+            const z = map.getZoom();
+            if (window.windSitesLayer) {
+              if (z >= Z_SITES_ON) {
+                if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
+              } else {
+                if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+              }
+            }
           }
-        });
+          map.on('zoomend', syncZoomVisibility);
+          syncZoomVisibility();
+        }
       }
 
       // === Top-10 panel (by P0) ===
@@ -350,52 +410,6 @@ if (window.AMA_DEBUG && typeof window.fetch === 'function') {
 
       window.__AMA_topPanel.addTo(map);
       window.__AMA_renderTop10();
-
-      if (windSitesGeo?.features?.length){
-        const pointToLayer = (f, latlng) => {
-          const p = f.properties || {};
-          const low = (p.quality === 'low');
-          return L.circleMarker(latlng, {
-            radius: radiusFromMW(p.capacity_mw_est),
-            weight: 1.5, color:'#111827', opacity:1,
-            fillColor:'#111827', fillOpacity:.85,
-            dashArray: low ? '2 4' : null
-          });
-        };
-        const onEachFeature = (f, layer) => {
-          const p = f.properties || {};
-          const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-          layer.bindPopup(
-`<div dir="rtl" style="min-width:220px">
-            <div style="font-weight:700">${p.name_fa || '—'}</div>
-            <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
-            <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
-            <div>کیفیت مختصات: ${p.quality || '—'}</div>
-            <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
-          </div>`, {maxWidth: 320});
-        };
-
-        windSitesLayer = L.geoJSON(windSitesGeo, {
-          pane: 'points',
-          pointToLayer,
-          onEachFeature
-        });
-        window.windSitesLayer = windSitesLayer;
-
-        const Z_SITES_ON = 9;
-        function syncZoomVisibility(){
-          const z = map.getZoom();
-          if (window.windSitesLayer) {
-            if (z >= Z_SITES_ON) {
-              if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
-            } else {
-              if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
-            }
-          }
-        }
-        map.on('zoomend', syncZoomVisibility);
-        syncZoomVisibility();
-      }
     }
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
