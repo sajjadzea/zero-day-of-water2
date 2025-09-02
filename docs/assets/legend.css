@@ -74,3 +74,19 @@
   .ama-modes .chip { background:#0b1220; border-color:#1f2937; color:#e5e7eb; }
 }
 
+/* Top-10 panel */
+.ama-panel { width: 290px; max-height: 320px; overflow:auto; background: rgba(255,255,255,.95);
+  border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.15); direction: rtl; }
+.ama-panel-hd { font-weight:700; padding:10px 12px; border-bottom:1px solid #e5e7eb; }
+.ama-panel-bd { padding: 8px; }
+#ama-top10 .ama-row { display:grid; grid-template-columns: 28px 1fr auto auto auto; gap:8px; align-items:center;
+  padding:6px 8px; border-radius:10px; cursor:pointer; }
+#ama-top10 .ama-row:hover { background:#f3f4f6; }
+#ama-top10 .c { font-weight:700; text-align:center; }
+#ama-top10 .n { font-weight:600; }
+#ama-top10 .m, #ama-top10 .h, #ama-top10 .s { font-variant-numeric: tabular-nums; font-size:12px; opacity:.9; }
+@media (prefers-color-scheme: dark){
+  .ama-panel { background:#0f172a; color:#e5e7eb; border-color:#1f2937; }
+  #ama-top10 .ama-row:hover { background:#111827; }
+}
+
