@@ -43,11 +43,26 @@
 .leaflet-top.leaflet-left,
 .leaflet-bottom.leaflet-left{align-items:flex-start}
 
+
+/* === KPI switcher === */
+.ama-kpi-switch{background:rgba(10,15,28,.88);color:#fff;padding:8px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;gap:6px}
+.ama-kpi-switch label{display:flex;align-items:center;position:relative}
+.ama-kpi-switch input{position:absolute;opacity:0}
+.ama-kpi-switch .chip{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:10px;padding:6px 10px;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.ama-kpi-switch input:checked+.chip{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
+
 /* === Sidepanel === */
-#ama-sidepanel{position:fixed;top:0;bottom:0;right:-380px;max-width:360px;width:100%;background:rgba(17,24,39,.97);color:#e5e7eb;z-index:1000;padding:20px;overflow-y:auto;transition:right .3s ease;box-shadow:-4px 0 20px rgba(0,0,0,.4);}
-#ama-sidepanel.open{right:0;}
-#ama-sidepanel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-#ama-sidepanel .close-btn{cursor:pointer;font-size:20px;line-height:1;}
+.ama-sidepanel{position:fixed;right:16px;top:96px;bottom:16px;max-width:360px;width:calc(100% - 32px);background:rgba(17,24,39,.97);color:#e5e7eb;z-index:1000;padding:20px;overflow:auto;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.4);display:none}
+.ama-sidepanel.open{display:block}
+.ama-sidepanel header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ama-sidepanel .close-btn{cursor:pointer;font-size:20px;line-height:1}
+.ama-sidepanel .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.ama-sidepanel ul.sp-sites{list-style:none;margin:4px 0;padding:0}
+.ama-sidepanel ul.sp-sites li{margin-bottom:6px}
+.ama-sidepanel ul.sp-sites li button{margin-top:4px}
+
+/* Legend warning */
+.ama-legend-warning{background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:6px;font-size:12px;margin-top:6px;text-align:center}
 
 /* === Top-10 panel === */
 .ama-panel{background:rgba(10,15,28,.88);color:#fff;padding:10px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:320px;font-size:14px;}
