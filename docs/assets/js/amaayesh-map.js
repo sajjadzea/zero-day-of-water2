@@ -247,6 +247,23 @@
         windChoroplethLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class);
         map.removeLayer(windLayer);
         window.windChoroplethLayer = windChoroplethLayer;
+
+        let __focused = null;
+        window.windChoroplethLayer.eachLayer(l=>{
+          l.on('click', ()=>{
+            __focused = l;
+            window.windChoroplethLayer.eachLayer(x=>{
+              x.setStyle({ fillOpacity:(x===l?0.35:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
+            });
+          });
+        });
+        map.on('click keydown', (e)=>{
+          if (e.key && e.key !== 'Escape') return;
+          if (__focused){
+            window.windChoroplethLayer.eachLayer(x=> x.setStyle({ fillOpacity:0.22, color:'rgba(39,48,63,.85)' }));
+            __focused = null;
+          }
+        });
       }
 
       // === Top-10 panel (by P0) ===
