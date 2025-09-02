@@ -85,47 +85,36 @@ window.addEventListener('error', e => {
     return s; // فقط filename.geojson
   }
 
-  function resolveDataCandidates(name){
-    const file = normalizeName(name);
-    const canonical = `/data/amaayesh/${file}`;  // جدید
-    const legacy    = `/amaayesh/data/${file}`;  // قدیمی
-    const asIs      = `/${name.replace(/^\/+/,'')}`; // اگر کسی در مانیفست مسیر کامل داده باشد
-    // لیست یکتا
-    return Array.from(new Set([canonical, legacy, asIs]));
+  function resolveCandidates(name, kind) {
+    if (kind === 'manifest') {
+      return ['/amaayesh/layers.config.json', '/layers.config.json'];
+    }
+    if (kind === 'data') {
+      const n = String(name).replace(/^\/+/,'');
+      return ['/amaayesh/data/' + n, '/data/amaayesh/' + n];
+    }
+    return [name];
   }
 
-  async function fetchJSONWithFallback(name){
-    const candidates = resolveDataCandidates(name);
-    let lastErr = null, okUrl = null;
-    for (const url of candidates){
-      try{
-        // در دیباگ قبلش یک HEAD سبک برای وجود فایل
-        if (window.AMA_DEBUG){
-          const h = await fetch(url, { method:'HEAD', cache:'no-store' });
-          if (!h.ok) { if (window.AMA_DEBUG) console.warn('[ama-probe] HEAD', url, h.status); throw new Error('HEAD not ok'); }
-        }
+  async function fetchJSONWithFallback(name, opt={}) {
+    const { kind } = opt;
+    const candidates = resolveCandidates(name, kind);
+    for (const url of candidates) {
+      try {
+        const h = await fetch(url, { method:'HEAD', cache:'no-store' });
+        if (!h.ok) continue;
         const r = await fetch(url, { cache:'no-cache' });
-        if (r.ok){
-          okUrl = url;
-          window.__AMA_LAST_OK_URL = url;
-          const json = await r.json();
-          if (window.AMA_DEBUG) console.log('[ama:data] OK', url);
-          return json;
-        }
-        lastErr = new Error(`GET ${r.status}`);
-        if (window.AMA_DEBUG) console.warn('[ama:data] non-200:', url, r.status);
-      }catch(e){
-        lastErr = e;
-        if (window.AMA_DEBUG) console.warn('[ama:data] fetch err:', url, String(e.message||e));
+        if (r.ok) { if (window.AMA_DEBUG) console.log('[ama-probe] GET', url, r.status); return r.json(); }
+      } catch (e) {
+        if (window.AMA_DEBUG) console.log('[ama-probe] GET err', url, e.message || e);
       }
     }
-    console.warn('[ama:data] failed to load:', name, 'candidates tried:', candidates);
-    if (lastErr) console.warn(lastErr);
+    if (window.AMA_DEBUG) console.warn('[ama-data] failed to load:', name, 'candidates tried:', candidates);
     return null;
   }
 
   async function fetchCSV(name){
-    const candidates = resolveDataCandidates(name);
+    const candidates = resolveCandidates(name, 'data');
     for(const url of candidates){
       try{
         const r = await fetch(url,{cache:'no-cache'});
@@ -152,7 +141,8 @@ window.addEventListener('error', e => {
   }
 
   window.__inspectDataPath = async function(name){
-    const candidates = resolveDataCandidates(name);
+    const kind = name === 'layers.config.json' ? 'manifest' : 'data';
+    const candidates = resolveCandidates(name, kind);
     const rows = [];
     if (!window.AMA_DEBUG) return rows;
     for (const url of candidates){
@@ -181,7 +171,8 @@ window.addEventListener('error', e => {
     const rows = [];
     const names = ['layers.config.json', 'counties.geojson', 'wind_sites.geojson'];
     for (const name of names) {
-      const candidates = resolveDataCandidates(name);
+      const kind = name === 'layers.config.json' ? 'manifest' : 'data';
+      const candidates = resolveCandidates(name, kind);
       for (const url of candidates) {
         let method = 'HEAD';
         let res = null;
@@ -220,7 +211,7 @@ window.addEventListener('error', e => {
     const windSitesOnMap = !!(window.windSitesLayer && map && map.hasLayer(window.windSitesLayer));
 
     const symbols = [];
-    const hasReeval = (typeof window.reevaluateLegendPosition === 'function');
+    const hasReeval = typeof (window.reevaluateLegendPosition || window.reEvaluateLegendPosition) === 'function';
     symbols.push({ name:'reevaluateLegendPosition', ok: hasReeval });
     if (!hasReeval && window.AMA_DEBUG) {
       console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
@@ -246,7 +237,6 @@ window.addEventListener('error', e => {
 
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
-  let lastLoadedManifestUrl = null;
 
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
@@ -259,11 +249,9 @@ window.addEventListener('error', e => {
     let set = new Set();
     window.__LAYER_MANIFEST = set;
     __LAYER_MANIFEST = set;
-    lastLoadedManifestUrl = null;
     try {
       // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
-      const man = await fetchJSONWithFallback('/amaayesh/layers.config.json');
-      lastLoadedManifestUrl = window.__AMA_LAST_OK_URL || null;
+      const man = await fetchJSONWithFallback('layers.config.json', { kind:'manifest' });
       set = new Set(Array.isArray(man?.files) ? man.files : []);
       window.__LAYER_MANIFEST = set;
       __LAYER_MANIFEST = set;
@@ -283,7 +271,7 @@ window.addEventListener('error', e => {
     }
     window.__amaManifestSnapshot = {
       files: Array.from(set || []),
-      origin: lastLoadedManifestUrl
+      origin: null
     };
   }
   await loadLayerManifest();
@@ -316,7 +304,7 @@ window.addEventListener('error', e => {
       console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
-    const geo = await fetchJSONWithFallback(file);
+    const geo = await fetchJSONWithFallback(file, { kind:'data' });
     if (!geo?.features?.length) {
       console.warn('[ama-layer] missing or empty:', file);
       return null;
@@ -325,10 +313,10 @@ window.addEventListener('error', e => {
   }
 
   // لودر مقاوم با هندل 404 و فهرست fallbackها
-  async function loadJSON(relOrList, { layerKey, fallbacks = [] } = {}) {
+  async function loadJSON(relOrList, { layerKey, fallbacks = [], kind } = {}) {
     const rels = Array.isArray(relOrList) ? relOrList : [relOrList];
     for (const rel of [...rels, ...fallbacks]) {
-      const j = await fetchJSONWithFallback(rel);
+      const j = await fetchJSONWithFallback(rel, { kind });
       if (j) return j;
     }
     if (layerKey) disableLayerToggle(layerKey);
@@ -457,13 +445,13 @@ window.addEventListener('error', e => {
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await loadJSON('/amaayesh/layers.config.json');
-    const combined = await fetchJSONWithFallback('/data/amaayesh/khorasan_razavi_combined.geojson');
+    const cfg = await loadJSON('layers.config.json', { kind:'manifest' });
+    const combined = await fetchJSONWithFallback('khorasan_razavi_combined.geojson', { kind:'data' });
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
     const damsRel = damsPath ? damsPath.replace(/^\//,'').replace(/^data\//,'') : null;
-    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams' }) : null;
+    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams', kind:'data' }) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
@@ -588,14 +576,14 @@ window.addEventListener('error', e => {
 
       // counties
       if (inManifest('counties.geojson')) {
-        const polysFC = await fetchJSONWithFallback('counties.geojson');
+        const polysFC = await fetchJSONWithFallback('counties.geojson', { kind:'data' });
         console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
           // join with wind weights CSV
           let rows = [];
           try {
-            const txt = await fetchCSV('data/wind_weights_by_county.csv');
+            const txt = await fetchCSV('wind_weights_by_county.csv');
             rows = parseCSV(txt);
           } catch (_) {
             __WIND_WEIGHTS_MISSING = true;
@@ -699,7 +687,7 @@ window.addEventListener('error', e => {
           kpiCtl.addTo(map);
 
           // load raw site CSV for sidepanel
-          try { const rawTxt = await fetchCSV('data/wind_sites_raw.csv'); windSitesRaw = parseCSV(rawTxt); } catch(_) { windSitesRaw = []; }
+          try { const rawTxt = await fetchCSV('wind_sites_raw.csv'); windSitesRaw = parseCSV(rawTxt); } catch(_) { windSitesRaw = []; }
 
           // Top-10 panel
           window.__AMA_topPanel = L.control({position:"topright"});
@@ -720,7 +708,7 @@ window.addEventListener('error', e => {
 
       // wind sites
       if (inManifest('wind_sites.geojson')) {
-        const windSitesFC = await fetchJSONWithFallback('wind_sites.geojson');
+        const windSitesFC = await fetchJSONWithFallback('wind_sites.geojson', { kind:'data' });
         console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
@@ -964,9 +952,13 @@ window.addEventListener('error', e => {
         const current = legendCtl.getPosition ? legendCtl.getPosition() : null;
         if(current !== desired) setLegendPosition(desired);
       }
+      window.reevaluateLegendPosition = window.reevaluateLegendPosition || reevaluateLegendPosition;
       const storedPos = localStorage.getItem('ama-legend-pos');
       if(storedPos) legendCtl.setPosition(storedPos);
-      reevaluateLegendPosition();
+      {
+        const _re = window.reevaluateLegendPosition || window.reEvaluateLegendPosition;
+        if (typeof _re === 'function') { try { _re(); } catch(_){} }
+      }
       window.addEventListener('resize', reevaluateLegendPosition);
       map.on('overlayadd overlayremove', reevaluateLegendPosition);
 
@@ -1289,11 +1281,8 @@ window.addEventListener('error', e => {
         } else {
           if (window.__AMA_topPanel && window.__AMA_topPanel._map) map.removeControl(window.__AMA_topPanel);
         }
-        if (typeof window.reevaluateLegendPosition === 'function') {
-          reevaluateLegendPosition();
-        } else if (window.AMA_DEBUG) {
-          console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
-        }
+        const _re = window.reevaluateLegendPosition || window.reEvaluateLegendPosition;
+        if (typeof _re === 'function') { try { _re(); } catch(_){} }
 
         // layer presets (minimal defaults)
         const show = (layer, yes) => { if (!layer) return; if (yes && !map.hasLayer(layer)) map.addLayer(layer); if (!yes && map.hasLayer(layer)) map.removeLayer(layer); };
