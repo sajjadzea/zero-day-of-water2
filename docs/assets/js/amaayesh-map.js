@@ -54,6 +54,12 @@ window.addEventListener('error', e => {
 
   let searchLayer = L.layerGroup().addTo(map);
   let boundary;
+  let countiesGeo = null;
+  let windSitesGeo = null;
+  let __focused = null;
+  let sidepanelEl = null;
+  const currentSort = { key:'P0', dir:'desc' };
+  let p0RankMap = {};
 
   // === AMAAYESH DATA LOADER (path-robust) ===
   function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
@@ -218,6 +224,96 @@ window.addEventListener('error', e => {
     }
   }
 
+  // === Sidepanel helpers ===
+  function createSidepanel(){
+    if(sidepanelEl) return;
+    const root = document.getElementById('ama-sidepanel-root');
+    if(!root) return;
+    const div = document.createElement('div');
+    div.id = 'ama-sidepanel';
+    div.innerHTML = `<header><h3 id="ama-sp-name"></h3><button class="close-btn" aria-label="بستن">×</button></header><div id="ama-sp-body"></div>`;
+    root.appendChild(div);
+    sidepanelEl = div;
+    div.querySelector('.close-btn').addEventListener('click', closeSidepanel);
+    document.addEventListener('click', e=>{
+      if(!sidepanelEl?.classList.contains('open')) return;
+      if(!sidepanelEl.contains(e.target)) closeSidepanel();
+    });
+  }
+
+  function closeSidepanel(){
+    sidepanelEl?.classList.remove('open');
+  }
+
+  function openSidepanel(p){
+    if(!sidepanelEl) createSidepanel();
+    if(!sidepanelEl) return;
+    const name = p.county || p.name || '—';
+    const cap = p.capacity_mw!=null ? __AMA_fmtNumberFa(p.capacity_mw,{digits:0}) : '—';
+    const dens = p.MW_per_ha!=null ? __AMA_fmtNumberFa(p.MW_per_ha,{digits:2}) : '—';
+    const p0 = p.P0!=null ? __AMA_fmtNumberFa(p.P0,{digits:2}) : '—';
+    const rank = p0RankMap[name] != null ? __AMA_fmtNumberFa(p0RankMap[name]) : '—';
+    const sites = (windSitesGeo?.features||[]).filter(f=> (f.properties?.county||'')===name).slice(0,5)
+      .map(s=> `<li>${s.properties?.name_fa || '—'}</li>`).join('');
+    sidepanelEl.querySelector('#ama-sp-name').textContent = name;
+    sidepanelEl.querySelector('#ama-sp-body').innerHTML = `
+      <div>ظرفیت: ${cap}</div>
+      <div>بازده: ${dens}</div>
+      <div>P0: ${p0}</div>
+      <div>رتبه: ${rank}</div>
+      ${sites?`<div><b>سایت‌ها:</b><ul>${sites}</ul></div>`:''}
+      <div style="margin-top:8px"><a href="data/${encodeURIComponent(name)}.csv" download>دانلود CSV</a></div>`;
+    sidepanelEl.classList.add('open');
+    const btn = sidepanelEl.querySelector('.close-btn');
+    btn.focus();
+    sidepanelEl.onkeydown = e=>{
+      if(e.key==='Tab'){
+        const focusable = sidepanelEl.querySelectorAll('button,a');
+        if(!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length-1];
+        if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}
+        else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
+      }
+    };
+  }
+
+  function focusCountyByName(name){
+    let targetLayer=null;
+    (windChoroplethLayer||boundary)?.eachLayer?.(l=>{ if((l.feature?.properties?.county||'')===name) targetLayer=l; });
+    if(targetLayer){
+      map.fitBounds(targetLayer.getBounds(), {maxZoom:11});
+      targetLayer.fire('click');
+      targetLayer.setStyle({weight:2});
+      setTimeout(()=>{ if(__focused===targetLayer) targetLayer.setStyle({weight:1.2}); },800);
+    }
+  }
+  window.__AMA_focusCountyByName = focusCountyByName;
+
+  function makeTopCSV(rows){
+    const header = 'rank,county,capacity_mw,MW_per_ha,P0';
+    const lines = rows.map((p,i)=>[i+1,p.county||'',p.capacity_mw||'',p.MW_per_ha||'',p.P0||''].join(','));
+    return [header,...lines].join('\n');
+  }
+  function downloadBlob(name, text){
+    const blob = new Blob([text],{type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function openTopModal(rows){
+    const modal = document.createElement('div');
+    modal.className = 'ama-modal';
+    modal.innerHTML = `<div class="ama-modal-content" dir="rtl"><div id="ama-modal-body"></div><div style="text-align:center;margin-top:10px"><button class="close-btn">بستن</button></div></div>`;
+    document.body.appendChild(modal);
+    const body = modal.querySelector('#ama-modal-body');
+    body.innerHTML = rows.map((p,i)=>`<div class="ama-row" data-county="${p.county||''}"><div class="c">${__AMA_fmtNumberFa(i+1)}</div><div class="n">${p.county||'—'}</div><div class="m">${__AMA_fmtNumberFa(p.capacity_mw||0,{digits:0})}</div><div class="h">${__AMA_fmtNumberFa(p.MW_per_ha||0,{digits:2})}</div><div class="s">${__AMA_fmtNumberFa(p.P0||0,{digits:2})}</div></div>`).join('');
+    body.querySelectorAll('.ama-row').forEach(r=>r.onclick=()=>{focusCountyByName(r.dataset.county); close();});
+    function close(){ modal.remove(); }
+    modal.addEventListener('click', e=>{ if(e.target===modal || e.target.classList.contains('close-btn')) close(); });
+  }
+
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
@@ -351,8 +447,6 @@ window.addEventListener('error', e => {
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-      let countiesGeo = null;
-      let windSitesGeo = null;
 
       // counties
       if (inManifest('data/counties.geojson')) {
@@ -360,6 +454,12 @@ window.addEventListener('error', e => {
         console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
+          p0RankMap = {};
+          polysFC.features
+            .filter(f=>typeof f.properties?.P0 === 'number')
+            .sort((a,b)=>b.properties.P0 - a.properties.P0)
+            .forEach((f,i)=>{ p0RankMap[f.properties.county] = i+1; });
+          createSidepanel();
           windChoroplethLayer = L.geoJSON(polysFC, {
             pane: 'polygons',
             style: f => ({
@@ -381,11 +481,16 @@ window.addEventListener('error', e => {
           map.setMaxBounds(boundary.getBounds().pad(0.25));
           boundary.setStyle({ className: 'neon-edge' });
 
-          let __focused = null;
           const hoverLayer = window.windChoroplethLayer || windLayer;
           const baseStyle = { fillOpacity:0.22, color:'rgba(39,48,63,.4)', weight:.8 };
+          map.getPane('polygons')?.classList.add('ama-polygons');
           hoverLayer?.eachLayer?.(l=>{
             l.setStyle(baseStyle);
+            const el = l.getElement();
+            if(el){
+              el.setAttribute('tabindex','0');
+              el.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' ') l.fire('click'); });
+            }
             l.on('mouseover', ()=>{
               const p = l.feature?.properties || {};
               if (__focused !== l) l.setStyle({ fillOpacity:0.45, color:'#22d3ee', weight:1.2 });
@@ -399,23 +504,26 @@ window.addEventListener('error', e => {
               if (__focused !== l) l.setStyle(baseStyle);
               hideInfo();
             });
-          });
-          window.windChoroplethLayer.eachLayer(l=>{
             l.on('click', ()=>{
               __focused = l;
-              window.windChoroplethLayer.eachLayer(x=>{
-                x.setStyle({ fillOpacity:(x===l?0.65:0.08), color:(x===l?'#22d3ee':'rgba(39,48,63,.4)') });
-              });
+              window.windChoroplethLayer.eachLayer(x=> x.setStyle(baseStyle));
+              l.setStyle({ fillOpacity:0.65, color:'#22d3ee', weight:1.2 });
+              openSidepanel(l.feature?.properties||{});
             });
           });
-          map.on('click keydown', (e)=>{
-            if (e.key && e.key !== 'Escape') return;
-            if (__focused){
+          function clearFocus(){
+            if(__focused){
               window.windChoroplethLayer.eachLayer(x=> x.setStyle(baseStyle));
-              __focused = null;
-              hideInfo();
+              __focused=null;
             }
-          });
+            hideInfo();
+            closeSidepanel();
+          }
+          map.on('click', (e)=>{ if(!e.layer) clearFocus(); });
+          document.addEventListener('keydown', e=>{ if(e.key==='Escape') clearFocus(); });
+        } else {
+          const infoEl = document.getElementById('info');
+          if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
         }
       }
 
@@ -475,43 +583,99 @@ window.addEventListener('error', e => {
       window.__AMA_topPanel = L.control({position:"topright"});
       window.__AMA_topPanel.onAdd = function() {
         const wrap = L.DomUtil.create("div", "ama-panel");
-        wrap.innerHTML = `<div class="ama-panel-hd">Top-10 پتانسیل (P0)</div><div class="ama-panel-bd"><div id="ama-top10"></div></div>`;
+        wrap.innerHTML = `<div class="ama-panel-hd">Top-10 پتانسیل (P0)</div><div class="ama-panel-bd"><div id="ama-top10"></div><div class="ama-actions"><a id="ama-viewall">مشاهده همه</a><a id="ama-csv">دانلود CSV</a></div></div>`;
         return wrap;
       };
 
       window.__AMA_renderTop10 = function(){
         const geo = countiesGeo;
-        if (!geo?.features?.length) return;
-        const rows = geo.features
-          .map(f => f.properties || {})
-          .filter(p => typeof p.P0 === 'number')
-          .sort((a,b) => (b.P0||0) - (a.P0||0))
-          .slice(0,10);
-        const el = document.getElementById("ama-top10");
-        if (!el) return;
-        el.innerHTML = rows.map((p,idx)=>`
-          <div class="ama-row" data-county="${p.county||""}">
+        const panel = document.querySelector('.ama-panel');
+        if (!geo?.features?.length){ if(panel) panel.style.display='none'; const info=document.getElementById('info'); info?.insertAdjacentText('beforeend',' Top-10 در دسترس نیست.'); return; }
+        if(panel) panel.style.display='block';
+        const rows = geo.features.map(f=>f.properties||{}).filter(p=>typeof p.P0==='number');
+        const dir = currentSort.dir==='asc'?1:-1;
+        rows.sort((a,b)=>{ const k=currentSort.key; const av=a[k]||0, bv=b[k]||0; return av>bv?dir:-dir; });
+        const top = rows.slice(0,10);
+        const el = document.getElementById('ama-top10');
+        if(!el) return;
+        const arrow = k=> currentSort.key===k ? (currentSort.dir==='asc'?'▲':'▼') : '';
+        const header = `<div class="ama-row ama-head"><div class="c">#</div><div class="n">شهرستان</div><div class="m sort" data-k="capacity_mw">ظرفیت ${arrow('capacity_mw')}</div><div class="h sort" data-k="MW_per_ha">MW/ha ${arrow('MW_per_ha')}</div><div class="s sort" data-k="P0">P0 ${arrow('P0')}</div></div>`;
+        el.innerHTML = header + top.map((p,idx)=>`
+          <div class="ama-row" data-county="${p.county||''}">
             <div class="c">${__AMA_fmtNumberFa(idx+1)}</div>
-            <div class="n">${p.county||"—"}</div>
-            <div class="m">ظرفیت: ${__AMA_fmtNumberFa(p.capacity_mw||0, {digits:0})} مگاوات</div>
-            <div class="h">بازده: ${__AMA_fmtNumberFa(p.MW_per_ha||0, {digits:2})} MW/ha</div>
-            <div class="s">P0: ${__AMA_fmtNumberFa(p.P0||0, {digits:2})}</div>
-          </div>`).join("");
-        el.querySelectorAll(".ama-row").forEach(row=>{
-          row.addEventListener("click", ()=>{
-            const name = row.getAttribute("data-county");
-            let targetLayer = null;
-            (window.windChoroplethLayer || boundary)?.eachLayer?.(l=>{
-              if ((l.feature?.properties?.county||"") === name) targetLayer = l;
-            });
-            if (targetLayer) map.fitBounds(targetLayer.getBounds(), {maxZoom: 11});
+            <div class="n">${p.county||'—'}</div>
+            <div class="m">${__AMA_fmtNumberFa(p.capacity_mw||0,{digits:0})}</div>
+            <div class="h">${__AMA_fmtNumberFa(p.MW_per_ha||0,{digits:2})}</div>
+            <div class="s">${__AMA_fmtNumberFa(p.P0||0,{digits:2})}</div>
+          </div>`).join('');
+        el.querySelectorAll('.sort').forEach(h=>{
+          h.addEventListener('click',()=>{
+            const k=h.dataset.k;
+            if(currentSort.key===k) currentSort.dir = currentSort.dir==='asc'?'desc':'asc';
+            else { currentSort.key=k; currentSort.dir='desc'; }
+            window.__AMA_renderTop10();
           });
         });
+        el.querySelectorAll('.ama-row[data-county]').forEach(row=>{
+          row.addEventListener('click',()=>{ const name=row.getAttribute('data-county'); focusCountyByName(name); });
+        });
+        const viewAll = document.getElementById('ama-viewall');
+        if(viewAll) viewAll.onclick = ()=> openTopModal(rows);
+        const csvBtn = document.getElementById('ama-csv');
+        if(csvBtn) csvBtn.onclick = ()=> downloadBlob('amaayesh-toplist.csv', makeTopCSV(rows));
       };
 
       window.__AMA_topPanel.addTo(map);
       window.__AMA_renderTop10();
     }
+
+    // === Local search & geolocate ===
+    const searchCtl = L.control({position:'topleft'});
+    searchCtl.onAdd = function(){
+      const div = L.DomUtil.create('div','ama-search');
+      div.innerHTML = `<input type="text" placeholder="جستجوی شهرستان/سایت…"/><button title="یافتن موقعیت من">📍</button><div class="ama-suggestions" style="display:none"></div>`;
+      L.DomEvent.disableClickPropagation(div);
+      const input = div.querySelector('input');
+      const sugg = div.querySelector('.ama-suggestions');
+      let items=[], idx=-1;
+      const update = ()=>{
+        const q = input.value.trim();
+        sugg.innerHTML=''; idx=-1;
+        if(!q){ sugg.style.display='none'; return; }
+        const list=[];
+        if(countiesGeo?.features) countiesGeo.features.forEach(f=>{ const n=f.properties?.county||f.properties?.name||''; if(n.includes(q)) list.push({type:'county',name:n}); });
+        if(windSitesGeo?.features) windSitesGeo.features.forEach(f=>{ const n=f.properties?.name_fa||''; if(n.includes(q)) list.push({type:'site',name:n,latlng:f.geometry?.coordinates?.slice().reverse(),props:f.properties}); });
+        if(!list.length){ sugg.innerHTML='<div>داده‌ای برای جستجو موجود نیست.</div>'; sugg.style.display='block'; return; }
+        items = list.slice(0,10);
+        sugg.innerHTML = items.map((it,i)=>`<div data-i="${i}" data-type="${it.type}">${it.name}</div>`).join('');
+        sugg.style.display='block';
+        sugg.querySelectorAll('div').forEach(d=> d.addEventListener('click', ()=> select(items[+d.dataset.i])));
+      };
+      const deb = debounce(update,300);
+      input.addEventListener('input', deb);
+      input.addEventListener('keydown', e=>{
+        if(e.key==='ArrowDown'){ e.preventDefault(); move(1); }
+        else if(e.key==='ArrowUp'){ e.preventDefault(); move(-1); }
+        else if(e.key==='Enter'){ if(idx>=0) select(items[idx]); }
+      });
+      function move(dir){ if(!items.length) return; idx=(idx+dir+items.length)%items.length; sugg.querySelectorAll('div').forEach((d,i)=>d.classList.toggle('active',i===idx)); }
+      function select(it){ sugg.style.display='none'; input.value=''; if(!it) return; if(it.type==='county'){ focusCountyByName(it.name); } else if(it.type==='site'){ searchLayer.clearLayers(); const m=L.circleMarker(it.latlng,{radius:6,color:'#22d3ee'}).addTo(searchLayer); m.bindPopup(it.props?.name_fa||'').openPopup(); map.setView(it.latlng,12); } }
+      const btn = div.querySelector('button');
+      btn.addEventListener('click', ()=>{
+        if(!navigator.geolocation){ toast('مرورگر از موقعیت‌یابی پشتیبانی نمی‌کند'); return; }
+        navigator.geolocation.getCurrentPosition(pos=>{
+          const ll=[pos.coords.latitude,pos.coords.longitude];
+          searchLayer.clearLayers();
+          L.marker(ll).addTo(searchLayer).bindPopup('موقعیت من').openPopup();
+          map.setView(ll,12);
+        }, err=>{ toast(err.code===1?'مجوز دسترسی به موقعیت رد شد':'یافتن موقعیت ممکن نشد'); }, {enableHighAccuracy:false, timeout:8000});
+      });
+      return div;
+    };
+    searchCtl.addTo(map);
+
+    function debounce(fn,ms){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args),ms); }; }
+    function toast(msg){ const info=document.getElementById('info'); if(info){ info.textContent=msg; setTimeout(()=>{info.textContent='';},3000); } }
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     let electricityLinesLayer = null;
