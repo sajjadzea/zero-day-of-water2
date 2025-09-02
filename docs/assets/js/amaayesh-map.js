@@ -39,6 +39,7 @@
 
   // --- manifest ---
   let __LAYER_MANIFEST = null;
+  function inManifest(p){ return __LAYER_MANIFEST && __LAYER_MANIFEST.has(p); }
   async function loadLayerManifest() {
     __LAYER_MANIFEST = null;
     try {
@@ -58,7 +59,7 @@
 
   // load a GeoJSON file only if manifest allows it (or no manifest present)
   async function optionalGeoJSONFile(file, opts = {}) {
-    if (__LAYER_MANIFEST && !__LAYER_MANIFEST.has(file)) {
+    if (__LAYER_MANIFEST && !inManifest(file)) {
       console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
@@ -98,7 +99,11 @@
 
   (async () => {
     const cfg = await loadJSON('/amaayesh/layers.config.json');
-    const combined = await fetchJSONWithFallback('amaayesh/khorasan_razavi_combined.geojson');
+    let combined = await fetchJSONWithFallback('amaayesh/khorasan_razavi_combined.geojson');
+    if(!combined){
+      // real path in repo is under /data/amaayesh/
+      combined = await fetchJSONWithFallback('/data/amaayesh/khorasan_razavi_combined.geojson');
+    }
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
@@ -225,10 +230,12 @@
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-      const countiesGeo = (__LAYER_MANIFEST && !__LAYER_MANIFEST.has('counties.geojson'))
-        ? null : await fetchJSONWithFallback('counties.geojson');
-      const windSitesGeo = (__LAYER_MANIFEST && !__LAYER_MANIFEST.has('wind_sites.geojson'))
-        ? null : await fetchJSONWithFallback('wind_sites.geojson');
+      const countiesGeo = inManifest('data/counties.geojson')
+        ? await fetchJSONWithFallback('data/counties.geojson')
+        : null;
+      const windSitesGeo = inManifest('data/wind_sites.geojson')
+        ? await fetchJSONWithFallback('data/wind_sites.geojson')
+        : null;
 
       if (countiesGeo?.features?.length){
         windChoroplethLayer = L.geoJSON(countiesGeo, {
@@ -306,7 +313,6 @@
       window.__AMA_renderTop10();
 
       if (windSitesGeo?.features?.length){
- codex/fix-top-level-await-and-manifest-path-p76lbs
         const pointToLayer = (f, latlng) => {
           const p = f.properties || {};
           const low = (p.quality === 'low');
@@ -354,8 +360,14 @@
     }
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
-    const electricityLinesLayer = await optionalGeoJSONFile('amaayesh/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
-    const waterMainsLayer      = await optionalGeoJSONFile('amaayesh/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
+    let electricityLinesLayer = null;
+    if (inManifest('data/electricity_lines.geojson')) {
+      electricityLinesLayer = await optionalGeoJSONFile('data/electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
+    }
+    let waterMainsLayer = null;
+    if (inManifest('data/water_mains.geojson')) {
+      waterMainsLayer      = await optionalGeoJSONFile('data/water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
+    }
     const gasTransmissionLayer = await optionalGeoJSONFile('amaayesh/gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
     const oilPipelinesLayer    = await optionalGeoJSONFile('amaayesh/oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
 
@@ -478,12 +490,14 @@
       ];
       const missing = [];
       for(const th of (cfg?.themes || [])){
-        const rel = th.file.replace(/^\//,'').replace(/^data\//,'');
-        const layer = await optionalGeoJSONFile(rel, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} });
+        const file = th.file;
+        const layer = inManifest(file)
+          ? await optionalGeoJSONFile(file, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} })
+          : null;
         if(layer){
           overlayEntries.push([th.title, layer]);
           layer.addTo(map);
-        } else if(!__LAYER_MANIFEST || __LAYER_MANIFEST.has(rel)){
+        } else if(!__LAYER_MANIFEST || inManifest(file)){
           missing.push(th.title);
         }
       }
