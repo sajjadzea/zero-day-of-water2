@@ -17,8 +17,11 @@
 // ===== BEGIN WIND DIAG BASICS =====
 window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
 window.AMA_BUILD_ID = window.__AMA_BUILD_ID;
-window.__WIND_DATA_READY = false;
-window.__WIND_WEIGHTS_MISSING = false;
+window.__WIND_DATA_READY      = window.__WIND_DATA_READY      ?? false;
+window.__WIND_WEIGHTS_MISSING = window.__WIND_WEIGHTS_MISSING ?? false;
+window.__WIND_SELF_CHECK      = window.__WIND_SELF_CHECK      ?? { mapCount:0, hasData:0, noData:0, onlyInMap:[], onlyInIdx:[] };
+window.legend = window.legend || null;
+window.legendCtl = window.legendCtl || null;
 
 function normalizeFaName(s){ if(!s) return ''; return String(s).replace(/\u200c/g,' ')
     .replace(/ي/g,'ی').replace(/ك/g,'ک')
@@ -140,7 +143,8 @@ window.runWindSelfCheck = function(){
       if(hd) has++; else nod++;
       rows.push({name:nm, has:hd, N:p.wind_N, sumW:p.wind_sumW, wD:p.wind_wDensity, dN:p.wind_density, avgW:p.wind_avgW});
     });
-    window.__WIND_SELF_CHECK = {mapCount:rows.length, hasData:has, noData:nod};
+    window.__WIND_SELF_CHECK = window.__WIND_SELF_CHECK || {};
+    Object.assign(window.__WIND_SELF_CHECK, { mapCount:rows.length, hasData:has, noData:nod });
     if(window.AMA_DEBUG){ console.group('WIND SELF-CHECK'); console.table(rows.slice(0,12)); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
   }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
 };
@@ -193,7 +197,8 @@ async function joinWindWeightsOnAll(){
     Object.keys(idx).forEach(k=>{ if(!mapNames.includes(k)) onlyInIdx.push(idx[k].county); });
 
     window.__WIND_DATA_READY = true;
-    window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
+    window.__WIND_SELF_CHECK = window.__WIND_SELF_CHECK || {};
+    Object.assign(window.__WIND_SELF_CHECK, { mapCount, hasData, noData, onlyInMap, onlyInIdx });
     if(window.AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
     if(typeof renderLegend==='function') renderLegend();
     if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
@@ -1145,25 +1150,25 @@ window.addEventListener('error', e => {
           }
         };
       }
-      const legend = new LegendDock();
-      const legendCtl = L.control({position:'bottomright'});
-      legendCtl.onAdd = ()=> legend.el;
-      legendCtl.addTo(map);
+      window.legend = new LegendDock();
+      window.legendCtl = L.control({position:'bottomright'});
+      window.legendCtl.onAdd = ()=> window.legend.el;
+      window.legendCtl.addTo(map);
 
       function setLegendPosition(pos){
-        legendCtl.setPosition(pos);
+        window.legendCtl.setPosition(pos);
         try { localStorage.setItem('ama-legend-pos', pos); } catch(_){ }
       }
       function reevaluateLegendPosition(){
         const topVisible = !!(window.__AMA_topPanel && window.__AMA_topPanel._map);
         const desired = (window.innerWidth < 768 || topVisible) ? 'bottomleft' : 'bottomright';
-        const current = legendCtl.getPosition ? legendCtl.getPosition() : null;
+        const current = window.legendCtl.getPosition ? window.legendCtl.getPosition() : null;
         if(current !== desired) setLegendPosition(desired);
       }
       window.reevaluateLegendPosition = window.reevaluateLegendPosition || reevaluateLegendPosition;
       window.reEvaluateLegendPosition = window.reEvaluateLegendPosition || window.reevaluateLegendPosition || (() => {});
       const storedPos = localStorage.getItem('ama-legend-pos');
-      if(storedPos) legendCtl.setPosition(storedPos);
+      if(storedPos) window.legendCtl.setPosition(storedPos);
       {
         const _re = window.reevaluateLegendPosition || window.reEvaluateLegendPosition;
         if (typeof _re === 'function') { try { _re(); } catch(_){} }
@@ -1192,7 +1197,7 @@ window.addEventListener('error', e => {
           });
         }
         function applyLegend(){
-          legend.set(tabs, (key,range)=>{
+          window.legend.set(tabs, (key,range)=>{
             if(key==='solar') filterLayer(solarLayer, l=>l.feature.properties.__legend_value, range);
             if(key==='wind')  filterLayer(windChoroplethLayer || windLayer,  l=>l.feature.properties.__legend_value, range);
             if(key==='dams')  filterLayer(damsLayer,  l=>l.feature.properties.__legend_value, range);
@@ -1205,7 +1210,7 @@ window.addEventListener('error', e => {
           warn.className = 'ama-legend-warning';
           warn.setAttribute('aria-live','polite');
           warn.textContent = 'داده وزن‌ها در دسترس نیست';
-          legend.el.querySelector('.legend-body')?.appendChild(warn);
+          window.legend.el.querySelector('.legend-body')?.appendChild(warn);
         }
       }
 
@@ -1532,7 +1537,7 @@ window.addEventListener('error', e => {
         modeDiv?.querySelectorAll('.chip').forEach(b=>b.classList.toggle('active', b.dataset.mode==='owner'));
         applyMode();
 
-        legend?.reset?.();
+        window.legend?.reset?.();
         searchLayer?.clearLayers?.();
         currentSort.key='P0'; currentSort.dir='desc';
         window.__AMA_renderTop10?.();
