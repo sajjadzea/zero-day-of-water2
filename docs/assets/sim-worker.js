@@ -1,5 +1,29 @@
 importScripts('/assets/vendor/expr-eval.min.js');
 
+const AMA_DEBUG = self.AMA_DEBUG;
+function dataBases(){
+  const here = new URL(self.location.href);
+  const cand = [
+    new URL('./data/', here).pathname,  // ./data/
+    new URL('data/',  here).pathname,   // data/
+    '/amaayesh/data/',                  // abs
+    '/data/amaayesh/'                   // abs legacy
+  ];
+  return [...new Set(cand)];
+}
+async function resolveDataUrl(file){
+  const qs = `?v=${self.__AMA_BUILD_ID}`;
+  for(const b of dataBases()){
+    const url = b + file + qs;
+    try { const r = await fetch(url, {method:'GET', cache:'no-store'});
+      if (r.ok) { (self.__AMA_RESOLVED ||= {})[file]=url; if(AMA_DEBUG) console.info('[resolve]',file,'→',url); return url; }
+    } catch {}
+  }
+  if (AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
+  return null;
+}
+async function fetchJSONResolved(f){ const u=await resolveDataUrl(f); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+
 let model;
 let simParams = {};
 const Parser = self.exprEval.Parser;
@@ -99,9 +123,8 @@ self.onmessage = async e => {
   const data = e.data;
   if (data.cmd === 'init') {
     try {
-      const res = await fetch('/data/water-cld.json?v=2', { cache: 'no-store' });
-      const json = await res.json();
-      parseModel(json);
+      const json = await fetchJSONResolved('water-cld.json');
+      if(json) parseModel(json);
     } catch (err) {
       // ignore
     }
