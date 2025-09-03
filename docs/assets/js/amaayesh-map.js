@@ -30,7 +30,25 @@ async function resolveDataUrl(file){
   const bases = ['data/','./data/','amaayesh/data/','/amaayesh/data/'];
   for(const b of bases){
     const url = `${b}${file}?v=${window.AMA_BUILD_ID}`;
-    try{ const r = await fetch(url,{method:'GET',cache:'no-store'}); if(r.ok){ if(window.AMA_DEBUG) console.info('[resolve]',file,'→',url); return url; } }catch{}
+    try{
+      const r = await fetch(url,{method:'GET',cache:'no-store'});
+      if(r.ok){
+        if(window.AMA_DEBUG){
+          window.__AMA_RESOLVED = window.__AMA_RESOLVED || {};
+          window.__AMA_RESOLVED[file] = url;
+          if(!window.__AMA_RESOLVE_LOGGED){
+            clearTimeout(window.__AMA_RESOLVE_T);
+            window.__AMA_RESOLVE_T = setTimeout(()=>{
+              const rows = Object.entries(window.__AMA_RESOLVED)
+                .map(([k,v])=>`${k}→${v}`);
+              console.info('[resolve]', rows.join(' | '));
+              window.__AMA_RESOLVE_LOGGED = true;
+            },200);
+          }
+        }
+        return url;
+      }
+    }catch{}
   }
   if(window.AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
   return null;
@@ -82,7 +100,7 @@ window.setActiveWindKPI = function(k){
 
 async function fetchCSVResolved(file){
   const u = await resolveDataUrl(file); if(!u) return null;
-  const r = await fetch(u,{cache:'no-store'}); if(!r.ok) return null;
+  const r = await fetch(u,{method:'GET',cache:'no-store'}); if(!r.ok) return null;
   return await r.text();
 }
 function parseCSV(text){
@@ -131,7 +149,7 @@ async function joinWindWeightsOnAll(){
   try{
     const u = await resolveDataUrl('wind_weights_by_county.csv');
     if(!u){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
-    const txt = await fetch(u,{cache:'no-store'}).then(r=>r.ok?r.text():null);
+    const txt = await fetch(u,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.text():null);
     if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] empty CSV'); return; }
 
     const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
@@ -315,7 +333,7 @@ window.addEventListener('error', e => {
       const u = await resolveDataUrl(name);
       if(!u) return null;
       try{
-        const r = await fetch(u,{cache:'no-store'});
+        const r = await fetch(u,{method:'GET',cache:'no-store'});
         if(r.ok){ if(window.AMA_DEBUG) console.log('[ama-probe] GET', u, r.status); return r.json(); }
       }catch(e){ if(window.AMA_DEBUG) console.log('[ama-probe] GET err', u, e.message || e); }
       return null;
@@ -323,7 +341,7 @@ window.addEventListener('error', e => {
     const candidates = resolveCandidates(name, kind);
     for (const url of candidates) {
       try {
-        const r = await fetch(url, { cache:'no-store' });
+        const r = await fetch(url, { method:'GET', cache:'no-store' });
         if (r.ok) { if (window.AMA_DEBUG) console.log('[ama-probe] GET', url, r.status); return r.json(); }
       } catch (e) {
         if (window.AMA_DEBUG) console.log('[ama-probe] GET err', url, e.message || e);
@@ -337,7 +355,7 @@ window.addEventListener('error', e => {
     const u = await resolveDataUrl(name);
     if(!u) throw new Error('CSV not found: '+name);
     try{
-      const r = await fetch(u,{cache:'no-cache'});
+      const r = await fetch(u,{method:'GET',cache:'no-cache'});
       if(r.ok){
         const text = await r.text();
         if(window.AMA_DEBUG) console.log('[ama:data] CSV OK', u);
@@ -393,7 +411,7 @@ window.addEventListener('error', e => {
     let manifestJson = null;
     try {
       if (manifestUrl) {
-        const r = await fetch(manifestUrl, { cache:'no-store' });
+        const r = await fetch(manifestUrl, { method:'GET', cache:'no-store' });
         if (r.ok) manifestJson = await r.json();
       }
     } catch (_) {}
@@ -642,7 +660,8 @@ window.addEventListener('error', e => {
 
   (async () => {
     const cfg = await fetchJSONWithFallback('layers.config.json', { kind:'manifest' });
-    const combined = await fetchJSONWithFallback('khorasan_razavi_combined.geojson', { kind:'data' });
+    const combinedUrl = await resolveDataUrl('khorasan_razavi_combined.geojson');
+    const combined = combinedUrl ? await fetch(combinedUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
@@ -776,7 +795,8 @@ window.addEventListener('error', e => {
 
       // counties
       if (inManifest('counties.geojson')) {
-        const polysFC = await fetchJSONWithFallback('counties.geojson', { kind:'data' });
+        const countiesUrl = await resolveDataUrl('counties.geojson');
+        const polysFC = countiesUrl ? await fetch(countiesUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
         if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
@@ -885,7 +905,8 @@ window.addEventListener('error', e => {
 
       // wind sites
       if (inManifest('wind_sites.geojson')) {
-        const windSitesFC = await fetchJSONWithFallback('wind_sites.geojson', { kind:'data' });
+        const windSitesUrl = await resolveDataUrl('wind_sites.geojson');
+        const windSitesFC = windSitesUrl ? await fetch(windSitesUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
