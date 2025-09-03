@@ -30,7 +30,7 @@ function normalizeFaName(s){ if(!s) return ''; return String(s).replace(/\u200c/
 function normalizeKey(s){ return normalizeFaName(s).replace(/\s+/g,''); }
 const COUNTY_ALIASES = { 'تربتجام':'تربت‌جام', 'مهولات':'مه‌ولات', 'مشهد':'مشهد', 'نیشابور':'نیشابور' };
 async function resolveDataUrl(file){
-  const bases = ['data/','./data/','amaayesh/data/','/amaayesh/data/'];
+  const bases = ['data/','./data/','/amaayesh/data/','/data/amaayesh/'];
   for(const b of bases){
     const url = `${b}${file}?v=${window.AMA_BUILD_ID}`;
     try{
@@ -40,13 +40,12 @@ async function resolveDataUrl(file){
           window.__AMA_RESOLVED = window.__AMA_RESOLVED || {};
           window.__AMA_RESOLVED[file] = url;
           if(!window.__AMA_RESOLVE_LOGGED){
-            clearTimeout(window.__AMA_RESOLVE_T);
-            window.__AMA_RESOLVE_T = setTimeout(()=>{
-              const rows = Object.entries(window.__AMA_RESOLVED)
-                .map(([k,v])=>`${k}→${v}`);
-              console.info('[resolve]', rows.join(' | '));
-              window.__AMA_RESOLVE_LOGGED = true;
-            },200);
+            window.__AMA_RESOLVE_LOGGED = true;
+            setTimeout(()=>{
+              if(window.AMA_DEBUG && window.__AMA_RESOLVED){
+                console.info('[resolve]', Object.entries(window.__AMA_RESOLVED).map(([k,v])=>`${k}→${v}`).join(' | '));
+              }
+            },0);
           }
         }
         return url;
@@ -321,13 +320,28 @@ window.addEventListener('error', e => {
     return s; // فقط filename.geojson
   }
 
+  function resolveManifestCandidates(){
+    const names = [
+      'layers.config.json',
+      './layers.config.json',
+      'amaayesh/layers.config.json',
+      './amaayesh/layers.config.json',
+      '/amaayesh/layers.config.json',
+      'data/layers.config.json',
+      './data/layers.config.json',
+      '/data/layers.config.json'
+    ];
+    return [...new Set(names)];
+  }
+
   function resolveCandidates(name, kind) {
     if (kind === 'manifest') {
-      return ['/amaayesh/layers.config.json', '/layers.config.json'];
+      return resolveManifestCandidates();
     }
     if (kind === 'data') {
       const n = String(name).replace(/^\/+/,'');
-      return ['/amaayesh/data/' + n, '/data/amaayesh/' + n];
+      const bases = ['data/','./data/','/amaayesh/data/','/data/amaayesh/'];
+      return bases.map(b=>b + n);
     }
     return [name];
   }
@@ -370,6 +384,27 @@ window.addEventListener('error', e => {
     throw new Error('CSV not found: '+name);
   }
 
+  async function fetchManifest(){
+    const qs = `?v=${window.__AMA_BUILD_ID||Date.now()}`;
+    for(const rel of resolveManifestCandidates()){
+      const url = rel + qs;
+      try{
+        const r = await fetch(url,{method:'GET',cache:'no-store'});
+        if(r.ok){
+          const j = await r.json();
+          if(window.AMA_DEBUG){
+            window.__AMA_RESOLVED = window.__AMA_RESOLVED || {};
+            window.__AMA_RESOLVED['layers.config.json'] = url;
+            console.log('[ama:manifest]', url, 'ok');
+          }
+          return j;
+        }
+      }catch(e){ if(window.AMA_DEBUG) console.log('[ama:manifest-err]', rel, String(e)); }
+    }
+    if(window.AMA_DEBUG) console.warn('[ama:manifest] not found via any candidate');
+    return null;
+  }
+
   window.__inspectDataPath = async function(name){
     const kind = name === 'layers.config.json' ? 'manifest' : 'data';
     const candidates = resolveCandidates(name, kind);
@@ -378,15 +413,10 @@ window.addEventListener('error', e => {
     for (const url of candidates){
       let res = null;
       try { res = await fetch(url, { method:'GET', cache:'no-store' }); } catch (_) { }
-      rows.push({
-        url,
-        method:'GET',
-        status: res ? res.status : 'ERR',
-        ok: res ? res.ok : false,
-        redirected: res ? res.redirected : false,
-      });
+      rows.push({ url, method:'GET', status: res ? res.status : 'ERR', ok: res ? res.ok : false, redirected: res ? res.redirected : false });
     }
-    if (window.AMA_DEBUG) console.table(rows);
+    window.__AMA_INSPECTED = window.__AMA_INSPECTED || {};
+    if(!window.__AMA_INSPECTED[name]){ console.table(rows); window.__AMA_INSPECTED[name]=true; }
     return rows;
   };
 
@@ -463,34 +493,13 @@ window.addEventListener('error', e => {
     return S.has(norm);
   }
 
-  async function loadLayerManifest() {
-    let set = new Set();
+  async function loadLayerManifest(){
+    const j = await fetchManifest();
+    const set = new Set(Array.isArray(j?.files) ? j.files : []);
     window.__LAYER_MANIFEST = set;
     __LAYER_MANIFEST = set;
-    try {
-      // ✅ ابتدا به‌طور صریح مسیر /amaayesh/ را امتحان کن؛ سپس fallbackهای لودر فعال‌اند
-      const man = await fetchJSONWithFallback('layers.config.json', { kind:'manifest' });
-      set = new Set(Array.isArray(man?.files) ? man.files : []);
-      window.__LAYER_MANIFEST = set;
-      __LAYER_MANIFEST = set;
-      if (set.size) {
-        if (window.AMA_DEBUG) console.log('[ama-data] manifest loaded with', set.size, 'files');
-      } else {
-        if (window.AMA_DEBUG) console.warn('[ama-data] no manifest.files; will skip optional layers.');
-      }
-    } catch(e) {
-      if (window.AMA_DEBUG) console.warn('[ama-data] manifest not found; will skip optional layers.');
-      set = new Set();
-      window.__LAYER_MANIFEST = set;
-      __LAYER_MANIFEST = set;
-      if (window.AMA_DEBUG) {
-        console.warn('[ama:rca] manifest not loaded; __LAYER_MANIFEST is', !!window.__LAYER_MANIFEST);
-      }
-    }
-    window.__amaManifestSnapshot = {
-      files: Array.from(set || []),
-      origin: null
-    };
+    if(window.AMA_DEBUG) console.log('[ama-data] manifest size', set.size);
+    window.__amaManifestSnapshot = { files:Array.from(set), origin:null };
   }
   await loadLayerManifest();
 
@@ -664,7 +673,7 @@ window.addEventListener('error', e => {
   map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
   (async () => {
-    const cfg = await fetchJSONWithFallback('layers.config.json', { kind:'manifest' });
+    const cfg = await fetchManifest();
     const combinedUrl = await resolveDataUrl('khorasan_razavi_combined.geojson');
     const combined = combinedUrl ? await fetch(combinedUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
     if(!combined?.features?.length){ return; }
