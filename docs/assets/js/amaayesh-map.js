@@ -63,9 +63,9 @@ async function fetchCSVResolved (f){ const u=await resolveDataUrl(f); if(!u) ret
 
 // ===== ارجاع پیش‌فرض برای فایل‌ها وقتی manifest نیست =====
 const DEFAULT_FILES = {
-  counties: 'counties.geojson',
-  windSitesGeo: 'wind_sites.geojson',
-  windWeights: 'wind_weights_by_county.csv'
+  counties: ['counties.geojson', 'khorasan_razavi_combined.geojson'],
+  windSites: ['wind_sites.geojson', 'wind_sites_raw.geojson', 'wind_sites.csv'],
+  windWeights: ['wind_weights_by_county.csv']
 };
 
 // یک کمک‌تابع fallback برای داده‌های مهم:
@@ -229,7 +229,7 @@ window.runWindSelfCheck = function(){
 };
 
 async function joinWindWeightsOnAll(){
-  const txt = await fetchCSVResolved(DEFAULT_FILES.windWeights);
+  const txt = await fetchCSVResolved(DEFAULT_FILES.windWeights[0]);
   if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(AMA_DEBUG) console.warn('[join] CSV missing'); return; }
 
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
@@ -583,7 +583,7 @@ window.addEventListener('error', e => {
     const cfg = await fetchManifest();
     const combinedUrl = await resolveWithFallback([
       (window.__LAYER_MANIFEST && 'counties.geojson'),
-      DEFAULT_FILES.counties,
+      ...DEFAULT_FILES.counties,
       'khorasan_razavi_combined.geojson'
     ].filter(Boolean));
     let combined = null;
@@ -723,7 +723,7 @@ window.addEventListener('error', e => {
       // counties
       const countiesUrl = await resolveWithFallback([
         (window.__LAYER_MANIFEST && 'counties.geojson'),
-        DEFAULT_FILES.counties,
+        ...DEFAULT_FILES.counties,
         'khorasan_razavi_combined.geojson'
       ].filter(Boolean));
       if (countiesUrl) {
@@ -872,7 +872,7 @@ window.addEventListener('error', e => {
       // wind sites
       const windSitesUrl = await resolveWithFallback([
         (window.__LAYER_MANIFEST && 'wind_sites.geojson'),
-        DEFAULT_FILES.windSitesGeo
+        ...DEFAULT_FILES.windSites
       ].filter(Boolean));
       if (windSitesUrl) {
         let windSitesFC = null;
