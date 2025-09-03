@@ -24,11 +24,15 @@ window.legend = window.legend || null;
 window.legendCtl = window.legendCtl || null;
 
 function normalizeFaName(s){ if(!s) return ''; return String(s).replace(/\u200c/g,' ')
-    .replace(/ي/g,'ی').replace(/ك/g,'ک')
-    .replace(/[^\p{L}\p{N}\s]/gu,'')  // drop punctuation
-    .replace(/\s+/g,' ').trim(); }
+  .replace(/ي/g,'ی').replace(/ك/g,'ک')
+  .replace(/[^\p{L}\p{N}\s]/gu,'')
+  .replace(/\s+/g,' ').trim(); }
 function normalizeKey(s){ return normalizeFaName(s).replace(/\s+/g,''); }
-const COUNTY_ALIASES = { 'تربتجام':'تربت‌جام', 'مهولات':'مه‌ولات', 'مشهد':'مشهد', 'نیشابور':'نیشابور' };
+const COUNTY_ALIASES = Object.assign({
+  'تربتجام':'تربت‌جام',
+  'مهولات':'مه‌ولات',
+  'باجگیران':'باجگیران',
+}, (window.COUNTY_ALIASES||{}));
 async function resolveDataUrl(file){
   const bases = ['data/','./data/','/amaayesh/data/','/data/amaayesh/'];
   for(const b of bases){
@@ -94,7 +98,7 @@ function eachPolyFeatureLayer(root, fn){
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
 window.setActiveWindKPI = function(k){
   window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
-  if(window.__countiesLayer){ eachPolyFeatureLayer(window.__countiesLayer, leaf=>leaf.setStyle(styleForCounty(leaf.feature))); }
+  if(window.__countiesLayer) eachPolyFeatureLayer(window.__countiesLayer, l=>l.setStyle(styleForCounty(l.feature)));
   if(typeof renderLegend==='function') renderLegend();
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 };
@@ -149,62 +153,53 @@ window.runWindSelfCheck = function(){
 };
 
 async function joinWindWeightsOnAll(){
-  try{
-    const u = await resolveDataUrl('wind_weights_by_county.csv');
-    if(!u){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
-    const txt = await fetch(u,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.text():null);
-    if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] empty CSV'); return; }
+  const u = await resolveDataUrl('wind_weights_by_county.csv');
+  if(!u){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
+  const txt = await fetch(u,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.text():null);
+  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] empty CSV'); return; }
 
-    const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
-    const headers = lines.shift().split(',').map(h=>h.trim());
-    const idx = Object.create(null);
-    lines.forEach(line=>{
-      const cols = line.split(',');
-      const row={}; headers.forEach((h,i)=>row[h]=(cols[i]||'').trim());
-      const raw = row['county']; const k = normalizeKey(raw);
-      const alias = COUNTY_ALIASES[k] || raw;
-      idx[ normalizeKey(alias) ] = row;
-    });
-    window.__weightsIdx = idx;
+  // Build index
+  const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
+  const headers = lines.shift().split(',').map(h=>h.trim());
+  const idx = Object.create(null);
+  lines.forEach(line=>{
+    const cols = line.split(',');
+    const r={}; headers.forEach((h,i)=>r[h]=(cols[i]||'').trim());
+    const raw = r['county']||''; const k = normalizeKey(raw);
+    const aliased = COUNTY_ALIASES[k] || raw;
+    idx[ normalizeKey(aliased) ] = r;
+  });
+  window.__weightsIdx = idx;
 
-    const layer = window.__countiesLayer;
-    if(!layer){ if(window.AMA_DEBUG) console.warn('[join] no counties layer'); return; }
+  if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('[join] no counties layer'); return; }
 
-    let mapCount=0, hasData=0, noData=0;
-    const onlyInMap=[], onlyInIdx=[], mapNames=[];
-    function eachDeep(l,fn){ if(!l) return;
-      if(typeof l.getLayers==='function'){ l.getLayers().forEach(sl=>eachDeep(sl,fn)); return; }
-      if(l.feature && isPolyFeature(l.feature)) fn(l);
+  // Apply to ALL polygon features
+  let mapCount=0, hasData=0, noData=0; const onlyInMap=[], onlyInIdx=[], mapNames=[];
+  eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
+    const f=leaf.feature, p=f.properties||(f.properties={}); mapCount++;
+    const rawName = p.county || p.name_fa || p.name || '';
+    const key = normalizeKey(rawName); mapNames.push(key);
+    const w = idx[key];
+    if(w){
+      const n=+w.n_sites||0, s=+w.sum_w||0, avg=+w.w_avg||0;
+      p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
+      const a = p.area_km2>0 ? p.area_km2 : 0;
+      p.wind_density = a? (n/a):0; p.wind_wDensity = a? (s/a):0;
+      p.__hasWindData=true; hasData++;
+    }else{
+      p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0; p.__hasWindData=false; noData++; onlyInMap.push(rawName);
     }
-    eachDeep(layer, leaf=>{
-      const f=leaf.feature, p=f.properties||(f.properties={}); mapCount++;
-      const rawName = p.county || p.name_fa || p.name || '';
-      const key = normalizeKey(rawName);
-      mapNames.push(key);
-      const w = idx[key];
-      if(w){
-        const n=+w.n_sites||0, s=+w.sum_w||0, avg=+w.w_avg||0;
-        p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
-        const a = p.area_km2>0 ? p.area_km2 : 0;
-        p.wind_density = a? (n/a):0; p.wind_wDensity = a? (s/a):0;
-        p.__hasWindData=true; hasData++;
-      }else{
-        p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0; p.__hasWindData=false; noData++; onlyInMap.push(rawName);
-      }
-      if(typeof styleForCounty==='function') leaf.setStyle(styleForCounty(f));
-    });
-    Object.keys(idx).forEach(k=>{ if(!mapNames.includes(k)) onlyInIdx.push(idx[k].county); });
+    if(typeof styleForCounty==='function') leaf.setStyle(styleForCounty(f));
+  });
+  Object.keys(idx).forEach(k=>{ if(!mapNames.includes(k)) onlyInIdx.push(idx[k].county); });
 
-    window.__WIND_DATA_READY = true;
-    window.__WIND_SELF_CHECK = window.__WIND_SELF_CHECK || {};
-    Object.assign(window.__WIND_SELF_CHECK, { mapCount, hasData, noData, onlyInMap, onlyInIdx });
-    if(window.AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
-    if(typeof renderLegend==='function') renderLegend();
-    if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
-  }catch(e){
-    window.__WIND_WEIGHTS_MISSING=true;
-    if(window.AMA_DEBUG) console.error('[join error]', e);
-  }
+  window.__WIND_DATA_READY = true;
+  window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
+  if(window.AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
+
+  if(typeof window.legend?.rebuild === 'function') window.legend.rebuild();
+  if(typeof renderLegend==='function') renderLegend();
+  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
 
 // Debug flag and fetch logger
@@ -298,7 +293,7 @@ window.addEventListener('error', e => {
   let p0RankMap = {};
 
   // wind weights / KPI state
-  let windKpiKey = localStorage.getItem('ama-kpi') || 'wind_wDensity';
+  let windKpiKey = window.__activeWindKPI || 'wind_wDensity';
   const windKpiLabels = {
     wind_N: 'N',
     wind_sumW: 'Σw',
@@ -880,9 +875,8 @@ window.addEventListener('error', e => {
             div.addEventListener('change', e=>{
               if(e.target && e.target.value){
                 windKpiKey=e.target.value;
-                localStorage.setItem('ama-kpi', windKpiKey);
                 window.setActiveWindKPI(windKpiKey);
-                map.fire('kpi:change', {kpi: windKpiKey});
+                map.fire('kpi:change', {kpi: window.__activeWindKPI});
               }
             });
             return div;
@@ -907,7 +901,7 @@ window.addEventListener('error', e => {
           joinWindWeightsOnAll().then(()=>{
             const kc = kpiCtl.getContainer ? kpiCtl.getContainer() : null;
             if(kc){ kc.classList.remove('is-disabled'); kc.removeAttribute('title'); }
-            map.fire('kpi:change', {kpi: windKpiKey});
+            map.fire('kpi:change', {kpi: window.__activeWindKPI||'wind_wDensity'});
           });
         } else {
           const infoEl = document.getElementById('info');
