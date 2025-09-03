@@ -69,10 +69,12 @@ const DEFAULT_FILES = {
 };
 
 // یک کمک‌تابع fallback برای داده‌های مهم:
+// attempt to resolve the first available dataset name; skips falsy entries
 async function resolveWithFallback(nameList){
-  for(const name of nameList){
+  for (const name of nameList) {
+    if (!name) continue; // allow callers to pass conditional names
     const u = await resolveDataUrl(name);
-    if(u) return u;
+    if (u) return u;
   }
   return null;
 }
