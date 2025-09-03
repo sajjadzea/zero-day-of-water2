@@ -1,6 +1,6 @@
 {
   "files": [
-    "counties.geojson",
-    "wind_sites.geojson"
+    "amaayesh/counties.geojson",
+    "amaayesh/wind_sites.geojson"
   ]
 }

@@ -7,13 +7,11 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 IN_COUNTIES_CSV = os.path.join(ROOT, "data", "table8_counties.csv")
 IN_SITES_CSV    = os.path.join(ROOT, "data", "wind_sites_raw.csv")
 IN_COMBINED_GEO = os.path.join(ROOT, "docs", "data", "amaayesh", "khorasan_razavi_combined.geojson")
-OUT_DIR         = os.path.join(ROOT, "docs", "data")
-OUT_DIR_ALT     = os.path.join(ROOT, "docs", "amaayesh", "data")
+OUT_DIR         = os.path.join(ROOT, "docs", "data", "amaayesh")
 OUT_SITES_GEO   = os.path.join(OUT_DIR, "wind_sites.geojson")
 OUT_COUNTIES_GEO= os.path.join(OUT_DIR, "counties.geojson")
 
 os.makedirs(OUT_DIR, exist_ok=True)
-os.makedirs(OUT_DIR_ALT, exist_ok=True)
 
 def class_norm(c):
     try: c = int(c)
@@ -103,9 +101,6 @@ for _, r in sites.iterrows():
 
 with open(OUT_SITES_GEO, "w", encoding="utf-8") as f:
     json.dump({"type":"FeatureCollection","features":features_sites}, f, ensure_ascii=False)
-# write alt copy
-with open(os.path.join(OUT_DIR_ALT, "wind_sites.geojson"), "w", encoding="utf-8") as f:
-    json.dump({"type":"FeatureCollection","features":features_sites}, f, ensure_ascii=False)
 
 # 4) خروجی پُلیگون شهرستان‌ها (از combined.geojson)
 with open(IN_COMBINED_GEO, "r", encoding="utf-8") as f:
@@ -143,9 +138,6 @@ for f in polys:
 
 with open(OUT_COUNTIES_GEO, "w", encoding="utf-8") as f:
     json.dump({"type":"FeatureCollection","features":features_counties}, f, ensure_ascii=False)
-# write alt copy
-with open(os.path.join(OUT_DIR_ALT, "counties.geojson"), "w", encoding="utf-8") as f:
-    json.dump({"type":"FeatureCollection","features":features_counties}, f, ensure_ascii=False)
 
-print("[ok] wrote:", OUT_SITES_GEO, "and", os.path.join(OUT_DIR_ALT, "wind_sites.geojson"))
-print("[ok] wrote:", OUT_COUNTIES_GEO, "and", os.path.join(OUT_DIR_ALT, "counties.geojson"))
+print("[ok] wrote:", OUT_SITES_GEO)
+print("[ok] wrote:", OUT_COUNTIES_GEO)

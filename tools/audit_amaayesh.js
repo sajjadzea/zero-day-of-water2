@@ -5,14 +5,14 @@ function readJSON(fp){ try{ return JSON.parse(fs.readFileSync(fp,'utf8')); }catc
 function exists(fp){ return fs.existsSync(fp) && fs.statSync(fp).isFile(); }
 
 const root = p.resolve(__dirname, '..');
-const manifestPath = p.join(root, 'docs/amaayesh/layers.config.json');
+const manifestPath = p.join(root, 'docs/data/layers.config.json');
 const jsPath       = p.join(root, 'docs/assets/js/amaayesh-map.js');
 const htmlPath     = p.join(root, 'docs/amaayesh/index.html');
 
 // 1) Manifest
 const manifest = readJSON(manifestPath);
 const files = Array.isArray(manifest?.files) ? manifest.files : [];
-const repoFiles = files.map(f => p.join(root, 'docs/amaayesh', f.includes('/') ? f : `data/${f}`));
+const repoFiles = files.map(f => p.join(root, 'docs/data', f));
 
 // 2) JS references (inManifest('...') و fetch ... .geojson)
 const js = fs.existsSync(jsPath) ? fs.readFileSync(jsPath,'utf8') : '';
@@ -23,7 +23,6 @@ const jsRefs = Array.from(new Set([...m, ...f]));
 // 3) Province boundary possible locations
 const boundaryCandidates = [
   p.join(root, 'docs/data/amaayesh/khorasan_razavi_combined.geojson'),
-  p.join(root, 'docs/amaayesh/khorasan_razavi_combined.geojson'),
 ];
 
 // 4) HTML script type

@@ -1,6 +1,6 @@
 const args = process.argv.slice(2);
 const paths = args.length ? args : [
-  '/amaayesh/layers.config.json',
+  '/data/layers.config.json',
   '/data/amaayesh/counties.geojson',
   '/data/amaayesh/wind_sites.geojson'
 ];

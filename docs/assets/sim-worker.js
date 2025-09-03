@@ -2,12 +2,8 @@ importScripts('/assets/vendor/expr-eval.min.js');
 
 const AMA_DEBUG = self.AMA_DEBUG;
 function dataBases(){
-  const here = new URL(self.location.href);
   const cand = [
-    new URL('./data/', here).pathname,  // ./data/
-    new URL('data/',  here).pathname,   // data/
-    '/amaayesh/data/',                  // abs
-    '/data/amaayesh/'                   // abs legacy
+    '/data/'
   ];
   return [...new Set(cand)];
 }

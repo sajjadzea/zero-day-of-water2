@@ -209,7 +209,7 @@ async function main() {
     throw new Error('Normalization failed. Check decimal normalization.');
   }
 
-  const outDir = path.join(root, 'docs', 'amaayesh', 'data');
+  const outDir = path.join(root, 'docs', 'data', 'amaayesh');
   await mkdir(outDir, { recursive: true });
 
   const fmt = v => (v == null ? '' : String(Math.round(v * 1e4) / 1e4));

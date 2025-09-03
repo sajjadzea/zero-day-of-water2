@@ -51,14 +51,8 @@ function showToast(msg){
   }catch(e){}
 }
 function dataBases(){
-  const here = new URL(location.href);
   const cand = [
-    new URL('./data/',  here).pathname,
-    new URL('data/',   here).pathname,
-    new URL('../data/',here).pathname,
-    '/data/',
-    '/amaayesh/data/',
-    '/data/amaayesh/'
+    '/data/'
   ];
   const norm = cand.map(p => (p || '/').replace(/\/{2,}/g,'/').replace(/([^/])$/,'$1/'));
   return [...new Set(norm)];
@@ -79,9 +73,9 @@ async function fetchCSVResolved (f){ const u=await resolveDataUrl(f); if(!u) ret
 
 // ===== ارجاع پیش‌فرض برای فایل‌ها وقتی manifest نیست =====
 const DEFAULT_FILES = {
-  counties: ['counties.geojson', 'khorasan_razavi_combined.geojson'],
-  windSites: ['wind_sites.geojson', 'wind_sites_raw.geojson', 'wind_sites.csv'],
-  windWeights: ['wind_weights_by_county.csv']
+  counties: ['amaayesh/counties.geojson', 'amaayesh/khorasan_razavi_combined.geojson'],
+  windSites: ['amaayesh/wind_sites.geojson', 'amaayesh/wind_sites_raw.geojson', 'amaayesh/wind_sites.csv'],
+  windWeights: ['amaayesh/wind_weights_by_county.csv'],
 };
 
 // یک کمک‌تابع fallback برای داده‌های مهم:
@@ -460,8 +454,8 @@ window.addEventListener('error', e => {
     console.log('pathname:', window.location.pathname);
     console.log('__LAYER_MANIFEST size:', manifest.length);
     console.log('__LAYER_MANIFEST list:', manifest);
-    console.log('inManifest("counties.geojson"):', inManifest('counties.geojson'));
-    console.log('inManifest("wind_sites.geojson"):', inManifest('wind_sites.geojson'));
+    console.log('inManifest("amaayesh/counties.geojson"):', inManifest('amaayesh/counties.geojson'));
+    console.log('inManifest("amaayesh/wind_sites.geojson"):', inManifest('amaayesh/wind_sites.geojson'));
     console.log('AMA_DATA_BASE:', window.AMA_DATA_BASE);
     console.log('script src:', scriptSrc);
     console.log('served from /amaayesh/?', servedFromAma);
@@ -620,9 +614,9 @@ window.addEventListener('error', e => {
   (async () => {
     const cfg = await fetchManifest();
     const combinedUrl = await resolveWithFallback([
-      (window.__LAYER_MANIFEST && 'counties.geojson'),
+      (window.__LAYER_MANIFEST && 'amaayesh/counties.geojson'),
       ...DEFAULT_FILES.counties,
-      'khorasan_razavi_combined.geojson'
+      'amaayesh/khorasan_razavi_combined.geojson'
     ].filter(Boolean));
     let combined = null;
     if (combinedUrl) {
@@ -752,7 +746,7 @@ window.addEventListener('error', e => {
       ctl.addTo(map);
     })();
 
-    // === WIND: load computed datasets (counties.geojson + wind_sites.geojson) ===
+    // === WIND: load computed datasets (amaayesh/counties.geojson + amaayesh/wind_sites.geojson) ===
     {
       const classColors = {1:'#bdbdbd', 2:'#f6c945', 3:'#29cc7a'};
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
@@ -760,9 +754,9 @@ window.addEventListener('error', e => {
 
       // counties
       const countiesUrl = await resolveWithFallback([
-        (window.__LAYER_MANIFEST && 'counties.geojson'),
+        (window.__LAYER_MANIFEST && 'amaayesh/counties.geojson'),
         ...DEFAULT_FILES.counties,
-        'khorasan_razavi_combined.geojson'
+        'amaayesh/khorasan_razavi_combined.geojson'
       ].filter(Boolean));
       if (countiesUrl) {
         let polysFC = null;
@@ -909,7 +903,7 @@ window.addEventListener('error', e => {
       }
       // wind sites
       const windSitesUrl = await resolveWithFallback([
-        (window.__LAYER_MANIFEST && 'wind_sites.geojson'),
+        (window.__LAYER_MANIFEST && 'amaayesh/wind_sites.geojson'),
         ...DEFAULT_FILES.windSites
       ].filter(Boolean));
       if (windSitesUrl) {
