@@ -104,27 +104,48 @@ async function tryFetch(url){
   }
 }
 
+// --- AMA FIX: robust vendor loader (no double download, ordered) ---
 async function tryLoadVendorScript(relPath){
   const here = new URL(location.href);
   const bases = [
-    new URL('./assets/vendor/', here).pathname,
+    new URL('./assets/vendor/',  here).pathname,
+    new URL('../assets/vendor/', here).pathname, // cover nested /amaayesh/
     '/assets/vendor/'
-  ];
-  const qs = `?v=${window.__AMA_BUILD_ID}`;
-  for(const b of bases){
-    const url = b + relPath + qs;
-    try {
-      const r = await fetch(url, {method:'GET', cache:'no-store'});
-      if(r.ok){
-        const s = document.createElement('script'); s.src = url; s.defer = true;
+  ].map(p => (p || '/')
+      .replace(/\/{2,}/g,'/')
+      .replace(/([^/])$/,'$1/'));
+
+  const uniq = [...new Set(bases)];
+  const qs   = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+
+  for (const base of uniq){
+    const url = base + relPath + qs;
+    try{
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = false;            // preserve insertion order
+        s.onload = () => resolve(true);
+        s.onerror = () => reject(new Error('load-failed'));
         document.head.appendChild(s);
-        if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
-        return true;
-      }
-    } catch {}
+      });
+      if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
+      return true;
+    } catch (e) {
+      if (window.AMA_DEBUG) console.info('[vendor]', 'miss', url, e?.message || 'error');
+      // try next base
+    }
   }
   if (window.AMA_DEBUG) console.info('[vendor]', 'not-found', relPath);
   return false;
+}
+
+// Load multiple vendors sequentially
+async function loadVendorsInOrder(list){
+  for (const rel of list){
+    const ok = await tryLoadVendorScript(rel);
+    if(!ok) throw new Error('vendor-not-found: ' + rel);
+  }
 }
 
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
@@ -918,10 +939,14 @@ window.addEventListener('error', e => {
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
-          let superclusterReady = !!window.Supercluster;
+          let superclusterReady = !!window.supercluster;
           if (!superclusterReady) {
             await tryLoadVendorScript('supercluster/supercluster.min.js');
-            superclusterReady = !!window.Supercluster;
+            superclusterReady = !!window.supercluster;
+          }
+          if (!superclusterReady && window.Supercluster) {
+            window.supercluster = window.Supercluster;
+            superclusterReady = true;
           }
           if (superclusterReady) {
             // clustering code
