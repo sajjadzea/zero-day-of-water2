@@ -23,6 +23,9 @@ window.__WIND_WEIGHTS_MISSING = window.__WIND_WEIGHTS_MISSING ?? false;
 window.__WIND_SELF_CHECK      = window.__WIND_SELF_CHECK      ?? { mapCount:0, hasData:0, noData:0, onlyInMap:[], onlyInIdx:[] };
 window.legend = window.legend || null;
 window.legendCtl = window.legendCtl || null;
+// safe no-ops to avoid ReferenceError before real implementations
+window.renderLegend = window.renderLegend || function(){};
+window.__AMA_renderTop10 = window.__AMA_renderTop10 || function(){};
 
 function normalizeFaName(s){
   if(!s) return '';
@@ -126,9 +129,16 @@ function deriveCountyFromProps(props){
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
 window.setActiveWindKPI = function(k){
   window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
-  if(window.__countiesLayer) eachPolyFeatureLayer(window.__countiesLayer, l=>l.setStyle(styleForCounty(l.feature)));
-  if(typeof renderLegend==='function') renderLegend();
-  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  if (window.__countiesLayer) {
+    (function repaint(root){
+      function walk(l){ if(!l) return;
+        if(typeof l.getLayers==='function'){ l.getLayers().forEach(walk); return; }
+        if(l.feature) l.setStyle(styleForCounty(l.feature));
+      } walk(root);
+    })(window.__countiesLayer);
+  }
+  if (typeof renderLegend==='function') renderLegend();
+  if (typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 };
 // ===== END WIND DIAG BASICS =====
 
@@ -145,17 +155,16 @@ function parseCSV(text){
 }
 
 function styleForCounty(feature){
-  // Uses ACTIVE KPI, with clear zero/NoData behavior
+  const p = feature.properties||{};
   const k = window.__activeWindKPI || 'wind_wDensity';
-  const has = !!feature.properties.__hasWindData;
-  const v = feature.properties[k];
-  if(!has) return {fillOpacity:.15, color:'#666', weight:.8, dashArray:'3', fillColor:'#ddd'};
-  if(v===0 || v===0.0) return {fillOpacity:.8, color:'#555', weight:.8, fillColor:'#f2f2f2'};
-  // simple 5-classes ramp (replace with your jenks if available)
-  const ramps = ['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
-  const breaks = feature.properties.__windBreaks || [0.2,0.4,0.6,0.8];  // fallback
-  let idx = 0; if(v>breaks[0]) idx=1; if(v>breaks[1]) idx=2; if(v>breaks[2]) idx=3; if(v>breaks[3]) idx=4;
-  return {fillOpacity:.85, color:'#555', weight:.8, fillColor:ramps[idx]};
+  const has = !!p.__hasWindData;
+  const v = Number(p[k] ?? 0);
+  if(!has) return {fillOpacity:.15, color:'#7a7a7a', weight:.8, dashArray:'3', fillColor:'#e5e7eb'};
+  if(v===0) return {fillOpacity:.85, color:'#555', weight:.8, fillColor:'#f3f4f6'};
+  const ramp = ['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
+  const br = window.__WIND_BREAKS || [0.2,0.4,0.6,0.8];
+  let i=0; if(v>br[0]) i=1; if(v>br[1]) i=2; if(v>br[2]) i=3; if(v>br[3]) i=4;
+  return {fillOpacity:.88, color:'#4b5563', weight:.9, fillColor:ramp[i]};
 }
 
 window.runWindSelfCheck = function(){
@@ -217,8 +226,7 @@ async function joinWindWeightsOnAll(){
   window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
   if(AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
 
-  if(typeof renderLegend==='function') renderLegend();
-  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  setActiveWindKPI(window.__activeWindKPI);
 }
 
 // Debug flag and fetch logger
@@ -769,9 +777,47 @@ window.addEventListener('error', e => {
           // Top-10 panel
           window.__AMA_topPanel = L.control({position:"topright"});
           window.__AMA_topPanel.onAdd = function(){ const wrap=L.DomUtil.create("div","ama-panel"); wrap.innerHTML = `<div class="ama-panel-hd">Top-10 باد</div><div class="ama-panel-bd"><div id="ama-top10"></div></div>`; return wrap; };
-          window.__AMA_renderTop10 = function(){ const panel=document.querySelector('.ama-panel'); if(window.__WIND_WEIGHTS_MISSING){ if(panel) panel.style.display='none'; return; } if(panel) panel.style.display='block'; const rows=polysFC.features.map(f=>f.properties).filter(p=>p.__hasWindData); rows.sort((a,b)=>(b[windKpiKey]||0)-(a[windKpiKey]||0)); const top=rows.slice(0,10); const el=document.getElementById('ama-top10'); if(!el) return; el.innerHTML = top.map((p,i)=>`<div class="ama-row" data-county="${p.county||''}"><div class="c">${__AMA_fmtNumberFa(i+1)}</div><div class="n">${p.county||'—'}</div><div class="m">${__AMA_fmtNumberFa(p[windKpiKey]||0,{digits:3})}</div></div>`).join(''); el.querySelectorAll('.ama-row').forEach(r=>{ r.addEventListener('click',()=>{ const n=r.getAttribute('data-county'); focusCountyByName(n); openSidepanel(polysFC.features.find(f=>f.properties.county===n)?.properties||{}); }); }); };
+          window.__AMA_renderTop10 = function(){
+            const panel=document.querySelector('.ama-panel');
+            const el=document.getElementById('ama-top10');
+            if(!panel||!el) return;
+            if(window.__WIND_WEIGHTS_MISSING){ panel.style.display='none'; return; }
+            panel.style.display='block';
+            if(!window.__WIND_DATA_READY){ el.innerHTML = '<div class="ama-loading">در حال بارگذاری…</div>'; return; }
+            const rows=polysFC.features.map(f=>f.properties).filter(p=>p.__hasWindData);
+            rows.sort((a,b)=>(b[windKpiKey]||0)-(a[windKpiKey]||0));
+            const top=rows.slice(0,10);
+            el.innerHTML = top.map((p,i)=>`<div class="ama-row" data-county="${p.county||''}"><div class="c">${__AMA_fmtNumberFa(i+1)}</div><div class="n">${p.county||'—'}</div><div class="m">${__AMA_fmtNumberFa(p[windKpiKey]||0,{digits:3})}</div></div>`).join('');
+            el.querySelectorAll('.ama-row').forEach(r=>{
+              r.addEventListener('click',()=>{ const n=r.getAttribute('data-county'); focusCountyByName(n); openSidepanel(polysFC.features.find(f=>f.properties.county===n)?.properties||{}); });
+            });
+          };
           window.__AMA_topPanel.addTo(map);
           window.__AMA_renderTop10();
+
+          window.renderLegend = function(){
+            let el = document.getElementById('ama-kpi-legend');
+            if(!el){
+              el = document.createElement('div');
+              el.id = 'ama-kpi-legend';
+              el.className = 'ama-kpi-legend';
+              document.body.appendChild(el);
+            }
+            if(!window.__WIND_DATA_READY){
+              el.innerHTML = '<div class="ama-loading">در حال بارگذاری…</div>';
+              return;
+            }
+            const ramp=['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
+            const br=window.__WIND_BREAKS || [0.2,0.4,0.6,0.8];
+            let html=''; let prev=0;
+            const fmt = n=>window.__AMA_fmtNumberFa?__AMA_fmtNumberFa(n,{digits:2}):n.toFixed(2);
+            for(let i=0;i<br.length;i++){
+              html += `<div class="lg"><span class="sw" style="background:${ramp[i]}"></span>${fmt(prev)}–${fmt(br[i])}</div>`;
+              prev=br[i];
+            }
+            html += `<div class="lg"><span class="sw" style="background:${ramp[br.length]}"></span>${fmt(br[br.length-1])}+</div>`;
+            el.innerHTML = html;
+          };
 
           map.on('kpi:change', ()=>{
             restyle();
