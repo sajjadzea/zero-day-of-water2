@@ -1,5 +1,5 @@
 // debug & build flags
-window.AMA_DEBUG = ((new URLSearchParams(location.search).get('ama_debug'))==='1') || localStorage.getItem('AMA_DEBUG')==='1';
+window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
 window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
 const AMA_DEBUG = window.AMA_DEBUG;
 
@@ -35,26 +35,34 @@ function normalizeFaName(s){
     .replace(/\s+/g,' ').trim();
 }
 const keyOf = s => normalizeFaName(s).replace(/\s+/g,'');
-const DATA_BASES = ['amaayesh/data/','data/','./data/','/amaayesh/data/','/data/amaayesh/'];  // in this order for Netlify
-async function resolveDataUrl(file){
+function dataBases() {
+  // بدون 'amaayesh/data/' نسبی تا دوبل نشود
+  const here = new URL(location.href);
+  return [
+    new URL('./data/', here).pathname,      // ./data/
+    new URL('data/', here).pathname,        // data/
+    '/amaayesh/data/',                       // abs
+    '/data/amaayesh/'                        // abs legacy
+  ];
+}
+async function resolveDataUrl(file) {
   const qs = `?v=${window.__AMA_BUILD_ID}`;
-  for (const b of DATA_BASES) {
+  for (const b of dataBases()) {
     const url = b + file + qs;
     try {
-      const r = await fetch(url, {method:'GET', cache:'no-store'});
+      const r = await fetch(url, { method:'GET', cache:'no-store' });
       if (r.ok) {
-        window.__AMA_RESOLVED = (window.__AMA_RESOLVED||{});
-        window.__AMA_RESOLVED[file]=url;
-        if(AMA_DEBUG) console.info('[resolve]', file, '→', url);
+        (window.__AMA_RESOLVED ||= {})[file] = url;
+        if (window.AMA_DEBUG) console.info('[resolve]', file, '→', url);
         return url;
       }
     } catch {}
   }
-  if (AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
+  if (window.AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
   return null;
 }
-async function fetchJSONResolved(file){ const u=await resolveDataUrl(file); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
-async function fetchCSVResolved(file){ const u=await resolveDataUrl(file); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.text(): null; }
+async function fetchJSONResolved(file) { const u = await resolveDataUrl(file); if(!u) return null; const r = await fetch(u,{cache:'no-store'}); return r.ok ? r.json() : null; }
+async function fetchCSVResolved (file) { const u = await resolveDataUrl(file); if(!u) return null; const r = await fetch(u,{cache:'no-store'}); return r.ok ? r.text() : null; }
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
 function featureHasCountyProp(f){ const p=f.properties||{}; return !!(p.county||p.name_fa||p.name); }
 function collectGeoJsonLayersDeep(root){
@@ -308,6 +316,9 @@ window.addEventListener('error', e => {
     }
 
     const SuperclusterCtor = window?.Supercluster || null;
+    if (SuperclusterCtor) {
+      // vendor available: current code does not require immediate init
+    }
 
   let searchLayer = L.layerGroup().addTo(map);
   let boundary;
@@ -341,32 +352,6 @@ window.addEventListener('error', e => {
     return s; // فقط filename.geojson
   }
 
-  const MANIFEST_BASES = ['amaayesh/','', './','/amaayesh/','/'];
-  async function resolveManifestUrl(file){
-    const qs = `?v=${window.__AMA_BUILD_ID}`;
-    for(const b of MANIFEST_BASES){
-      const url = b + file + qs;
-      try {
-        const r = await fetch(url,{method:'GET',cache:'no-store'});
-        if(r.ok){
-          window.__AMA_RESOLVED = (window.__AMA_RESOLVED||{});
-          window.__AMA_RESOLVED[file]=url;
-          if(AMA_DEBUG) console.info('[resolve]', file, '→', url);
-          return url;
-        }
-      } catch {}
-    }
-    if(AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
-    return null;
-  }
-
-  async function fetchManifest(){
-    const u = await resolveManifestUrl('layers.config.json');
-    if(!u) return null;
-    const r = await fetch(u,{cache:'no-store'});
-    return r.ok? r.json(): null;
-  }
-
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
 
@@ -378,7 +363,7 @@ window.addEventListener('error', e => {
   }
 
   async function loadLayerManifest(){
-    const j = await fetchManifest();
+    const j = await fetchJSONResolved('layers.config.json');
     const set = new Set(Array.isArray(j?.files) ? j.files : []);
     window.__LAYER_MANIFEST = set;
     __LAYER_MANIFEST = set;
