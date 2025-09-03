@@ -74,6 +74,9 @@
   .ama-modes .chip { background:#0b1220; border-color:#1f2937; color:#e5e7eb; }
 }
 
+/* loading placeholder */
+.ama-loading{font-size:12px;text-align:center;opacity:.8;padding:4px;}
+
 /* Top-10 panel */
 .ama-panel { width: 290px; max-height: 320px; overflow:auto; background: rgba(255,255,255,.95);
   border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.15); direction: rtl; }

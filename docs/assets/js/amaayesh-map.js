@@ -170,11 +170,11 @@ function styleForCounty(feature){
   const has = !!p.__hasWindData;
   const v = Number(p[k] ?? 0);
   if(!has) return {fillOpacity:.15, color:'#7a7a7a', weight:.8, dashArray:'3', fillColor:'#e5e7eb'};
-  if(v===0) return {fillOpacity:.85, color:'#555', weight:.8, fillColor:'#f3f4f6'};
+  if(v===0) return {fillOpacity:.88, color:'#6b7280', weight:.9, fillColor:'#f3f4f6'};
   const ramp = ['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
   const br = window.__WIND_BREAKS || [0.2,0.4,0.6,0.8];
   let i=0; if(v>br[0]) i=1; if(v>br[1]) i=2; if(v>br[2]) i=3; if(v>br[3]) i=4;
-  return {fillOpacity:.88, color:'#4b5563', weight:.9, fillColor:ramp[i]};
+  return {fillOpacity:.9, color:'#475569', weight:.9, fillColor:ramp[i]};
 }
 
 window.runWindSelfCheck = function(){
