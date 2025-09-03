@@ -24,16 +24,14 @@ window.__WIND_SELF_CHECK      = window.__WIND_SELF_CHECK      ?? { mapCount:0, h
 window.legend = window.legend || null;
 window.legendCtl = window.legendCtl || null;
 
-function normalizeFaName(s){ if(!s) return ''; return String(s).replace(/\u200c/g,' ')
-  .replace(/ي/g,'ی').replace(/ك/g,'ک')
-  .replace(/[^\p{L}\p{N}\s]/gu,'')
-  .replace(/\s+/g,' ').trim(); }
-function normalizeKey(s){ return normalizeFaName(s).replace(/\s+/g,''); }
-const COUNTY_ALIASES = Object.assign({
-  'تربتجام':'تربت‌جام',
-  'مهولات':'مه‌ولات',
-  'باجگیران':'باجگیران',
-}, (window.COUNTY_ALIASES||{}));
+function normalizeFaName(s){
+  if(!s) return '';
+  return String(s).replace(/\u200c/g,' ')
+    .replace(/ي/g,'ی').replace(/ك/g,'ک')
+    .replace(/[^\p{L}\p{N}\s]/gu,'')
+    .replace(/\s+/g,' ').trim();
+}
+const keyOf = s => normalizeFaName(s).replace(/\s+/g,'');
 const DATA_BASES = ['amaayesh/data/','data/','./data/','/amaayesh/data/','/data/amaayesh/'];  // in this order for Netlify
 async function resolveDataUrl(file){
   const qs = `?v=${window.__AMA_BUILD_ID}`;
@@ -85,9 +83,44 @@ function eachPolyFeatureLayer(root, fn){
   function walk(l){
     if(!l) return;
     if(typeof l.getLayers==='function'){ l.getLayers().forEach(walk); return; }
-    if(l.feature && isPolyFeature(l.feature)) fn(l);
+    if(l.feature && (l.feature.geometry?.type==='Polygon' || l.feature.geometry?.type==='MultiPolygon')) fn(l);
   }
   walk(root);
+}
+
+function getCountyProp(props){
+  const map = {};
+  Object.keys(props||{}).forEach(k=>{
+    map[keyOf(k)] = props[k];
+  });
+  const candidates = [
+    'شهرستان','نامشهرستان','شهرستاننام','county','shahrestan','admin2','adm2name','countyname'
+  ];
+  for(const c of candidates){
+    if(map[c]!=null && String(map[c]).trim()!=='') return String(map[c]);
+  }
+  return null;
+}
+
+function deriveCountyFromProps(props){
+  const direct = getCountyProp(props);
+  if (direct) return normalizeFaName(direct);
+
+  const nameLike = props?.county || props?.name_fa || props?.name || props?.TITLE || props?.Name || '';
+  const s = normalizeFaName(nameLike);
+  // patterns:
+  //   "بخش مرکزی شهرستان تایباد" → "تایباد"
+  //   "دهستان xyz ، شهرستان نیشابور" → "نیشابور"
+  let m = s.match(/شهرستان\s+([^\s،]+(?:\s+[^\s،]+)*)/);
+  if (m && m[1]) return normalizeFaName(m[1]);
+
+  // another pattern: "... شهرستان تایباد بخش ..." → pick token after 'شهرستان'
+  const i = s.indexOf('شهرستان ');
+  if (i>=0) {
+    const rest = s.slice(i+'شهرستان '.length).split(' ')[0];
+    if (rest) return normalizeFaName(rest);
+  }
+  return '';
 }
 // expose active KPI (default)
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
@@ -131,7 +164,7 @@ window.runWindSelfCheck = function(){
     const rows=[]; let has=0, nod=0;
     eachPolyFeatureLayer(window.__countiesLayer, l=>{
       const f=l.feature||{}; const p=f.properties||{};
-      const nm = normalizeFaName(p.county || p.name_fa || p.name || '');
+      const nm = deriveCountyFromProps(p);
       const hd = !!p.__hasWindData;
       if(hd) has++; else nod++;
       rows.push({name:nm, has:hd, N:p.wind_N, sumW:p.wind_sumW, wD:p.wind_wDensity, dN:p.wind_density, avgW:p.wind_avgW});
@@ -144,30 +177,28 @@ window.runWindSelfCheck = function(){
 
 async function joinWindWeightsOnAll(){
   const txt = await fetchCSVResolved('wind_weights_by_county.csv');
-  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
+  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(AMA_DEBUG) console.warn('[join] CSV missing'); return; }
 
-  // Build index
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
   const headers = lines.shift().split(',').map(h=>h.trim());
   const idx = Object.create(null);
   lines.forEach(line=>{
-    const cols = line.split(',');
-    const r={}; headers.forEach((h,i)=>r[h]=(cols[i]||'').trim());
-    const raw = r['county']||''; const k = normalizeKey(raw);
-    const aliased = COUNTY_ALIASES[k] || raw;
-    idx[ normalizeKey(aliased) ] = r;
+    const cols=line.split(',');
+    const row={}; headers.forEach((h,i)=>row[h]=(cols[i]||'').trim());
+    const raw=row['county']||''; idx[keyOf(raw)]=row;
   });
   window.__weightsIdx = idx;
 
-  if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('[join] no counties layer'); return; }
+  if(!window.__countiesLayer){ if(AMA_DEBUG) console.warn('[join] no counties layer'); return; }
 
-  // Apply to ALL polygon features
-  let mapCount=0, hasData=0, noData=0; const onlyInMap=[], onlyInIdx=[], mapNames=[];
+  let mapCount=0, hasData=0, noData=0; const onlyInMap=[], mapKeys=[];
   eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
     const f=leaf.feature, p=f.properties||(f.properties={}); mapCount++;
-    const rawName = p.county || p.name_fa || p.name || '';
-    const key = normalizeKey(rawName); mapNames.push(key);
-    const w = idx[key];
+    const county = deriveCountyFromProps(p);
+    const k = keyOf(county);
+    mapKeys.push(k);
+
+    const w = idx[k];
     if(w){
       const n=+w.n_sites||0, s=+w.sum_w||0, avg=+w.w_avg||0;
       p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
@@ -175,17 +206,17 @@ async function joinWindWeightsOnAll(){
       p.wind_density = a? (n/a):0; p.wind_wDensity = a? (s/a):0;
       p.__hasWindData=true; hasData++;
     }else{
-      p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0; p.__hasWindData=false; noData++; onlyInMap.push(rawName);
+      p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0;
+      p.__hasWindData=false; noData++; onlyInMap.push(p.name_fa||p.name||county||'؟');
     }
     if(typeof styleForCounty==='function') leaf.setStyle(styleForCounty(f));
   });
-  Object.keys(idx).forEach(k=>{ if(!mapNames.includes(k)) onlyInIdx.push(idx[k].county); });
 
+  const onlyInIdx = Object.keys(idx).filter(k=>!mapKeys.includes(k)).map(k=>idx[k].county);
   window.__WIND_DATA_READY = true;
   window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
-  if(window.AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
+  if(AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
 
-  if(typeof window.legend?.rebuild === 'function') window.legend.rebuild();
   if(typeof renderLegend==='function') renderLegend();
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
