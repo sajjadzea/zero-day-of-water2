@@ -1,4 +1,4 @@
-// debug & build flags
+// --- Debug flags & build id ---
 window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
 window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
 const AMA_DEBUG = window.AMA_DEBUG;
@@ -387,7 +387,7 @@ window.addEventListener('error', e => {
   }
 
   // --- manifest ---
-  let __LAYER_MANIFEST = window.__LAYER_MANIFEST ?? null;
+  let __manifestState = 'unknown'; // 'ok' | 'missing' | 'unknown'
 
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
@@ -396,14 +396,24 @@ window.addEventListener('error', e => {
     return S.has(norm);
   }
 
-  async function loadLayerManifest(){
-    const j = await fetchJSONResolved('layers.config.json'); // optional
-    window.__LAYER_MANIFEST = j?.files ? new Set(j.files) : null;
-    __LAYER_MANIFEST = window.__LAYER_MANIFEST;
-    if(window.AMA_DEBUG) console.info('[manifest]', window.__LAYER_MANIFEST ? 'ok' : 'optional-missing');
-    return window.__LAYER_MANIFEST;
+  async function loadLayerManifestOnce(){
+    if (__manifestState !== 'unknown') return window.__LAYER_MANIFEST || null;
+    __manifestState = 'missing';
+    try{
+      const u = await resolveDataUrl('layers.config.json');
+      if(u){
+        const r = await fetch(u,{cache:'no-store'});
+        if(r.ok){
+          const j = await r.json();
+          window.__LAYER_MANIFEST = j?.files ? new Set(j.files) : null;
+          __manifestState = window.__LAYER_MANIFEST ? 'ok' : 'missing';
+        }
+      }
+    }catch(e){}
+    if(AMA_DEBUG) console.info('[manifest]', __manifestState);
+    return window.__LAYER_MANIFEST || null;
   }
-  await loadLayerManifest();
+  await loadLayerManifestOnce(); // if missing, continue without errors
 
   window.__dumpAmaState = function(){
     if (!window.AMA_DEBUG) return;
@@ -989,19 +999,19 @@ window.addEventListener('error', e => {
 
     // جایی که datasetهای دیگر را می‌خواندی (مثلاً برق/آب/گاز/نفت):
     let electricityLinesLayer = null;
-    if (__LAYER_MANIFEST.has('electricity_lines.geojson')) {
+    if (window.__LAYER_MANIFEST?.has('electricity_lines.geojson')) {
       electricityLinesLayer = await optionalGeoJSONFile('electricity_lines.geojson', { style: f => ({ color:'#22c55e', weight: 2 }) });
     }
     let waterMainsLayer = null;
-    if (__LAYER_MANIFEST.has('water_mains.geojson')) {
+    if (window.__LAYER_MANIFEST?.has('water_mains.geojson')) {
       waterMainsLayer      = await optionalGeoJSONFile('water_mains.geojson',        { style: f => ({ color:'#3b82f6', weight: 2 }) });
     }
     let gasTransmissionLayer = null;
-    if (__LAYER_MANIFEST.has('gas_transmission.geojson')) {
+    if (window.__LAYER_MANIFEST?.has('gas_transmission.geojson')) {
       gasTransmissionLayer = await optionalGeoJSONFile('gas_transmission.geojson',   { style: f => ({ color:'#f59e0b', weight: 2 }) });
     }
     let oilPipelinesLayer = null;
-    if (__LAYER_MANIFEST.has('oil_pipelines.geojson')) {
+    if (window.__LAYER_MANIFEST?.has('oil_pipelines.geojson')) {
       oilPipelinesLayer    = await optionalGeoJSONFile('oil_pipelines.geojson',      { style: f => ({ color:'#ef4444', weight: 2 }) });
     }
 
