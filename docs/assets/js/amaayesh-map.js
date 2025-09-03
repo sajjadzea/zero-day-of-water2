@@ -2,6 +2,7 @@
 window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
 window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
 const AMA_DEBUG = window.AMA_DEBUG;
+const AMA_HAS_CLUSTER = typeof window.supercluster !== 'undefined';
 
 ;(function(){
   window.__AMA_UI_VERSION = 'dock-probe-v1';
@@ -104,27 +105,48 @@ async function tryFetch(url){
   }
 }
 
+// --- AMA FIX: robust vendor loader (no double download, ordered) ---
 async function tryLoadVendorScript(relPath){
   const here = new URL(location.href);
   const bases = [
-    new URL('./assets/vendor/', here).pathname,
+    new URL('./assets/vendor/',  here).pathname,
+    new URL('../assets/vendor/', here).pathname, // cover nested /amaayesh/
     '/assets/vendor/'
-  ];
-  const qs = `?v=${window.__AMA_BUILD_ID}`;
-  for(const b of bases){
-    const url = b + relPath + qs;
-    try {
-      const r = await fetch(url, {method:'GET', cache:'no-store'});
-      if(r.ok){
-        const s = document.createElement('script'); s.src = url; s.defer = true;
+  ].map(p => (p || '/')
+      .replace(/\/{2,}/g,'/')
+      .replace(/([^/])$/,'$1/'));
+
+  const uniq = [...new Set(bases)];
+  const qs   = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+
+  for (const base of uniq){
+    const url = base + relPath + qs;
+    try{
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = false;            // preserve insertion order
+        s.onload = () => resolve(true);
+        s.onerror = () => reject(new Error('load-failed'));
         document.head.appendChild(s);
-        if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
-        return true;
-      }
-    } catch {}
+      });
+      if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
+      return true;
+    } catch (e) {
+      if (window.AMA_DEBUG) console.info('[vendor]', 'miss', url, e?.message || 'error');
+      // try next base
+    }
   }
   if (window.AMA_DEBUG) console.info('[vendor]', 'not-found', relPath);
   return false;
+}
+
+// Load multiple vendors sequentially
+async function loadVendorsInOrder(list){
+  for (const rel of list){
+    const ok = await tryLoadVendorScript(rel);
+    if(!ok) throw new Error('vendor-not-found: ' + rel);
+  }
 }
 
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
@@ -411,8 +433,6 @@ window.addEventListener('error', e => {
   }
 
   // --- manifest ---
-  let __manifestState = 'unknown'; // 'ok' | 'missing' | 'unknown'
-
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
     if (!(S instanceof Set)) return true; // no manifest -> allow
@@ -421,33 +441,31 @@ window.addEventListener('error', e => {
   }
 
   async function loadLayerManifestOnce(){
-    if (__manifestState !== 'unknown') return window.__LAYER_MANIFEST || null;
-    __manifestState = 'missing';
-    const qs = `?v=${window.__AMA_BUILD_ID}`;
-    for(const base of dataBases()){
-      const url = base + 'layers.config.json' + qs;
-      const res = await tryFetch(url);
-      if(res){
-        try{
-          const j = await res.json();
-          if(j?.files){
-            window.__LAYER_MANIFEST = new Set(j.files);
-            window.__LAYER_MANIFEST_URL = url;
-            __manifestState = 'ok';
-            console.info('[ama:manifest] loaded from', url);
-            return window.__LAYER_MANIFEST;
-          }
-        }catch(e){}
-        break;
+    const bases = dataBases();
+    const qs = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+    for (const b of bases){
+      const url = b + 'layers.config.json' + qs;
+      try{
+        const res = await fetch(url, { cache: 'no-store' });
+        if (window.AMA_DEBUG) console.info('[ama:fetch]', 'GET', url, '->', res.status);
+        if (res.ok){
+          const json = await res.json();
+          if (window.AMA_DEBUG) console.info('[ama:manifest]', 'loaded', url);
+          return { json, url };
+        }
+      }catch(e){
+        if (window.AMA_DEBUG) console.info('[ama:fetch]', 'ERR', url, e?.message);
       }
     }
-    console.warn('[ama:manifest] not found via any base');
-    return null;
+    throw new Error('manifest-not-found');
   }
-  const __manifest = await loadLayerManifestOnce();
-  if(!__manifest){
+
+  try{
+    const { json, url } = await loadLayerManifestOnce();
+    window.__LAYER_MANIFEST = new Set(json.files || []);
+    window.__LAYER_MANIFEST_URL = url;
+  }catch(e){
     showToast('عدم دسترسی به داده‌ها (layers.config.json).');
-    return;
   }
 
   window.__dumpAmaState = function(){
@@ -918,29 +936,73 @@ window.addEventListener('error', e => {
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
-          let superclusterReady = !!window.Supercluster;
-          if (!superclusterReady) {
-            await tryLoadVendorScript('supercluster/supercluster.min.js');
-            superclusterReady = !!window.Supercluster;
-          }
-          if (superclusterReady) {
-            // clustering code
-          } // else: silently skip
-
-          const pointToLayer = (f, latlng) => {
-            const p = f.properties || {};
-            const low = (p.quality === 'low');
-            return L.circleMarker(latlng, {
-              radius: radiusFromMW(p.capacity_mw_est),
-              weight: 1.5, color:'#111827', opacity:1,
-              fillColor:'#111827', fillOpacity:.85,
-              dashArray: low ? '2 4' : null
-            });
-          };
-          const onEachFeature = (f, layer) => {
-            const p = f.properties || {};
-            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-            layer.bindPopup(
+          if (AMA_HAS_CLUSTER) {
+            const index = window.supercluster({ radius: 40, maxZoom: 16 });
+            index.load(windSitesFC.features.map(f => ({
+              type: 'Feature',
+              properties: f.properties || {},
+              geometry: { type: 'Point', coordinates: f.geometry.coordinates }
+            })));
+            windSitesLayer = L.layerGroup();
+            window.windSitesLayer = windSitesLayer;
+            map.addLayer(windSitesLayer);
+            const render = () => {
+              const z = map.getZoom();
+              const b = map.getBounds();
+              const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+              const clusters = index.getClusters(bbox, z);
+              windSitesLayer.clearLayers();
+              clusters.forEach(f => {
+                const [lng, lat] = f.geometry.coordinates;
+                if (f.properties.cluster) {
+                  const count = f.properties.point_count;
+                  const m = L.circleMarker([lat, lng], {
+                    radius: Math.max(12, Math.min(32, count)),
+                    weight: 1.5, color:'#111827', opacity:1,
+                    fillColor:'#1e3a8a', fillOpacity:.8
+                  });
+                  m.bindTooltip(String(count), {direction:'center', permanent:true, opacity:0.8, className:'site-label'});
+                  windSitesLayer.addLayer(m);
+                } else {
+                  const p = f.properties || {};
+                  const low = (p.quality === 'low');
+                  const m = L.circleMarker([lat, lng], {
+                    radius: radiusFromMW(p.capacity_mw_est),
+                    weight: 1.5, color:'#111827', opacity:1,
+                    fillColor:'#111827', fillOpacity:.85,
+                    dashArray: low ? '2 4' : null
+                  });
+                  const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+                  m.bindPopup(`
+          <div dir="rtl" style="min-width:220px">
+            <div style="font-weight:700">${p.name_fa || '—'}</div>
+            <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
+            <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
+            <div>کیفیت مختصات: ${p.quality || '—'}</div>
+            <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
+          </div>`, {maxWidth: 320});
+                  m.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
+                  windSitesLayer.addLayer(m);
+                }
+              });
+            };
+            map.on('moveend zoomend', render);
+            render();
+          } else {
+            const pointToLayer = (f, latlng) => {
+              const p = f.properties || {};
+              const low = (p.quality === 'low');
+              return L.circleMarker(latlng, {
+                radius: radiusFromMW(p.capacity_mw_est),
+                weight: 1.5, color:'#111827', opacity:1,
+                fillColor:'#111827', fillOpacity:.85,
+                dashArray: low ? '2 4' : null
+              });
+            };
+            const onEachFeature = (f, layer) => {
+              const p = f.properties || {};
+              const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+              layer.bindPopup(
 `<div dir="rtl" style="min-width:220px">
             <div style="font-weight:700">${p.name_fa || '—'}</div>
             <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
@@ -948,37 +1010,40 @@ window.addEventListener('error', e => {
             <div>کیفیت مختصات: ${p.quality || '—'}</div>
             <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
           </div>`, {maxWidth: 320});
-            layer.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
-          };
+              layer.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
+            };
 
-          windSitesLayer = L.geoJSON(windSitesFC, {
-            pane: 'points',
-            pointToLayer,
-            onEachFeature
-          });
-          window.windSitesLayer = windSitesLayer;
+            windSitesLayer = L.geoJSON(windSitesFC, {
+              pane: 'points',
+              pointToLayer,
+              onEachFeature,
+              bubblingMouseEvents: true,
+              updateWhenZooming: false
+            });
+            window.windSitesLayer = windSitesLayer;
 
-          const Z_SITES_ON = 9;
-          function syncZoomVisibility(){
-            const z = map.getZoom();
-            if (window.windSitesLayer) {
-              if (z >= Z_SITES_ON) {
-                if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
-              } else {
-                if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+            const Z_SITES_ON = 9;
+            function syncZoomVisibility(){
+              const z = map.getZoom();
+              if (window.windSitesLayer) {
+                if (z >= Z_SITES_ON) {
+                  if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
+                } else {
+                  if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+                }
+                window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
               }
-              window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
             }
-          }
-          map.on('zoomend', syncZoomVisibility);
-          syncZoomVisibility();
+            map.on('zoomend', syncZoomVisibility);
+            syncZoomVisibility();
 
-          function updateSiteOpacity(){
-            const op = map.hasLayer(windChoroplethLayer) ? 0.4 : 0.85;
-            window.windSitesLayer?.eachLayer(l=>l.setStyle({opacity:op, fillOpacity:op}));
+            function updateSiteOpacity(){
+              const op = map.hasLayer(windChoroplethLayer) ? 0.4 : 0.85;
+              window.windSitesLayer?.eachLayer(l=>l.setStyle({opacity:op, fillOpacity:op}));
+            }
+            map.on('overlayadd overlayremove', updateSiteOpacity);
+            updateSiteOpacity();
           }
-          map.on('overlayadd overlayremove', updateSiteOpacity);
-          updateSiteOpacity();
         }
       }
 
