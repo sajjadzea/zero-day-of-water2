@@ -4,3 +4,10 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
 
+
+/data/*
+  Cache-Control: public, max-age=600
+/data/*.geojson
+  Content-Type: application/geo+json; charset=utf-8
+/data/*.csv
+  Content-Type: text/csv; charset=utf-8
