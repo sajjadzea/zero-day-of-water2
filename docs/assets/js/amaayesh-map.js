@@ -3,7 +3,7 @@ window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content
 
 ;(function(){
   window.__AMA_UI_VERSION = 'dock-probe-v1';
-  console.info('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', window.__AMA_BUILD_ID, 'path=', location.pathname);
+  console.log('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', window.__AMA_BUILD_ID, 'path=', location.pathname);
   // tiny top-left badge for visual confirmation (removable later)
   try {
     const el = document.createElement('div');
@@ -25,14 +25,20 @@ window.legendCtl = window.legendCtl || null;
 window.renderLegend = window.renderLegend || function(){};
 window.__AMA_renderTop10 = window.__AMA_renderTop10 || function(){};
 
+function keyOf(s=''){
+  return String(s)
+    .replace(/\u200c/g,'')
+    .replace(/[ي]/g,'ی')
+    .replace(/[ك]/g,'ک')
+    .replace(/\s+/g,' ')
+    .trim()
+    .toLowerCase();
+}
+const sameCounty = (a,b)=> keyOf(a) === keyOf(b);
 function normalizeFaName(s){
   if(!s) return '';
-  return String(s).replace(/\u200c/g,' ')
-    .replace(/ي/g,'ی').replace(/ك/g,'ک')
-    .replace(/[^\p{L}\p{N}\s]/gu,'')
-    .replace(/\s+/g,' ').trim();
+  return keyOf(s);
 }
-const keyOf = s => normalizeFaName(s).replace(/\s+/g,'');
 function showToast(msg){
   try{
     const host = document.querySelector('#ama-map, .ama-map, .leaflet-container') || document.body;
@@ -87,14 +93,14 @@ async function tryLoadVendorScript(relPath){
         s.onerror = () => reject(new Error('load-failed'));
         document.head.appendChild(s);
       });
-      if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
+      if (window.AMA_DEBUG) console.log('[vendor]', 'loaded', url);
       return true;
     } catch (e) {
-      if (window.AMA_DEBUG) console.info('[vendor]', 'miss', url, e?.message || 'error');
+      if (window.AMA_DEBUG) console.log('[vendor]', 'miss', url, e?.message || 'error');
       // try next base
     }
   }
-  if (window.AMA_DEBUG) console.info('[vendor]', 'not-found', relPath);
+  if (window.AMA_DEBUG) console.log('[vendor]', 'not-found', relPath);
   return false;
 }
 
@@ -131,7 +137,7 @@ function pickBestCountiesLayer(map){
 function ensureCountiesLayer(map){
   if(!window.__countiesLayer){
     const best = pickBestCountiesLayer(map);
-    if(best){ window.__countiesLayer = best; if(window.AMA_DEBUG){ let n=0; best.eachLayer(l=>{ if(l.feature&&isPolyFeature(l.feature)) n++; }); console.info('[counties pick] features:', n); } }
+    if(best){ window.__countiesLayer = best; if(window.AMA_DEBUG){ let n=0; best.eachLayer(l=>{ if(l.feature&&isPolyFeature(l.feature)) n++; }); console.log('[counties pick] features:', n); } }
   }
 }
 function eachPolyFeatureLayer(root, fn){
@@ -208,8 +214,8 @@ function parseCSV(text){
 function styleForCounty(feature){
   const p = feature.properties||{};
   const k = window.__activeWindKPI || 'wind_wDensity';
-  const has = !!p.__hasWindData;
   const v = Number(p[k] ?? 0);
+  const has = !!p.__hasWindData;
   if(!has) return {fillOpacity:.15, color:'#7a7a7a', weight:.8, dashArray:'3', fillColor:'#e5e7eb'};
   if(v===0) return {fillOpacity:.88, color:'#6b7280', weight:.9, fillColor:'#f3f4f6'};
   const ramp = ['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
@@ -219,20 +225,81 @@ function styleForCounty(feature){
 }
 
 window.runWindSelfCheck = function(){
+  console.log('[AMA] self-check started');
   try{
-    if(!window.__countiesLayer){ if(window.AMA_DEBUG) console.warn('no countiesLayer'); return; }
-    const rows=[]; let has=0, nod=0;
-    eachPolyFeatureLayer(window.__countiesLayer, l=>{
-      const f=l.feature||{}; const p=f.properties||{};
+    const rows=[]; let has=0, nod=0; let mapCount=0;
+    const namesMap = new Set();
+    const layers=[];
+    if (window.__countiesLayer && typeof window.__countiesLayer.eachLayer==='function') layers.push(window.__countiesLayer);
+    if (window.windChoroplethLayer && window.windChoroplethLayer!==window.__countiesLayer && typeof window.windChoroplethLayer.eachLayer==='function') layers.push(window.windChoroplethLayer);
+    if (window.boundary && window.boundary!==window.__countiesLayer && typeof window.boundary.eachLayer==='function') layers.push(window.boundary);
+
+    const pushRow = (p)=>{
       const nm = deriveCountyFromProps(p);
       const hd = !!p.__hasWindData;
+      const row = { county:nm, hasData:hd, N:+(p.wind_N||0), sumW:+(p.wind_sumW||0), avgW:+(p.wind_avgW||0) };
+      rows.push(row);
       if(hd) has++; else nod++;
-      rows.push({name:nm, has:hd, N:p.wind_N, sumW:p.wind_sumW, wD:p.wind_wDensity, dN:p.wind_density, avgW:p.wind_avgW});
-    });
-    window.__WIND_SELF_CHECK = window.__WIND_SELF_CHECK || {};
-    Object.assign(window.__WIND_SELF_CHECK, { mapCount:rows.length, hasData:has, noData:nod });
-    if(window.AMA_DEBUG){ console.group('WIND SELF-CHECK'); console.table(rows.slice(0,12)); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
+      mapCount++;
+      if(nm) namesMap.add(keyOf(nm));
+    };
+
+    if (layers.length){
+      layers.forEach(L => eachPolyFeatureLayer(L, l=> pushRow((l.feature||{}).properties||{})));
+    } else if (window.polysFC?.features?.length){
+      window.polysFC.features.forEach(f=>{
+        const p = f.properties||{};
+        if (typeof p.__hasWindData === 'undefined'){
+          const n=+(p.wind_N||0), s=+(p.wind_sumW||0), avg=+(p.wind_avgW||0);
+          p.__hasWindData = (n>0)||(s>0)||(avg>0);
+        }
+        pushRow(p);
+      });
+      if (window.AMA_DEBUG) console.warn('[AMA] self-check: using polysFC fallback');
+    } else if (window.countiesGeo?.features?.length){
+      // Fallback to raw GeoJSON features (may not be styled layers yet)
+      window.countiesGeo.features.forEach(f=>{
+        const p = f.properties||{};
+        if (typeof p.__hasWindData === 'undefined'){
+          const n=+(p.wind_N||0), s=+(p.wind_sumW||0), avg=+(p.wind_avgW||0);
+          p.__hasWindData = (n>0)||(s>0)||(avg>0);
+        }
+        pushRow(p);
+      });
+      if (window.AMA_DEBUG) console.warn('[AMA] self-check: using GeoJSON fallback (no Leaflet layer found)');
+    } else {
+      if (window.AMA_DEBUG) console.warn('[AMA] self-check: no county layer and no GeoJSON features available');
+    }
+
+    // Build namesIdx from weights CSV index (if available)
+    const namesIdx = new Set();
+    if (window.__AMA_windIdx && typeof window.__AMA_windIdx === 'object'){
+      Object.keys(window.__AMA_windIdx).forEach(k => namesIdx.add(keyOf(k)));
+    }
+    // Mismatch diagnostics
+    const onlyInMap = [];
+    const onlyInIdx = [];
+    if (namesMap.size){
+      namesMap.forEach(k => { if(!namesIdx.has(k)) onlyInMap.push(k); });
+    }
+    if (namesIdx.size){
+      namesIdx.forEach(k => { if(!namesMap.has(k)) onlyInIdx.push(k); });
+    }
+
+    const summary = { mapCount, hasData:has, noData:nod, onlyInMap, onlyInIdx };
+    window.__WIND_SELF_CHECK = summary;
+    window.__WIND_SELF_CHECK_ROWS = rows;
+    if(window.AMA_DEBUG){
+      console.group('WIND SELF-CHECK');
+      console.table(rows.slice(0,12));
+      console.log('[AMA] summary', summary);
+      if (onlyInMap.length) console.warn('[AMA] onlyInMap', onlyInMap.slice(0,20), '… total:', onlyInMap.length);
+      if (onlyInIdx.length) console.warn('[AMA] onlyInIdx', onlyInIdx.slice(0,20), '… total:', onlyInIdx.length);
+      console.groupEnd();
+    }
   }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
+  console.log('[AMA] self-check done');
+  return window.__WIND_SELF_CHECK;
 };
 
 // Debug flag and fetch logger
@@ -279,7 +346,7 @@ const __jsonCache = new Map();
 function setManifestBase(fromUrl){
   try {
     __LAYER_MANIFEST_BASE = new URL('.', fromUrl).pathname.replace(/\/{2,}/g,'/'); // e.g. '/data/'
-    if (AMA_DEBUG) console.info('[ama:manifest] base', __LAYER_MANIFEST_BASE);
+    if (AMA_DEBUG) console.log('[ama:manifest] base', __LAYER_MANIFEST_BASE);
   } catch {}
 }
 
@@ -295,7 +362,7 @@ async function fetchJSONFromManifest(rel){
   const url = absFromManifest(rel);
   if (__jsonCache.has(url)) return __jsonCache.get(url);
   const res = await fetch(url, { cache: 'no-store' });
-  if (AMA_DEBUG) console.info('[ama:data]', 'GET', url, '->', res.status);
+  if (AMA_DEBUG) console.log('[ama:data]', 'GET', url, '->', res.status);
   if (!res.ok) throw new Error('data-not-found: ' + url);
   const j = await res.json();
   __jsonCache.set(url, j);
@@ -311,7 +378,7 @@ async function fetchTextFromManifest(rel){
   const cleanRel = String(rel || '').replace(/^\.?\//,'');
   const url = new URL(cleanRel, location.origin + base).pathname + qs;
   const res = await fetch(url, { cache:'no-store' });
-  if (AMA_DEBUG) console.info('[ama:data:text] GET', url, '->', res.status);
+  if (AMA_DEBUG) console.log('[ama:data:text] GET', url, '->', res.status);
   if (!res.ok) throw new Error('data-not-found: ' + url);
   return await res.text();
 }
@@ -335,6 +402,8 @@ async function joinWindWeightsOnAll(){
     const raw=row['county']||''; idx[keyOf(raw)]=row;
   });
   window.__weightsIdx = idx;
+  // Expose weight index for diagnostics
+  try { window.__AMA_windIdx = idx; } catch(_) {}
 
   if(!window.__countiesLayer){ if(AMA_DEBUG) console.warn('[join] no counties layer'); return; }
 
@@ -351,7 +420,9 @@ async function joinWindWeightsOnAll(){
       p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
       const a = p.area_km2>0 ? p.area_km2 : 0;
       p.wind_density = a? (n/a):0; p.wind_wDensity = a? (s/a):0;
-      p.__hasWindData=true; hasData++;
+      const hasKPI = (n>0) || (s>0) || (avg>0);
+      p.__hasWindData = !!hasKPI;
+      if(hasKPI) hasData++; else noData++;
     }else{
       p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0;
       p.__hasWindData=false; noData++; onlyInMap.push(p.name_fa||p.name||county||'؟');
@@ -395,7 +466,7 @@ async function joinWindWeightsOnAll(){
           const b = e.target.closest('button'); if(!b) return;
           const act = b.dataset.act;
           if(act==='reset' && window.__countiesLayer && window.__mapBounds){ map.fitBounds(window.__mapBounds); }
-          if(window.AMA_DEBUG) console.info('[dock]', act);
+          if(window.AMA_DEBUG) console.log('[dock]', act);
         });
         return c;
       }
@@ -484,14 +555,14 @@ async function actuallyLoadManifest(){
     const url = b + 'layers.config.json' + qs;
     try{
       const res = await fetch(url, { cache:'no-store' });
-      if (AMA_DEBUG) console.info('[ama:fetch]', 'GET', url, '->', res.status);
+      if (AMA_DEBUG) console.log('[ama:fetch]', 'GET', url, '->', res.status);
       if (res.ok){
         const json = await res.json();
-        if (AMA_DEBUG) console.info('[ama:manifest] loaded from', url);
+        if (AMA_DEBUG) console.log('[ama:manifest] loaded from', url);
         return { json, url };
       }
     }catch(e){
-      if (AMA_DEBUG) console.info('[ama:fetch]', 'ERR', url, e?.message);
+      if (AMA_DEBUG) console.log('[ama:fetch]', 'ERR', url, e?.message);
     }
   }
   throw new Error('manifest-not-found');
@@ -503,28 +574,99 @@ async function actuallyLoadManifest(){
     window.__LAYER_MANIFEST = new Set(json.files || []);
     window.__LAYER_MANIFEST_URL = url;
     window.__LAYER_MANIFEST_JSON = json;
+    if (AMA_DEBUG) console.log('[ama:manifest] using', url);
   } catch (e) {
     if (window.showToast) window.showToast('عدم دسترسی به داده‌ها (layers.config.json).');
     if (AMA_DEBUG) console.warn(e);
   }
 
   window.__dumpAmaState = function(){
-    if (!window.AMA_DEBUG) return;
-    const manifest = Array.from(window.__LAYER_MANIFEST || []);
-    const scriptEl = document.querySelector('script[type="module"][src*="amaayesh-map"]') || document.currentScript;
-    const scriptSrc = scriptEl ? scriptEl.src : '';
-    const servedFromAma = /\/amaayesh\//.test(new URL(scriptSrc, location.href).pathname);
-    console.group('[ama-dump]');
-    console.log('pathname:', window.location.pathname);
-    console.log('__LAYER_MANIFEST size:', manifest.length);
-    console.log('__LAYER_MANIFEST list:', manifest);
-    console.log('inManifest("amaayesh/counties.geojson"):', inManifest('amaayesh/counties.geojson'));
-    console.log('inManifest("amaayesh/wind_sites.geojson"):', inManifest('amaayesh/wind_sites.geojson'));
-    console.log('AMA_DATA_BASE:', window.AMA_DATA_BASE);
-    console.log('script src:', scriptSrc);
-    console.log('served from /amaayesh/?', servedFromAma);
-    console.groupEnd();
+    const arr = Array.isArray(window.__LAYER_MANIFEST) ? window.__LAYER_MANIFEST : Array.from(window.__LAYER_MANIFEST||[]);
+    const inManifest = (k)=> arr.includes(k);
+    const info = {
+      manifestUrl: window.__LAYER_MANIFEST_URL,
+      manifestSize: arr.length,
+      manifestSample: arr.slice(0,5),
+      inManifest: {
+        'amaayesh/counties.geojson': inManifest('amaayesh/counties.geojson'),
+        'amaayesh/wind_sites.geojson': inManifest('amaayesh/wind_sites.geojson')
+      },
+      dataBase: '/data/amaayesh/',
+      activeKPI: window.__activeWindKPI,
+      hasCountyLayer: !!(window.__countiesLayer || window.windChoroplethLayer || window.boundary),
+      polysFC_features: window.polysFC?.features?.length || 0,
+      countiesGeo_features: window.countiesGeo?.features?.length || 0
+    };
+    console.log('[AMA] dump', info);
+    return info;
   };
+
+  // --- helpers for robust county name matching ---
+  function __AMA_candidateNames(p){
+    if(!p) return [];
+    const keys = ['county','name_fa','name','NAME_2','NAME_1','shahrestan','نام','نام_شهرستان'];
+    const vals = [];
+    for(const k of keys){ if(p[k]!=null) vals.push(String(p[k])); }
+    return vals;
+  }
+  function __AMA_matchPropsByName(p, normTarget){
+    return __AMA_candidateNames(p).some(v => keyOf(v) === normTarget);
+  }
+
+  // helper: find a county by (normalized) Persian name in the live datasets
+  window.__AMA_whereCounty = function(name){
+    const target = keyOf(name||'');
+    let found = null, source = null;
+    // 1) live Leaflet layers first
+    if (!found && window.__countiesLayer && typeof window.__countiesLayer.eachLayer==='function'){
+      eachPolyFeatureLayer(window.__countiesLayer, l=>{
+        const p=(l.feature||{}).properties||{};
+        if(!found && __AMA_matchPropsByName(p, target)){ found=p; source='__countiesLayer'; }
+      });
+    }
+    if (!found && window.windChoroplethLayer && typeof window.windChoroplethLayer.eachLayer==='function'){
+      eachPolyFeatureLayer(window.windChoroplethLayer, l=>{
+        const p=(l.feature||{}).properties||{};
+        if(!found && __AMA_matchPropsByName(p, target)){ found=p; source='windChoroplethLayer'; }
+      });
+    }
+    // 2) FC used to build the choropleth
+    if (!found && window.polysFC?.features?.length){
+      const f = window.polysFC.features.find(f=> __AMA_matchPropsByName((f||{}).properties||{}, target));
+      if (f){ found=f.properties||null; source='polysFC'; }
+    }
+    // 3) raw GeoJSON fallback
+    if (!found && window.countiesGeo?.features?.length){
+      const f = window.countiesGeo.features.find(f=> __AMA_matchPropsByName((f||{}).properties||{}, target));
+      if (f){ found=f.properties||null; source='countiesGeo'; }
+    }
+    console.log('[AMA] whereCounty', name, '-> source:', source, 'props:', found);
+    return found;
+  };
+
+  // helper: list all available county names (for debugging)
+  window.__AMA_listCountyNames = function(){
+    const seen = new Set(); const out = [];
+    const push = (nm, src) => { const k=keyOf(nm||''); if(!k || seen.has(k)) return; seen.add(k); out.push({name:nm, source:src}); };
+    const collectFromLayer = (L, src)=>{
+      if(!L || typeof L.eachLayer!=='function') return;
+      eachPolyFeatureLayer(L, l=>{
+        const p=(l.feature||{}).properties||{};
+        for(const nm of __AMA_candidateNames(p)) push(nm, src);
+      });
+    };
+    collectFromLayer(window.__countiesLayer, 'countiesLayer');
+    collectFromLayer(window.windChoroplethLayer, 'choropleth');
+    if (window.polysFC?.features?.length){
+      window.polysFC.features.forEach(f=> __AMA_candidateNames(f.properties||{}).forEach(nm=> push(nm, 'polysFC')));
+    }
+    if (window.countiesGeo?.features?.length){
+      window.countiesGeo.features.forEach(f=> __AMA_candidateNames(f.properties||{}).forEach(nm=> push(nm, 'countiesGeo')));
+    }
+    console.log('[AMA] county names', out.slice(0,20), '… total:', out.length);
+    return out;
+  };
+
   if (window.AMA_DEBUG) {
     window.__dumpAmaState();
   }
@@ -532,7 +674,7 @@ async function actuallyLoadManifest(){
   // load a GeoJSON file only if manifest allows it
   async function optionalGeoJSONFile(file, opts = {}) {
     if (!inManifest(file)) {
-      if (window.AMA_DEBUG) console.info('[ama-layer] skip (not in manifest):', file);
+      if (window.AMA_DEBUG) console.log('[ama-layer] skip (not in manifest):', file);
       return null;
     }
     let geo = null;
@@ -561,7 +703,7 @@ async function actuallyLoadManifest(){
     }
     if (layerKey) disableLayerToggle(layerKey);
     if (window.showToast) showToast('عدم دسترسی به داده‌ها: ' + rels[0]);
-    if (window.AMA_DEBUG) console.info('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
+    if (window.AMA_DEBUG) console.log('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
     return null;
   }
 
@@ -612,7 +754,7 @@ async function actuallyLoadManifest(){
         <div>Σw/km²</div><div>${p.wind_wDensity!=null?__AMA_fmtNumberFa(p.wind_wDensity,{digits:3}):'—'}</div>
         <div>avgW</div><div>${p.wind_avgW!=null?__AMA_fmtNumberFa(p.wind_avgW,{digits:3}):'—'}</div>
       </div>`;
-    const sites = (windSitesRaw||[]).filter(r=> (r.county||'')===name).slice(0,8);
+    const sites = (windSitesRaw||[]).filter(r=> sameCounty(r.county, name)).slice(0,8);
     const list = sites.map(s=>`<li>${s.name_fa||'—'} <small>(${(+s.lon).toFixed(2)},${(+s.lat).toFixed(2)})</small> <span>${s.source||''}</span> <button data-lat="${s.lat}" data-lon="${s.lon}" data-name="${s.name_fa}">نمایش روی نقشه</button></li>`).join('');
     body.innerHTML = `${kpiHtml}${sites.length?`<div><b>سایت‌های این شهرستان:</b><ul class="sp-sites">${list}</ul></div>`:''}<div style="margin-top:8px"><button id="ama-sp-dl">دانلود CSV شهرستان</button></div>`;
     sidepanelEl.querySelector('#ama-sp-name').textContent = name;
@@ -647,7 +789,7 @@ async function actuallyLoadManifest(){
 
   function focusCountyByName(name){
     let targetLayer=null;
-    (windChoroplethLayer||boundary)?.eachLayer?.(l=>{ if((l.feature?.properties?.county||'')===name) targetLayer=l; });
+    (windChoroplethLayer||boundary)?.eachLayer?.(l=>{ if(sameCounty(l.feature?.properties?.county||'', name)) targetLayer=l; });
     if(targetLayer){
       map.fitBounds(targetLayer.getBounds(), {maxZoom:11});
       targetLayer.fire('click');
@@ -930,7 +1072,7 @@ async function actuallyLoadManifest(){
             const top=rows.slice(0,10);
             el.innerHTML = top.map((p,i)=>`<div class="ama-row" data-county="${p.county||''}"><div class="c">${__AMA_fmtNumberFa(i+1)}</div><div class="n">${p.county||'—'}</div><div class="m">${__AMA_fmtNumberFa(p[windKpiKey]||0,{digits:3})}</div></div>`).join('');
             el.querySelectorAll('.ama-row').forEach(r=>{
-              r.addEventListener('click',()=>{ const n=r.getAttribute('data-county'); focusCountyByName(n); openSidepanel(polysFC.features.find(f=>f.properties.county===n)?.properties||{}); });
+              r.addEventListener('click',()=>{ const n=r.getAttribute('data-county'); focusCountyByName(n); openSidepanel(polysFC.features.find(f=>sameCounty(f.properties.county, n))?.properties||{}); });
             });
           };
           window.__AMA_topPanel.addTo(map);
@@ -1110,8 +1252,9 @@ async function actuallyLoadManifest(){
         sugg.innerHTML=''; idx=-1;
         if(!q){ sugg.style.display='none'; return; }
         const list=[];
-        if(countiesGeo?.features) countiesGeo.features.forEach(f=>{ const n=f.properties?.county||f.properties?.name||''; if(n.includes(q)) list.push({type:'county',name:n}); });
-        if(windSitesGeo?.features) windSitesGeo.features.forEach(f=>{ const n=f.properties?.name_fa||''; if(n.includes(q)) list.push({type:'site',name:n,latlng:f.geometry?.coordinates?.slice().reverse(),props:f.properties}); });
+        const kq = keyOf(q);
+        if(countiesGeo?.features) countiesGeo.features.forEach(f=>{ const n=f.properties?.county||f.properties?.name||''; if(keyOf(n).includes(kq)) list.push({type:'county',name:n}); });
+        if(windSitesGeo?.features) windSitesGeo.features.forEach(f=>{ const n=f.properties?.name_fa||''; if(keyOf(n).includes(kq)) list.push({type:'site',name:n,latlng:f.geometry?.coordinates?.slice().reverse(),props:f.properties}); });
         if(!list.length){ sugg.innerHTML='<div>داده‌ای برای جستجو موجود نیست.</div>'; sugg.style.display='block'; return; }
         items = list.slice(0,10);
         sugg.innerHTML = items.map((it,i)=>`<div data-i="${i}" data-type="${it.type}">${it.name}</div>`).join('');
