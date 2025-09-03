@@ -63,6 +63,23 @@ async function resolveDataUrl(file) {
 }
 async function fetchJSONResolved(file) { const u = await resolveDataUrl(file); if(!u) return null; const r = await fetch(u,{cache:'no-store'}); return r.ok ? r.json() : null; }
 async function fetchCSVResolved (file) { const u = await resolveDataUrl(file); if(!u) return null; const r = await fetch(u,{cache:'no-store'}); return r.ok ? r.text() : null; }
+
+// ===== ارجاع پیش‌فرض برای فایل‌ها وقتی manifest نیست =====
+const DEFAULT_FILES = {
+  counties: 'counties.geojson',
+  windSitesGeo: 'wind_sites.geojson',
+  windWeights: 'wind_weights_by_county.csv'
+};
+
+// یک کمک‌تابع fallback برای داده‌های مهم:
+async function resolveWithFallback(nameList){
+  for(const name of nameList){
+    const u = await resolveDataUrl(name);
+    if(u) return u;
+  }
+  return null;
+}
+
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
 function featureHasCountyProp(f){ const p=f.properties||{}; return !!(p.county||p.name_fa||p.name); }
 function collectGeoJsonLayersDeep(root){
@@ -195,7 +212,7 @@ window.runWindSelfCheck = function(){
 };
 
 async function joinWindWeightsOnAll(){
-  const txt = await fetchCSVResolved('wind_weights_by_county.csv');
+  const txt = await fetchCSVResolved(DEFAULT_FILES.windWeights);
   if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(AMA_DEBUG) console.warn('[join] CSV missing'); return; }
 
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
@@ -355,22 +372,21 @@ window.addEventListener('error', e => {
   }
 
   // --- manifest ---
-  let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
+  let __LAYER_MANIFEST = window.__LAYER_MANIFEST ?? null;
 
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
-    if (!S || typeof S.has !== 'function') return false;
+    if (!(S instanceof Set)) return true; // no manifest -> allow
     const norm = normalizeName(name);
     return S.has(norm);
   }
 
   async function loadLayerManifest(){
-    const j = await fetchJSONResolved('layers.config.json');
-    const set = new Set(Array.isArray(j?.files) ? j.files : []);
-    window.__LAYER_MANIFEST = set;
-    __LAYER_MANIFEST = set;
-    if(window.AMA_DEBUG) console.log('[ama-data] manifest size', set.size);
-    window.__amaManifestSnapshot = { files:Array.from(set), origin:null };
+    const j = await fetchJSONResolved('layers.config.json'); // optional
+    window.__LAYER_MANIFEST = j?.files ? new Set(j.files) : null;
+    __LAYER_MANIFEST = window.__LAYER_MANIFEST;
+    if(window.AMA_DEBUG) console.info('[manifest]', window.__LAYER_MANIFEST ? 'ok' : 'optional-missing');
+    return window.__LAYER_MANIFEST;
   }
   await loadLayerManifest();
 
@@ -543,9 +559,14 @@ window.addEventListener('error', e => {
 
   (async () => {
     const cfg = await fetchManifest();
-    let combined = await fetchJSONResolved('counties.geojson');
-    if(!combined?.features?.length){
-      combined = await fetchJSONResolved('khorasan_razavi_combined.geojson');
+    const combinedUrl = await resolveWithFallback([
+      (window.__LAYER_MANIFEST && 'counties.geojson'),
+      DEFAULT_FILES.counties,
+      'khorasan_razavi_combined.geojson'
+    ].filter(Boolean));
+    let combined = null;
+    if (combinedUrl) {
+      try { const r = await fetch(combinedUrl,{cache:'no-store'}); if(r.ok) combined = await r.json(); } catch{}
     }
     if(!combined?.features?.length){ return; }
 
@@ -677,10 +698,15 @@ window.addEventListener('error', e => {
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-
       // counties
-      if (inManifest('counties.geojson')) {
-        const polysFC = await fetchJSONResolved('counties.geojson');
+      const countiesUrl = await resolveWithFallback([
+        (window.__LAYER_MANIFEST && 'counties.geojson'),
+        DEFAULT_FILES.counties,
+        'khorasan_razavi_combined.geojson'
+      ].filter(Boolean));
+      if (countiesUrl) {
+        let polysFC = null;
+        try { const r = await fetch(countiesUrl,{cache:'no-store'}); if(r.ok) polysFC = await r.json(); } catch{}
         if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
@@ -821,12 +847,14 @@ window.addEventListener('error', e => {
           if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
         }
       }
-
       // wind sites
-
-      // wind sites
-      if (inManifest('wind_sites.geojson')) {
-        const windSitesFC = await fetchJSONResolved('wind_sites.geojson');
+      const windSitesUrl = await resolveWithFallback([
+        (window.__LAYER_MANIFEST && 'wind_sites.geojson'),
+        DEFAULT_FILES.windSitesGeo
+      ].filter(Boolean));
+      if (windSitesUrl) {
+        let windSitesFC = null;
+        try { const r = await fetch(windSitesUrl,{cache:'no-store'}); if(r.ok) windSitesFC = await r.json(); } catch{}
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
