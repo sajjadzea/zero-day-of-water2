@@ -89,6 +89,14 @@
 .ama-suggestions div{padding:6px;cursor:pointer;}
 .ama-suggestions div.active,.ama-suggestions div:hover{background:#e5e7eb;}
 
+/* loading badge */
+.ama-loading{font-size:12px;text-align:center;opacity:.8;padding:4px;}
+
+/* KPI legend */
+.ama-kpi-legend{background:rgba(10,15,28,.88);color:#fff;padding:8px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.2);position:fixed;left:8px;bottom:8px;z-index:999;font-size:12px}
+.ama-kpi-legend .lg{display:flex;align-items:center;gap:6px;margin:2px 0}
+.ama-kpi-legend .sw{width:20px;height:12px;border-radius:4px;display:inline-block;border:1px solid rgba(255,255,255,.25)}
+
 /* === Reset control === */
 .ama-reset{background:rgba(10,15,28,.88);color:#e5e7eb;border:1px solid #324155;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;height:44px;padding:0 10px;margin:4px;display:flex;align-items:center;justify-content:center;}
 .ama-reset:hover{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
