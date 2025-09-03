@@ -35,17 +35,33 @@ function normalizeFaName(s){
     .replace(/\s+/g,' ').trim();
 }
 const keyOf = s => normalizeFaName(s).replace(/\s+/g,'');
+function showToast(msg){
+  try{
+    const host = document.querySelector('#ama-map, .ama-map, .leaflet-container') || document.body;
+    let el = document.getElementById('ama-toast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'ama-toast';
+      el.style.cssText = 'position:absolute;top:8px;right:8px;z-index:9999;background:#2b2b2b;color:#fff;padding:8px 10px;border-radius:10px;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.2)';
+      host.style.position = host.style.position || 'relative';
+      host.appendChild(el);
+    }
+    el.textContent = msg;
+    setTimeout(()=>{ if(el && el.parentNode) el.parentNode.removeChild(el); }, 6000);
+  }catch(e){}
+}
 function dataBases(){
   const here = new URL(location.href);
-  // ترتیب مناسب Netlify (Publish=docs). بدون تکرار amaayesh/amaayesh
   const cand = [
-    new URL('./data/', here).pathname,  // ./data/
-    new URL('data/',  here).pathname,   // data/
-    '/amaayesh/data/',                  // abs
-    '/data/amaayesh/'                   // abs legacy
+    new URL('./data/',  here).pathname,
+    new URL('data/',   here).pathname,
+    new URL('../data/',here).pathname,
+    '/data/',
+    '/amaayesh/data/',
+    '/data/amaayesh/'
   ];
-  // de-dupe while keeping order
-  return [...new Set(cand)];
+  const norm = cand.map(p => (p || '/').replace(/\/{2,}/g,'/').replace(/([^/])$/,'$1/'));
+  return [...new Set(norm)];
 }
 async function resolveDataUrl(file){
   const qs = `?v=${window.__AMA_BUILD_ID}`;
@@ -75,6 +91,17 @@ async function resolveWithFallback(nameList){
     if(u) return u;
   }
   return null;
+}
+
+async function tryFetch(url){
+  try{
+    const res = await fetch(url,{cache:'no-store'});
+    console.info('[ama:fetch]','GET',url,'->',res.status);
+    return res.ok ? res : null;
+  }catch(e){
+    console.info('[ama:fetch]','ERR',url,e && e.message);
+    return null;
+  }
 }
 
 async function tryLoadVendorScript(relPath){
@@ -396,21 +423,32 @@ window.addEventListener('error', e => {
   async function loadLayerManifestOnce(){
     if (__manifestState !== 'unknown') return window.__LAYER_MANIFEST || null;
     __manifestState = 'missing';
-    try{
-      const u = await resolveDataUrl('layers.config.json');
-      if(u){
-        const r = await fetch(u,{cache:'no-store'});
-        if(r.ok){
-          const j = await r.json();
-          window.__LAYER_MANIFEST = j?.files ? new Set(j.files) : null;
-          __manifestState = window.__LAYER_MANIFEST ? 'ok' : 'missing';
-        }
+    const qs = `?v=${window.__AMA_BUILD_ID}`;
+    for(const base of dataBases()){
+      const url = base + 'layers.config.json' + qs;
+      const res = await tryFetch(url);
+      if(res){
+        try{
+          const j = await res.json();
+          if(j?.files){
+            window.__LAYER_MANIFEST = new Set(j.files);
+            window.__LAYER_MANIFEST_URL = url;
+            __manifestState = 'ok';
+            console.info('[ama:manifest] loaded from', url);
+            return window.__LAYER_MANIFEST;
+          }
+        }catch(e){}
+        break;
       }
-    }catch(e){}
-    if(AMA_DEBUG) console.info('[manifest]', __manifestState);
-    return window.__LAYER_MANIFEST || null;
+    }
+    console.warn('[ama:manifest] not found via any base');
+    return null;
   }
-  await loadLayerManifestOnce(); // if missing, continue without errors
+  const __manifest = await loadLayerManifestOnce();
+  if(!__manifest){
+    showToast('عدم دسترسی به داده‌ها (layers.config.json).');
+    return;
+  }
 
   window.__dumpAmaState = function(){
     if (!window.AMA_DEBUG) return;
