@@ -80,6 +80,29 @@ async function resolveWithFallback(nameList){
   return null;
 }
 
+async function tryLoadVendorScript(relPath){
+  const here = new URL(location.href);
+  const bases = [
+    new URL('./assets/vendor/', here).pathname,
+    '/assets/vendor/'
+  ];
+  const qs = `?v=${window.__AMA_BUILD_ID}`;
+  for(const b of bases){
+    const url = b + relPath + qs;
+    try {
+      const r = await fetch(url, {method:'GET', cache:'no-store'});
+      if(r.ok){
+        const s = document.createElement('script'); s.src = url; s.defer = true;
+        document.head.appendChild(s);
+        if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
+        return true;
+      }
+    } catch {}
+  }
+  if (window.AMA_DEBUG) console.info('[vendor]', 'not-found', relPath);
+  return false;
+}
+
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
 function featureHasCountyProp(f){ const p=f.properties||{}; return !!(p.county||p.name_fa||p.name); }
 function collectGeoJsonLayersDeep(root){
@@ -332,11 +355,6 @@ window.addEventListener('error', e => {
     if (window.AMA_DEBUG && map) {
       map.on('zoomend', () => console.log('[ama:event] zoomend =>', map.getZoom()));
       map.on('moveend', () => console.log('[ama:event] moveend =>', map.getCenter()));
-    }
-
-    const SuperclusterCtor = window?.Supercluster || null;
-    if (SuperclusterCtor) {
-      // vendor available: current code does not require immediate init
     }
 
   let searchLayer = L.layerGroup().addTo(map);
@@ -858,6 +876,15 @@ window.addEventListener('error', e => {
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
+          let superclusterReady = !!window.Supercluster;
+          if (!superclusterReady) {
+            await tryLoadVendorScript('supercluster/supercluster.min.js');
+            superclusterReady = !!window.Supercluster;
+          }
+          if (superclusterReady) {
+            // clustering code
+          } // else: silently skip
+
           const pointToLayer = (f, latlng) => {
             const p = f.properties || {};
             const low = (p.quality === 'low');
