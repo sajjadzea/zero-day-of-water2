@@ -1,8 +1,11 @@
+// debug & build flags
+window.AMA_DEBUG = ((new URLSearchParams(location.search).get('ama_debug'))==='1') || localStorage.getItem('AMA_DEBUG')==='1';
+window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
+const AMA_DEBUG = window.AMA_DEBUG;
+
 ;(function(){
-  const BID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
   window.__AMA_UI_VERSION = 'dock-probe-v1';
-  window.__AMA_BUILD_ID = BID;
-  console.info('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', BID, 'path=', location.pathname);
+  console.info('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', window.__AMA_BUILD_ID, 'path=', location.pathname);
   // tiny top-left badge for visual confirmation (removable later)
   try {
     const el = document.createElement('div');
@@ -15,8 +18,6 @@
 })();
 
 // ===== BEGIN WIND DIAG BASICS =====
-window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
-window.AMA_BUILD_ID = window.__AMA_BUILD_ID;
 window.__WIND_DATA_READY      = window.__WIND_DATA_READY      ?? false;
 window.__WIND_WEIGHTS_MISSING = window.__WIND_WEIGHTS_MISSING ?? false;
 window.__WIND_SELF_CHECK      = window.__WIND_SELF_CHECK      ?? { mapCount:0, hasData:0, noData:0, onlyInMap:[], onlyInIdx:[] };
@@ -33,32 +34,26 @@ const COUNTY_ALIASES = Object.assign({
   'مهولات':'مه‌ولات',
   'باجگیران':'باجگیران',
 }, (window.COUNTY_ALIASES||{}));
+const DATA_BASES = ['amaayesh/data/','data/','./data/','/amaayesh/data/','/data/amaayesh/'];  // in this order for Netlify
 async function resolveDataUrl(file){
-  const bases = ['data/','./data/','/amaayesh/data/','/data/amaayesh/'];
-  for(const b of bases){
-    const url = `${b}${file}?v=${window.AMA_BUILD_ID}`;
-    try{
-      const r = await fetch(url,{method:'GET',cache:'no-store'});
-      if(r.ok){
-        if(window.AMA_DEBUG){
-          window.__AMA_RESOLVED = window.__AMA_RESOLVED || {};
-          window.__AMA_RESOLVED[file] = url;
-          if(!window.__AMA_RESOLVE_LOGGED){
-            window.__AMA_RESOLVE_LOGGED = true;
-            setTimeout(()=>{
-              if(window.AMA_DEBUG && window.__AMA_RESOLVED){
-                console.info('[resolve]', Object.entries(window.__AMA_RESOLVED).map(([k,v])=>`${k}→${v}`).join(' | '));
-              }
-            },0);
-          }
-        }
+  const qs = `?v=${window.__AMA_BUILD_ID}`;
+  for (const b of DATA_BASES) {
+    const url = b + file + qs;
+    try {
+      const r = await fetch(url, {method:'GET', cache:'no-store'});
+      if (r.ok) {
+        window.__AMA_RESOLVED = (window.__AMA_RESOLVED||{});
+        window.__AMA_RESOLVED[file]=url;
+        if(AMA_DEBUG) console.info('[resolve]', file, '→', url);
         return url;
       }
-    }catch{}
+    } catch {}
   }
-  if(window.AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
+  if (AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
   return null;
 }
+async function fetchJSONResolved(file){ const u=await resolveDataUrl(file); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
+async function fetchCSVResolved(file){ const u=await resolveDataUrl(file); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.text(): null; }
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
 function featureHasCountyProp(f){ const p=f.properties||{}; return !!(p.county||p.name_fa||p.name); }
 function collectGeoJsonLayersDeep(root){
@@ -104,11 +99,6 @@ window.setActiveWindKPI = function(k){
 };
 // ===== END WIND DIAG BASICS =====
 
-async function fetchCSVResolved(file){
-  const u = await resolveDataUrl(file); if(!u) return null;
-  const r = await fetch(u,{method:'GET',cache:'no-store'}); if(!r.ok) return null;
-  return await r.text();
-}
 function parseCSV(text){
   if(!text) return [];
   const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
@@ -153,10 +143,8 @@ window.runWindSelfCheck = function(){
 };
 
 async function joinWindWeightsOnAll(){
-  const u = await resolveDataUrl('wind_weights_by_county.csv');
-  if(!u){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
-  const txt = await fetch(u,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.text():null);
-  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] empty CSV'); return; }
+  const txt = await fetchCSVResolved('wind_weights_by_county.csv');
+  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(window.AMA_DEBUG) console.warn('[join] weights CSV not found'); return; }
 
   // Build index
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
@@ -203,7 +191,6 @@ async function joinWindWeightsOnAll(){
 }
 
 // Debug flag and fetch logger
-window.AMA_DEBUG = window.AMA_DEBUG || /\b(ama_debug|debug)=1\b/.test(location.search);
 if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   const _origFetch = window.fetch;
   window.fetch = async function(...args){
@@ -315,168 +302,31 @@ window.addEventListener('error', e => {
     return s; // فقط filename.geojson
   }
 
-  function resolveManifestCandidates(){
-    const names = [
-      'layers.config.json',
-      './layers.config.json',
-      'amaayesh/layers.config.json',
-      './amaayesh/layers.config.json',
-      '/amaayesh/layers.config.json',
-      'data/layers.config.json',
-      './data/layers.config.json',
-      '/data/layers.config.json'
-    ];
-    return [...new Set(names)];
-  }
-
-  function resolveCandidates(name, kind) {
-    if (kind === 'manifest') {
-      return resolveManifestCandidates();
-    }
-    if (kind === 'data') {
-      const n = String(name).replace(/^\/+/,'');
-      const bases = ['data/','./data/','/amaayesh/data/','/data/amaayesh/'];
-      return bases.map(b=>b + n);
-    }
-    return [name];
-  }
-
-  async function fetchJSONWithFallback(name, opt={}) {
-    const { kind } = opt;
-    if(kind==='data'){
-      const u = await resolveDataUrl(name);
-      if(!u) return null;
-      try{
-        const r = await fetch(u,{method:'GET',cache:'no-store'});
-        if(r.ok){ if(window.AMA_DEBUG) console.log('[ama-probe] GET', u, r.status); return r.json(); }
-      }catch(e){ if(window.AMA_DEBUG) console.log('[ama-probe] GET err', u, e.message || e); }
-      return null;
-    }
-    const candidates = resolveCandidates(name, kind);
-    for (const url of candidates) {
+  const MANIFEST_BASES = ['amaayesh/','', './','/amaayesh/','/'];
+  async function resolveManifestUrl(file){
+    const qs = `?v=${window.__AMA_BUILD_ID}`;
+    for(const b of MANIFEST_BASES){
+      const url = b + file + qs;
       try {
-        const r = await fetch(url, { method:'GET', cache:'no-store' });
-        if (r.ok) { if (window.AMA_DEBUG) console.log('[ama-probe] GET', url, r.status); return r.json(); }
-      } catch (e) {
-        if (window.AMA_DEBUG) console.log('[ama-probe] GET err', url, e.message || e);
-      }
+        const r = await fetch(url,{method:'GET',cache:'no-store'});
+        if(r.ok){
+          window.__AMA_RESOLVED = (window.__AMA_RESOLVED||{});
+          window.__AMA_RESOLVED[file]=url;
+          if(AMA_DEBUG) console.info('[resolve]', file, '→', url);
+          return url;
+        }
+      } catch {}
     }
-    if (window.AMA_DEBUG) console.warn('[ama-data] failed to load:', name, 'candidates tried:', candidates);
+    if(AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
     return null;
-  }
-
-  async function fetchCSV(name){
-    const u = await resolveDataUrl(name);
-    if(!u) throw new Error('CSV not found: '+name);
-    try{
-      const r = await fetch(u,{method:'GET',cache:'no-cache'});
-      if(r.ok){
-        const text = await r.text();
-        if(window.AMA_DEBUG) console.log('[ama:data] CSV OK', u);
-        return text;
-      }
-    }catch(e){ if(window.AMA_DEBUG) console.warn('[ama:data] CSV err', u, String(e)); }
-    throw new Error('CSV not found: '+name);
   }
 
   async function fetchManifest(){
-    const qs = `?v=${window.__AMA_BUILD_ID||Date.now()}`;
-    for(const rel of resolveManifestCandidates()){
-      const url = rel + qs;
-      try{
-        const r = await fetch(url,{method:'GET',cache:'no-store'});
-        if(r.ok){
-          const j = await r.json();
-          if(window.AMA_DEBUG){
-            window.__AMA_RESOLVED = window.__AMA_RESOLVED || {};
-            window.__AMA_RESOLVED['layers.config.json'] = url;
-            console.log('[ama:manifest]', url, 'ok');
-          }
-          return j;
-        }
-      }catch(e){ if(window.AMA_DEBUG) console.log('[ama:manifest-err]', rel, String(e)); }
-    }
-    if(window.AMA_DEBUG) console.warn('[ama:manifest] not found via any candidate');
-    return null;
+    const u = await resolveManifestUrl('layers.config.json');
+    if(!u) return null;
+    const r = await fetch(u,{cache:'no-store'});
+    return r.ok? r.json(): null;
   }
-
-  window.__inspectDataPath = async function(name){
-    const kind = name === 'layers.config.json' ? 'manifest' : 'data';
-    const candidates = resolveCandidates(name, kind);
-    const rows = [];
-    if (!window.AMA_DEBUG) return rows;
-    for (const url of candidates){
-      let res = null;
-      try { res = await fetch(url, { method:'GET', cache:'no-store' }); } catch (_) { }
-      rows.push({ url, method:'GET', status: res ? res.status : 'ERR', ok: res ? res.ok : false, redirected: res ? res.redirected : false });
-    }
-    window.__AMA_INSPECTED = window.__AMA_INSPECTED || {};
-    if(!window.__AMA_INSPECTED[name]){ console.table(rows); window.__AMA_INSPECTED[name]=true; }
-    return rows;
-  };
-
-  window.__amaRCA = async function(){
-    const rows = [];
-    const names = ['layers.config.json', 'counties.geojson', 'wind_sites.geojson'];
-    for (const name of names) {
-      const kind = name === 'layers.config.json' ? 'manifest' : 'data';
-      const candidates = resolveCandidates(name, kind);
-      for (const url of candidates) {
-        let res = null;
-        try { res = await fetch(url, { method:'GET', cache:'no-store' }); } catch (_) {}
-        rows.push({
-          name,
-          url,
-          method:'GET',
-          status: res ? res.status : 'ERR',
-          ok: res ? res.ok : false,
-          redirected: res ? res.redirected : false,
-          finalUrl: res ? res.url : ''
-        });
-      }
-    }
-
-    const manifestRow = rows.find(r => r.name === 'layers.config.json' && r.ok);
-    const manifestUrl = manifestRow ? manifestRow.finalUrl : null;
-    let manifestJson = null;
-    try {
-      if (manifestUrl) {
-        const r = await fetch(manifestUrl, { method:'GET', cache:'no-store' });
-        if (r.ok) manifestJson = await r.json();
-      }
-    } catch (_) {}
-
-    const manifestFiles = Array.isArray(manifestJson?.files) ? manifestJson.files : [];
-    const manifestSet = Array.from(window.__LAYER_MANIFEST || []);
-    const boundaryOnMap = !!(boundary && map && map.hasLayer(boundary));
-    const windSitesOnMap = !!(window.windSitesLayer && map && map.hasLayer(window.windSitesLayer));
-
-    const symbols = [];
-    const hasReeval = typeof (window.reevaluateLegendPosition || window.reEvaluateLegendPosition) === 'function';
-    symbols.push({ name:'reevaluateLegendPosition', ok: hasReeval });
-    if (!hasReeval && window.AMA_DEBUG) {
-      console.error('[ama:rca] missing symbol: reevaluateLegendPosition at applyMode');
-    }
-
-    if (window.AMA_DEBUG) {
-      console.groupCollapsed('AMA · RCA');
-      console.table(rows);
-      console.groupEnd();
-    }
-
-    return {
-      rows,
-      symbols,
-      manifest: {
-        exists: !!manifestUrl,
-        url: manifestUrl,
-        __LAYER_MANIFEST: manifestSet,
-        files: manifestFiles,
-        boundaryOnMap,
-        windSitesOnMap
-      }
-    };
-  };
 
   // --- manifest ---
   let __LAYER_MANIFEST = window.__LAYER_MANIFEST = (window.__LAYER_MANIFEST instanceof Set ? window.__LAYER_MANIFEST : new Set());
@@ -517,8 +367,6 @@ window.addEventListener('error', e => {
   };
   if (window.AMA_DEBUG) {
     window.__dumpAmaState();
-    window.__inspectDataPath('counties.geojson');
-    window.__inspectDataPath('wind_sites.geojson');
   }
 
   // load a GeoJSON file only if manifest allows it
@@ -527,7 +375,7 @@ window.addEventListener('error', e => {
       if (window.AMA_DEBUG) console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
-    const geo = await fetchJSONWithFallback(file, { kind:'data' });
+    const geo = await fetchJSONResolved(file);
     if (!geo?.features?.length) {
       if (window.AMA_DEBUG) console.warn('[ama-layer] missing or empty:', file);
       return null;
@@ -535,11 +383,11 @@ window.addEventListener('error', e => {
     return L.geoJSON(geo, opts);
   }
 
-  // لودر مقاوم با هندل 404 و فهرست fallbackها
-  async function loadJSON(relOrList, { layerKey, fallbacks = [], kind } = {}) {
+  // لودر ساده با fallback روی نام‌های جایگزین
+  async function loadJSON(relOrList, { layerKey, fallbacks = [] } = {}) {
     const rels = Array.isArray(relOrList) ? relOrList : [relOrList];
     for (const rel of [...rels, ...fallbacks]) {
-      const j = await fetchJSONWithFallback(rel, { kind });
+      const j = await fetchJSONResolved(rel);
       if (j) return j;
     }
     if (layerKey) disableLayerToggle(layerKey);
@@ -669,13 +517,15 @@ window.addEventListener('error', e => {
 
   (async () => {
     const cfg = await fetchManifest();
-    const combinedUrl = await resolveDataUrl('khorasan_razavi_combined.geojson');
-    const combined = combinedUrl ? await fetch(combinedUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
+    let combined = await fetchJSONResolved('counties.geojson');
+    if(!combined?.features?.length){
+      combined = await fetchJSONResolved('khorasan_razavi_combined.geojson');
+    }
     if(!combined?.features?.length){ return; }
 
     const damsPath = cfg?.baseData?.dams;
     const damsRel = damsPath ? normalizeName(damsPath) : null;
-    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams', kind:'data' }) : null;
+    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams' }) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
@@ -804,8 +654,7 @@ window.addEventListener('error', e => {
 
       // counties
       if (inManifest('counties.geojson')) {
-        const countiesUrl = await resolveDataUrl('counties.geojson');
-        const polysFC = countiesUrl ? await fetch(countiesUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
+        const polysFC = await fetchJSONResolved('counties.geojson');
         if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
@@ -884,7 +733,7 @@ window.addEventListener('error', e => {
           kpiCtl.addTo(map);
 
           // load raw site CSV for sidepanel
-          try { const rawTxt = await fetchCSV('wind_sites_raw.csv'); windSitesRaw = parseCSV(rawTxt); } catch(_) { windSitesRaw = []; }
+          try { const rawTxt = await fetchCSVResolved('wind_sites_raw.csv'); windSitesRaw = parseCSV(rawTxt); } catch(_) { windSitesRaw = []; }
 
           // Top-10 panel
           window.__AMA_topPanel = L.control({position:"topright"});
@@ -913,8 +762,7 @@ window.addEventListener('error', e => {
 
       // wind sites
       if (inManifest('wind_sites.geojson')) {
-        const windSitesUrl = await resolveDataUrl('wind_sites.geojson');
-        const windSitesFC = windSitesUrl ? await fetch(windSitesUrl,{method:'GET',cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null) : null;
+        const windSitesFC = await fetchJSONResolved('wind_sites.geojson');
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
