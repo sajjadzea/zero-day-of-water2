@@ -94,7 +94,9 @@ function eachPolyFeatureLayer(root, fn){
   function walk(l){
     if(!l) return;
     if(typeof l.getLayers==='function'){ l.getLayers().forEach(walk); return; }
-    if(l.feature && (l.feature.geometry?.type==='Polygon' || l.feature.geometry?.type==='MultiPolygon')) fn(l);
+    const f = l.feature;
+    const t = f?.geometry?.type;
+    if (t==='Polygon' || t==='MultiPolygon') fn(l);
   }
   walk(root);
 }
@@ -105,7 +107,7 @@ function getCountyProp(props){
     map[keyOf(k)] = props[k];
   });
   const candidates = [
-    'شهرستان','نامشهرستان','شهرستاننام','county','shahrestan','admin2','adm2name','countyname'
+    'شهرستان','نامشهرستان','county','shahrestan','admin2','adm2name','countyname'
   ];
   for(const c of candidates){
     if(map[c]!=null && String(map[c]).trim()!=='') return String(map[c]);
@@ -117,7 +119,7 @@ function deriveCountyFromProps(props){
   const direct = getCountyProp(props);
   if (direct) return normalizeFaName(direct);
 
-  const nameLike = props?.county || props?.name_fa || props?.name || props?.TITLE || props?.Name || '';
+  const nameLike = props?.county || props?.name_fa || props?.name || props?.TITLE || props?.Name || props?.نام || '';
   const s = normalizeFaName(nameLike);
   // patterns:
   //   "بخش مرکزی شهرستان تایباد" → "تایباد"
@@ -128,7 +130,7 @@ function deriveCountyFromProps(props){
   // another pattern: "... شهرستان تایباد بخش ..." → pick token after 'شهرستان'
   const i = s.indexOf('شهرستان ');
   if (i>=0) {
-    const rest = s.slice(i+'شهرستان '.length).split(' ')[0];
+    const rest = s.slice(i+'شهرستان '.length).split(/[،\s]/)[0];
     if (rest) return normalizeFaName(rest);
   }
   return '';
@@ -233,8 +235,8 @@ async function joinWindWeightsOnAll(){
   window.__WIND_DATA_READY = true;
   window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
   if(AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
-
-  setActiveWindKPI(window.__activeWindKPI);
+  if(typeof renderLegend==='function') renderLegend();
+  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
 
 // Debug flag and fetch logger
@@ -698,13 +700,12 @@ window.addEventListener('error', e => {
             style: f => styleForCounty(f),
             onEachFeature:(f,l)=> l.bindTooltip((f.properties?.county || f.properties?.name || '—'), {sticky:true, direction:'auto', className:'label'})
           }).addTo(map);
-          ensureCountiesLayer(map);
+          window.__countiesLayer = windChoroplethLayer;
           map.removeLayer(windLayer);
           window.windChoroplethLayer = windChoroplethLayer;
 
           if (boundary) map.removeLayer(boundary);
           boundary = L.geoJSON(polysFC, { pane:'boundary', style:{ color:'rgba(31,41,55,.6)', weight:1.2, fill:false } }).addTo(map);
-          ensureCountiesLayer(map);
           map.fitBounds(boundary.getBounds(), { padding:[12,12] });
           map.setMaxBounds(boundary.getBounds().pad(0.25));
           boundary.setStyle({ className: 'neon-edge' });
@@ -812,6 +813,7 @@ window.addEventListener('error', e => {
           joinWindWeightsOnAll().then(()=>{
             const kc = kpiCtl.getContainer ? kpiCtl.getContainer() : null;
             if(kc){ kc.classList.remove('is-disabled'); kc.removeAttribute('title'); }
+            setActiveWindKPI(window.__activeWindKPI||'wind_wDensity');
             map.fire('kpi:change', {kpi: window.__activeWindKPI||'wind_wDensity'});
           });
         } else {
