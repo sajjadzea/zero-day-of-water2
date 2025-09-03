@@ -180,12 +180,9 @@ window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensi
 window.setActiveWindKPI = function(k){
   window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
   if (window.__countiesLayer) {
-    (function repaint(root){
-      function walk(l){ if(!l) return;
-        if(typeof l.getLayers==='function'){ l.getLayers().forEach(walk); return; }
-        if(l.feature) l.setStyle(styleForCounty(l.feature));
-      } walk(root);
-    })(window.__countiesLayer);
+    eachPolyFeatureLayer(window.__countiesLayer, l=>{
+      if (l.feature) l.setStyle(styleForCounty(l.feature));
+    });
   }
   if (typeof renderLegend==='function') renderLegend();
   if (typeof __AMA_renderTop10==='function') __AMA_renderTop10();
