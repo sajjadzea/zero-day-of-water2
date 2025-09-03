@@ -1,7 +1,5 @@
-// --- Debug flags & build id ---
-window.AMA_DEBUG = ((new URLSearchParams(location.search)).get('ama_debug')==='1') || localStorage.getItem('AMA_DEBUG')==='1';
+// --- Build id ---
 window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content || String(Date.now());
-const AMA_DEBUG = window.AMA_DEBUG;
 
 ;(function(){
   window.__AMA_UI_VERSION = 'dock-probe-v1';
@@ -53,79 +51,63 @@ function showToast(msg){
 function dataBases(){
   const here = new URL(location.href);
   const cand = [
-    new URL('./data/',  here).pathname,
-    new URL('data/',   here).pathname,
-    new URL('../data/',here).pathname,
+    new URL('./data/',  here).pathname,   // /amaayesh/data/
+    new URL('../data/', here).pathname,   // /data/  (PREFERRED fallback)
+    new URL('data/',    here).pathname,   // /amaayesh/data/ (alt relative)
     '/data/',
     '/amaayesh/data/',
     '/data/amaayesh/'
   ];
-  const norm = cand.map(p => (p || '/').replace(/\/{2,}/g,'/').replace(/([^/])$/,'$1/'));
+  const norm = cand.map(p => (p || '/')
+    .replace(/\/{2,}/g,'/')
+    .replace(/([^/])$/,'$1/'));
   return [...new Set(norm)];
 }
-async function resolveDataUrl(file){
-  const qs = `?v=${window.__AMA_BUILD_ID}`;
-  for(const b of dataBases()){
-    const url = b + file + qs;
-    try { const r = await fetch(url, {method:'GET', cache:'no-store'});
-      if (r.ok) { (window.__AMA_RESOLVED ||= {})[file]=url; if(AMA_DEBUG) console.info('[resolve]',file,'→',url); return url; }
-    } catch {}
-  }
-  if (AMA_DEBUG) console.warn('[resolve] NOT FOUND:', file);
-  return null;
-}
-async function fetchJSONResolved(f){ const u=await resolveDataUrl(f); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.json(): null; }
-async function fetchCSVResolved (f){ const u=await resolveDataUrl(f); if(!u) return null; const r=await fetch(u,{cache:'no-store'}); return r.ok? r.text(): null; }
 
-// ===== ارجاع پیش‌فرض برای فایل‌ها وقتی manifest نیست =====
-const DEFAULT_FILES = {
-  counties: ['counties.geojson', 'khorasan_razavi_combined.geojson'],
-  windSites: ['wind_sites.geojson', 'wind_sites_raw.geojson', 'wind_sites.csv'],
-  windWeights: ['wind_weights_by_county.csv']
-};
-
-// یک کمک‌تابع fallback برای داده‌های مهم:
-async function resolveWithFallback(nameList){
-  for(const name of nameList){
-    const u = await resolveDataUrl(name);
-    if(u) return u;
-  }
-  return null;
-}
-
-async function tryFetch(url){
-  try{
-    const res = await fetch(url,{cache:'no-store'});
-    console.info('[ama:fetch]','GET',url,'->',res.status);
-    return res.ok ? res : null;
-  }catch(e){
-    console.info('[ama:fetch]','ERR',url,e && e.message);
-    return null;
-  }
-}
-
+// --- AMA FIX: robust vendor loader (no double download, ordered) ---
 async function tryLoadVendorScript(relPath){
   const here = new URL(location.href);
   const bases = [
-    new URL('./assets/vendor/', here).pathname,
+    new URL('./assets/vendor/',  here).pathname,
+    new URL('../assets/vendor/', here).pathname, // cover nested /amaayesh/
     '/assets/vendor/'
-  ];
-  const qs = `?v=${window.__AMA_BUILD_ID}`;
-  for(const b of bases){
-    const url = b + relPath + qs;
-    try {
-      const r = await fetch(url, {method:'GET', cache:'no-store'});
-      if(r.ok){
-        const s = document.createElement('script'); s.src = url; s.defer = true;
+  ].map(p => (p || '/')
+      .replace(/\/{2,}/g,'/')
+      .replace(/([^/])$/,'$1/'));
+
+  const uniq = [...new Set(bases)];
+  const qs   = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+
+  for (const base of uniq){
+    const url = base + relPath + qs;
+    try{
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = false;            // preserve insertion order
+        s.onload = () => resolve(true);
+        s.onerror = () => reject(new Error('load-failed'));
         document.head.appendChild(s);
-        if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
-        return true;
-      }
-    } catch {}
+      });
+      if (window.AMA_DEBUG) console.info('[vendor]', 'loaded', url);
+      return true;
+    } catch (e) {
+      if (window.AMA_DEBUG) console.info('[vendor]', 'miss', url, e?.message || 'error');
+      // try next base
+    }
   }
   if (window.AMA_DEBUG) console.info('[vendor]', 'not-found', relPath);
   return false;
 }
+
+// Load multiple vendors sequentially
+async function loadVendorsInOrder(list){
+  for (const rel of list){
+    const ok = await tryLoadVendorScript(rel);
+    if(!ok) throw new Error('vendor-not-found: ' + rel);
+  }
+}
+
 
 function isPolyFeature(f){ if(!f||!f.geometry) return false; const t=f.geometry.type; return t==='Polygon'||t==='MultiPolygon'; }
 function featureHasCountyProp(f){ const p=f.properties||{}; return !!(p.county||p.name_fa||p.name); }
@@ -255,9 +237,93 @@ window.runWindSelfCheck = function(){
   }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
 };
 
+// Debug flag and fetch logger
+if (window.AMA_DEBUG && typeof window.fetch === 'function') {
+  const _origFetch = window.fetch;
+  window.fetch = async function(...args){
+    const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+    const t0 = performance.now();
+    try {
+      const res = await _origFetch.apply(this, args);
+      const dt = Math.round(performance.now() - t0);
+      console.log('[ama:fetch]', res.status, url, `${dt}ms`);
+      return res;
+    } catch (e) {
+      const dt = Math.round(performance.now() - t0);
+      console.warn('[ama:fetch-err]', url, e?.message, `${dt}ms`);
+      throw e;
+    }
+  };
+}
+
+window.addEventListener('unhandledrejection', e => {
+  const msg = e?.reason?.message || e?.reason || '';
+  if (/message channel closed/i.test(String(msg))) {
+    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
+    e.preventDefault();
+  }
+});
+window.addEventListener('error', e => {
+  const msg = e?.message || e?.error?.message || '';
+  if (/message channel closed/i.test(String(msg))) {
+    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
+    e.preventDefault();
+  }
+});
+
+// (IIFE wrapper) — must be async to allow top-level await inside
+(async function(){
+// === AMA HELPERS (top-level, safe scope) ===
+const AMA_DEBUG = /(?:^|[?&])ama_debug=1\b/.test(location.search);
+let __LAYER_MANIFEST_BASE = '/data/';
+const __jsonCache = new Map();
+
+function setManifestBase(fromUrl){
+  try {
+    __LAYER_MANIFEST_BASE = new URL('.', fromUrl).pathname.replace(/\/{2,}/g,'/'); // e.g. '/data/'
+    if (AMA_DEBUG) console.info('[ama:manifest] base', __LAYER_MANIFEST_BASE);
+  } catch {}
+}
+
+function absFromManifest(rel){
+  const base = __LAYER_MANIFEST_BASE || '/data/';
+  const qs = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+  const cleanRel = String(rel || '').replace(/^\.\?\//,'');
+  const abs = new URL(cleanRel, location.origin + base).pathname;
+  return abs + qs;
+}
+
+async function fetchJSONFromManifest(rel){
+  const url = absFromManifest(rel);
+  if (__jsonCache.has(url)) return __jsonCache.get(url);
+  const res = await fetch(url, { cache: 'no-store' });
+  if (AMA_DEBUG) console.info('[ama:data]', 'GET', url, '->', res.status);
+  if (!res.ok) throw new Error('data-not-found: ' + url);
+  const j = await res.json();
+  __jsonCache.set(url, j);
+  return j;
+}
+
+window.AMA_DEBUG = AMA_DEBUG;
+const AMA_HAS_CLUSTER = typeof window.supercluster !== 'undefined';
+
+async function fetchTextFromManifest(rel){
+  const url = absFromManifest(rel);
+  const res = await fetch(url, { cache: 'no-store' });
+  if (AMA_DEBUG) console.info('[ama:data]', 'GET', url, '->', res.status);
+  if (!res.ok) throw new Error('data-not-found: ' + url);
+  return res.text();
+}
+
 async function joinWindWeightsOnAll(){
-  const txt = await fetchCSVResolved(DEFAULT_FILES.windWeights[0]);
-  if(!txt){ window.__WIND_WEIGHTS_MISSING=true; if(AMA_DEBUG) console.warn('[join] CSV missing'); return; }
+  let txt = '';
+  try {
+    txt = await fetchTextFromManifest('wind_weights_by_county.csv');
+  } catch (e) {
+    window.__WIND_WEIGHTS_MISSING = true;
+    if(AMA_DEBUG) console.warn('[join] CSV missing');
+    return;
+  }
 
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
   const headers = lines.shift().split(',').map(h=>h.trim());
@@ -300,42 +366,6 @@ async function joinWindWeightsOnAll(){
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
 
-// Debug flag and fetch logger
-if (window.AMA_DEBUG && typeof window.fetch === 'function') {
-  const _origFetch = window.fetch;
-  window.fetch = async function(...args){
-    const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
-    const t0 = performance.now();
-    try {
-      const res = await _origFetch.apply(this, args);
-      const dt = Math.round(performance.now() - t0);
-      console.log('[ama:fetch]', res.status, url, `${dt}ms`);
-      return res;
-    } catch (e) {
-      const dt = Math.round(performance.now() - t0);
-      console.warn('[ama:fetch-err]', url, e?.message, `${dt}ms`);
-      throw e;
-    }
-  };
-}
-
-window.addEventListener('unhandledrejection', e => {
-  const msg = e?.reason?.message || e?.reason || '';
-  if (/message channel closed/i.test(String(msg))) {
-    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
-    e.preventDefault();
-  }
-});
-window.addEventListener('error', e => {
-  const msg = e?.message || e?.error?.message || '';
-  if (/message channel closed/i.test(String(msg))) {
-    if (window.AMA_DEBUG) console.warn('[ama-ignore-ext]', msg);
-    e.preventDefault();
-  }
-});
-
-// (IIFE wrapper) — must be async to allow top-level await inside
-(async function(){
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
 
     const map = L.map('map', { preferCanvas:true, zoomControl:true });
@@ -411,8 +441,6 @@ window.addEventListener('error', e => {
   }
 
   // --- manifest ---
-  let __manifestState = 'unknown'; // 'ok' | 'missing' | 'unknown'
-
   function inManifest(name){
     const S = window.__LAYER_MANIFEST;
     if (!(S instanceof Set)) return true; // no manifest -> allow
@@ -421,33 +449,38 @@ window.addEventListener('error', e => {
   }
 
   async function loadLayerManifestOnce(){
-    if (__manifestState !== 'unknown') return window.__LAYER_MANIFEST || null;
-    __manifestState = 'missing';
-    const qs = `?v=${window.__AMA_BUILD_ID}`;
-    for(const base of dataBases()){
-      const url = base + 'layers.config.json' + qs;
-      const res = await tryFetch(url);
-      if(res){
-        try{
-          const j = await res.json();
-          if(j?.files){
-            window.__LAYER_MANIFEST = new Set(j.files);
-            window.__LAYER_MANIFEST_URL = url;
-            __manifestState = 'ok';
-            console.info('[ama:manifest] loaded from', url);
-            return window.__LAYER_MANIFEST;
-          }
-        }catch(e){}
-        break;
+    const bases = dataBases();
+    const qs = (typeof window.__AMA_BUILD_ID !== 'undefined') ? `?v=${window.__AMA_BUILD_ID}` : '';
+    if (AMA_DEBUG) console.info('[ama:manifest] bases', bases);
+    for (const b of bases){
+      const url = b + 'layers.config.json' + qs;
+      try{
+        const res = await fetch(url, { cache:'no-store' });
+        if (AMA_DEBUG) console.info('[ama:fetch]', 'GET', url, '->', res.status);
+        if (res.ok){
+          const json = await res.json();
+          if (AMA_DEBUG) console.info('[ama:manifest] loaded from', url);
+          return { json, url };
+        }
+        // on 404/other, continue loop
+      }catch(e){
+        if (AMA_DEBUG) console.info('[ama:fetch]', 'ERR', url, e?.message);
+        // continue
       }
     }
-    console.warn('[ama:manifest] not found via any base');
-    return null;
+    // none succeeded; do NOT crash the basemap
+    if (window.showToast) window.showToast('عدم دسترسی به داده‌ها (layers.config.json).');
+    throw new Error('manifest-not-found');
   }
-  const __manifest = await loadLayerManifestOnce();
-  if(!__manifest){
-    showToast('عدم دسترسی به داده‌ها (layers.config.json).');
-    return;
+
+  try {
+    const { json, url } = await loadLayerManifestOnce();
+    setManifestBase(url);
+    window.__LAYER_MANIFEST = new Set(json.files || []);
+    window.__LAYER_MANIFEST_URL = url;
+    window.__LAYER_MANIFEST_JSON = json;
+  } catch (e) {
+    if (AMA_DEBUG) console.warn(e);
   }
 
   window.__dumpAmaState = function(){
@@ -460,8 +493,8 @@ window.addEventListener('error', e => {
     console.log('pathname:', window.location.pathname);
     console.log('__LAYER_MANIFEST size:', manifest.length);
     console.log('__LAYER_MANIFEST list:', manifest);
-    console.log('inManifest("counties.geojson"):', inManifest('counties.geojson'));
-    console.log('inManifest("wind_sites.geojson"):', inManifest('wind_sites.geojson'));
+    console.log('inManifest("amaayesh/counties.geojson"):', inManifest('amaayesh/counties.geojson'));
+    console.log('inManifest("amaayesh/wind_sites.geojson"):', inManifest('amaayesh/wind_sites.geojson'));
     console.log('AMA_DATA_BASE:', window.AMA_DATA_BASE);
     console.log('script src:', scriptSrc);
     console.log('served from /amaayesh/?', servedFromAma);
@@ -477,7 +510,14 @@ window.addEventListener('error', e => {
       if (window.AMA_DEBUG) console.info('[ama-layer] skip (not in manifest):', file);
       return null;
     }
-    const geo = await fetchJSONResolved(file);
+    let geo = null;
+    try {
+      geo = await fetchJSONFromManifest(file);
+    } catch (e) {
+      if (window.AMA_DEBUG) console.warn('[ama-layer] missing or empty:', file);
+      if (window.showToast) showToast('عدم دسترسی به داده‌ها: ' + file);
+      return null;
+    }
     if (!geo?.features?.length) {
       if (window.AMA_DEBUG) console.warn('[ama-layer] missing or empty:', file);
       return null;
@@ -489,10 +529,13 @@ window.addEventListener('error', e => {
   async function loadJSON(relOrList, { layerKey, fallbacks = [] } = {}) {
     const rels = Array.isArray(relOrList) ? relOrList : [relOrList];
     for (const rel of [...rels, ...fallbacks]) {
-      const j = await fetchJSONResolved(rel);
-      if (j) return j;
+      try {
+        const j = await fetchJSONFromManifest(rel);
+        if (j) return j;
+      } catch(e) {}
     }
     if (layerKey) disableLayerToggle(layerKey);
+    if (window.showToast) showToast('عدم دسترسی به داده‌ها: ' + rels[0]);
     if (window.AMA_DEBUG) console.info('⛔️ Dataset not found:', rels[0], '→ tried:', rels.concat(fallbacks));
     return null;
   }
@@ -615,22 +658,20 @@ window.addEventListener('error', e => {
 
 
   // لایه‌ها در پن‌های جدا برای کنترل z-index
-  map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
+    map.createPane('polygons'); map.createPane('boundary'); map.createPane('points');
 
-  (async () => {
-    const cfg = await fetchManifest();
-    const combinedUrl = await resolveWithFallback([
-      (window.__LAYER_MANIFEST && 'counties.geojson'),
-      ...DEFAULT_FILES.counties,
-      'khorasan_razavi_combined.geojson'
-    ].filter(Boolean));
-    let combined = null;
-    if (combinedUrl) {
-      try { const r = await fetch(combinedUrl,{cache:'no-store'}); if(r.ok) combined = await r.json(); } catch{}
-    }
-    if(!combined?.features?.length){ return; }
+    (async () => {
+      const cfg = window.__LAYER_MANIFEST_JSON || {};
+      let combined = null;
+      try {
+        combined = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson');
+      } catch (e) {
+        if (window.showToast) showToast('عدم دسترسی به داده‌ها: amaayesh/khorasan_razavi_combined.geojson');
+        return;
+      }
+      if(!combined?.features?.length){ return; }
 
-    const damsPath = cfg?.baseData?.dams;
+      const damsPath = cfg?.baseData?.dams;
     const damsRel = damsPath ? normalizeName(damsPath) : null;
     const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams' }) : null;
 
@@ -752,21 +793,19 @@ window.addEventListener('error', e => {
       ctl.addTo(map);
     })();
 
-    // === WIND: load computed datasets (counties.geojson + wind_sites.geojson) ===
+    // === WIND: load computed datasets (amaayesh/counties.geojson + amaayesh/wind_sites.geojson) ===
     {
       const classColors = {1:'#bdbdbd', 2:'#f6c945', 3:'#29cc7a'};
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-      // counties
-      const countiesUrl = await resolveWithFallback([
-        (window.__LAYER_MANIFEST && 'counties.geojson'),
-        ...DEFAULT_FILES.counties,
-        'khorasan_razavi_combined.geojson'
-      ].filter(Boolean));
-      if (countiesUrl) {
+        // counties
         let polysFC = null;
-        try { const r = await fetch(countiesUrl,{cache:'no-store'}); if(r.ok) polysFC = await r.json(); } catch{}
+        try {
+          polysFC = await fetchJSONFromManifest('amaayesh/counties.geojson');
+        } catch (e) {
+          try { polysFC = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson'); } catch(_) {}
+        }
         if (window.AMA_DEBUG) console.log('[ama-data] counties features =', Array.isArray(polysFC?.features) ? polysFC.features.length : 0);
         countiesGeo = polysFC;
         if (polysFC?.features?.length) {
@@ -844,7 +883,12 @@ window.addEventListener('error', e => {
           kpiCtl.addTo(map);
 
           // load raw site CSV for sidepanel
-          try { const rawTxt = await fetchCSVResolved('wind_sites_raw.csv'); windSitesRaw = parseCSV(rawTxt); } catch(_) { windSitesRaw = []; }
+          try {
+            const rawTxt = await fetchTextFromManifest('wind_sites_raw.csv');
+            windSitesRaw = parseCSV(rawTxt);
+          } catch(_) {
+            windSitesRaw = [];
+          }
 
           // Top-10 panel
           window.__AMA_topPanel = L.control({position:"topright"});
@@ -907,40 +951,83 @@ window.addEventListener('error', e => {
           if(infoEl) infoEl.textContent = 'داده شهرستان‌ها در دسترس نیست.';
         }
       }
-      // wind sites
-      const windSitesUrl = await resolveWithFallback([
-        (window.__LAYER_MANIFEST && 'wind_sites.geojson'),
-        ...DEFAULT_FILES.windSites
-      ].filter(Boolean));
-      if (windSitesUrl) {
+        // wind sites
         let windSitesFC = null;
-        try { const r = await fetch(windSitesUrl,{cache:'no-store'}); if(r.ok) windSitesFC = await r.json(); } catch{}
+        try {
+          windSitesFC = await fetchJSONFromManifest('amaayesh/wind_sites.geojson');
+        } catch (e) {
+          if (window.showToast) showToast('عدم دسترسی به داده‌ها: amaayesh/wind_sites.geojson');
+        }
         if (window.AMA_DEBUG) console.log('[ama-data] wind_sites features =', Array.isArray(windSitesFC?.features) ? windSitesFC.features.length : 0);
         windSitesGeo = windSitesFC;
         if (windSitesFC?.features?.length) {
-          let superclusterReady = !!window.Supercluster;
-          if (!superclusterReady) {
-            await tryLoadVendorScript('supercluster/supercluster.min.js');
-            superclusterReady = !!window.Supercluster;
-          }
-          if (superclusterReady) {
-            // clustering code
-          } // else: silently skip
-
-          const pointToLayer = (f, latlng) => {
-            const p = f.properties || {};
-            const low = (p.quality === 'low');
-            return L.circleMarker(latlng, {
-              radius: radiusFromMW(p.capacity_mw_est),
-              weight: 1.5, color:'#111827', opacity:1,
-              fillColor:'#111827', fillOpacity:.85,
-              dashArray: low ? '2 4' : null
-            });
-          };
-          const onEachFeature = (f, layer) => {
-            const p = f.properties || {};
-            const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
-            layer.bindPopup(
+          if (AMA_HAS_CLUSTER) {
+            const index = window.supercluster({ radius: 40, maxZoom: 16 });
+            index.load(windSitesFC.features.map(f => ({
+              type: 'Feature',
+              properties: f.properties || {},
+              geometry: { type: 'Point', coordinates: f.geometry.coordinates }
+            })));
+            windSitesLayer = L.layerGroup();
+            window.windSitesLayer = windSitesLayer;
+            map.addLayer(windSitesLayer);
+            const render = () => {
+              const z = map.getZoom();
+              const b = map.getBounds();
+              const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+              const clusters = index.getClusters(bbox, z);
+              windSitesLayer.clearLayers();
+              clusters.forEach(f => {
+                const [lng, lat] = f.geometry.coordinates;
+                if (f.properties.cluster) {
+                  const count = f.properties.point_count;
+                  const m = L.circleMarker([lat, lng], {
+                    radius: Math.max(12, Math.min(32, count)),
+                    weight: 1.5, color:'#111827', opacity:1,
+                    fillColor:'#1e3a8a', fillOpacity:.8
+                  });
+                  m.bindTooltip(String(count), {direction:'center', permanent:true, opacity:0.8, className:'site-label'});
+                  windSitesLayer.addLayer(m);
+                } else {
+                  const p = f.properties || {};
+                  const low = (p.quality === 'low');
+                  const m = L.circleMarker([lat, lng], {
+                    radius: radiusFromMW(p.capacity_mw_est),
+                    weight: 1.5, color:'#111827', opacity:1,
+                    fillColor:'#111827', fillOpacity:.85,
+                    dashArray: low ? '2 4' : null
+                  });
+                  const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+                  m.bindPopup(`
+          <div dir="rtl" style="min-width:220px">
+            <div style="font-weight:700">${p.name_fa || '—'}</div>
+            <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
+            <div>~MW/سایت: ${fmt(p.capacity_mw_est)} ${badge}</div>
+            <div>کیفیت مختصات: ${p.quality || '—'}</div>
+            <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
+          </div>`, {maxWidth: 320});
+                  m.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
+                  windSitesLayer.addLayer(m);
+                }
+              });
+            };
+            map.on('moveend zoomend', render);
+            render();
+          } else {
+            const pointToLayer = (f, latlng) => {
+              const p = f.properties || {};
+              const low = (p.quality === 'low');
+              return L.circleMarker(latlng, {
+                radius: radiusFromMW(p.capacity_mw_est),
+                weight: 1.5, color:'#111827', opacity:1,
+                fillColor:'#111827', fillOpacity:.85,
+                dashArray: low ? '2 4' : null
+              });
+            };
+            const onEachFeature = (f, layer) => {
+              const p = f.properties || {};
+              const badge = `<span style="background:#fee2e2;color:#991b1b;padding:0 6px;border-radius:6px;font-size:11px;">برآوردی</span>`;
+              layer.bindPopup(
 `<div dir="rtl" style="min-width:220px">
             <div style="font-weight:700">${p.name_fa || '—'}</div>
             <div>شهرستان: ${p.county || '—'} | کلاس: ${p.wind_class ?? '—'}</div>
@@ -948,41 +1035,41 @@ window.addEventListener('error', e => {
             <div>کیفیت مختصات: ${p.quality || '—'}</div>
             <div style="opacity:.8;font-size:12px">منبع: ${p.source || '—'}</div>
           </div>`, {maxWidth: 320});
-            layer.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
-          };
+              layer.bindTooltip(p.name_fa || '', {direction:'top', permanent:true, opacity:0, className:'site-label'});
+            };
 
-          windSitesLayer = L.geoJSON(windSitesFC, {
-            pane: 'points',
-            pointToLayer,
-            onEachFeature
-          });
-          window.windSitesLayer = windSitesLayer;
+            windSitesLayer = L.geoJSON(windSitesFC, {
+              pane: 'points',
+              pointToLayer,
+              onEachFeature,
+              bubblingMouseEvents: true,
+              updateWhenZooming: false
+            });
+            window.windSitesLayer = windSitesLayer;
 
-          const Z_SITES_ON = 9;
-          function syncZoomVisibility(){
-            const z = map.getZoom();
-            if (window.windSitesLayer) {
-              if (z >= Z_SITES_ON) {
-                if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
-              } else {
-                if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+            const Z_SITES_ON = 9;
+            function syncZoomVisibility(){
+              const z = map.getZoom();
+              if (window.windSitesLayer) {
+                if (z >= Z_SITES_ON) {
+                  if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
+                } else {
+                  if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
+                }
+                window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
               }
-              window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
             }
-          }
-          map.on('zoomend', syncZoomVisibility);
-          syncZoomVisibility();
+            map.on('zoomend', syncZoomVisibility);
+            syncZoomVisibility();
 
-          function updateSiteOpacity(){
-            const op = map.hasLayer(windChoroplethLayer) ? 0.4 : 0.85;
-            window.windSitesLayer?.eachLayer(l=>l.setStyle({opacity:op, fillOpacity:op}));
+            function updateSiteOpacity(){
+              const op = map.hasLayer(windChoroplethLayer) ? 0.4 : 0.85;
+              window.windSitesLayer?.eachLayer(l=>l.setStyle({opacity:op, fillOpacity:op}));
+            }
+            map.on('overlayadd overlayremove', updateSiteOpacity);
+            updateSiteOpacity();
           }
-          map.on('overlayadd overlayremove', updateSiteOpacity);
-          updateSiteOpacity();
         }
-      }
-
-    }
 
     // === Local search & geolocate ===
     const searchCtl = L.control({position:'topleft'});

@@ -1,6 +1,7 @@
 {
   "files": [
-    "counties.geojson",
-    "wind_sites.geojson"
+    "amaayesh/khorasan_razavi_combined.geojson",
+    "amaayesh/counties.geojson",
+    "amaayesh/wind_sites.geojson"
   ]
 }
