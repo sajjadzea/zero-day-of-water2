@@ -3,7 +3,7 @@ window.__AMA_BUILD_ID = document.querySelector('meta[name="build-id"]')?.content
 
 ;(function(){
   window.__AMA_UI_VERSION = 'dock-probe-v1';
-  console.log('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', window.__AMA_BUILD_ID, 'path=', location.pathname);
+  if (window.AMA_DEBUG) console.log('[AMA:UI]', window.__AMA_UI_VERSION, 'build=', window.__AMA_BUILD_ID, 'path=', location.pathname);
   // tiny top-left badge for visual confirmation (removable later)
   try {
     const el = document.createElement('div');
@@ -242,6 +242,7 @@ window.setActiveWindKPI = function(k){
   }
   if (typeof renderLegend==='function') renderLegend();
   if (typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  updateStatusLine();
 };
 // ===== END WIND DIAG BASICS =====
 
@@ -286,9 +287,22 @@ function computeQuantileBreaksFromLayer(layer, key, cuts=[0.2,0.4,0.6,0.8]){
   return cuts.map(q);
 }
 
+function updateStatusLine(){
+  const el = document.getElementById('info');
+  if(!el || !window.__weightsIdx) return;
+  let has=0;
+  eachPolyFeatureLayer(window.__countiesLayer, l=>{
+    const p=l.feature?.properties||{};
+    if(p.__hasWindData) has++;
+  });
+  el.textContent = `دادهٔ باد آماده — ${Object.keys(window.__weightsIdx||{}).length} ردیف، ${has} شهرستان دارای داده`;
+  el.classList.remove('text-slate-300');
+  el.classList.add('text-slate-400');
+}
+
 window.runWindSelfCheck = function(opts){
   const log = opts?.log !== false;
-  if (log) console.log('[AMA] self-check started');
+  if (log && window.AMA_DEBUG) console.log('[AMA] self-check started');
   try{
     const rows=[]; let has=0, nod=0; const uniq = new Set();
     const namesMap = new Set();             // normalized names present on map (union)
@@ -373,7 +387,7 @@ window.runWindSelfCheck = function(opts){
       console.groupEnd();
     }
   }catch(e){ if(window.AMA_DEBUG) console.error('runWindSelfCheck', e); }
-  if (log) console.log('[AMA] self-check done');
+  if (log && window.AMA_DEBUG) console.log('[AMA] self-check done');
   return window.__WIND_SELF_CHECK;
 };
 
@@ -387,8 +401,10 @@ window.__AMA_QA = function(){
       rows.push({county:p.NAME||p.name||p.county, N:p.wind_N, MW:p.wind_sumW, d:p.wind_wDensity});
     }
   });
-  console.table(rows.slice(0,10));
-  console.log('counties with wind data =', has);
+  if(window.AMA_DEBUG){
+    console.table(rows.slice(0,10));
+    console.log('counties with wind data =', has);
+  }
 };
 
 // Debug flag and fetch logger
@@ -499,28 +515,30 @@ async function joinWindWeightsOnAll(){
   try { window.__AMA_windIdx = idx; } catch(_) {}
   if(!window.__countiesLayer){ if(AMA_DEBUG) console.warn('[join] no counties layer'); return; }
 
-  (function windJoinReport(){
-    const csvKeys = Object.keys(window.__weightsIdx||{});
-    const mapKeys = new Set();
-    let mapCount = 0;
-    eachPolyFeatureLayer(window.__countiesLayer, l=>{
-      mapCount++;
-      const k = deriveCountyFromProps(l.feature?.properties||{});
-      if (k) mapKeys.add(k);
-    });
-    const onlyInCSV = csvKeys.filter(k=>!mapKeys.has(k));
-    const onlyInMap = [...mapKeys].filter(k=>!(window.__weightsIdx||{})[k]);
-    console.group('[wind join]');
-    console.log('CSV count:', csvKeys.length, 'Map count (processed):', mapCount, 'Unique county names:', mapKeys.size);
-    if (onlyInCSV.length){
-      console.error('Only in CSV (no polygon match):', onlyInCSV);
-      console.error('❌ join QA (subset) failed.');
-    } else {
-      if (onlyInMap.length) console.info('Only in Map (no CSV row):', onlyInMap);
-      console.log('✅ join QA (subset) passed.');
-    }
-    console.groupEnd();
-  })();
+  if (window.AMA_DEBUG){
+    (function windJoinReport(){
+      const csvKeys = Object.keys(window.__weightsIdx||{});
+      const mapKeys = new Set();
+      let mapCount = 0;
+      eachPolyFeatureLayer(window.__countiesLayer, l=>{
+        mapCount++;
+        const k = deriveCountyFromProps(l.feature?.properties||{});
+        if (k) mapKeys.add(k);
+      });
+      const onlyInCSV = csvKeys.filter(k=>!mapKeys.has(k));
+      const onlyInMap = [...mapKeys].filter(k=>!(window.__weightsIdx||{})[k]);
+      console.group('[wind join]');
+      console.log('CSV count:', csvKeys.length, 'Map count (processed):', mapCount, 'Unique county names:', mapKeys.size);
+      if (onlyInCSV.length){
+        console.error('Only in CSV (no polygon match):', onlyInCSV);
+        console.error('❌ join QA (subset) failed.');
+      } else {
+        if (onlyInMap.length) console.info('Only in Map (no CSV row):', onlyInMap);
+        console.log('✅ join QA (subset) passed.');
+      }
+      console.groupEnd();
+    })();
+  }
 
   eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
     const p = leaf.feature?.properties || {};
@@ -543,19 +561,6 @@ async function joinWindWeightsOnAll(){
 
   window.__WIND_DATA_READY = true;
 
-  // status line
-  const el = document.getElementById('info');
-  if (el){
-    let has=0;
-    eachPolyFeatureLayer(window.__countiesLayer, l=>{
-      const p=l.feature?.properties||{};
-      if (p.__hasWindData) has++;
-    });
-    el.textContent = `دادهٔ باد آماده — ${Object.keys(window.__weightsIdx||{}).length} ردیف، ${has} شهرستان دارای داده`;
-    el.classList.remove('text-slate-300');
-    el.classList.add('text-slate-400');
-  }
-
   // dynamic breaks + restyle
   const k = window.__activeWindKPI || 'wind_wDensity';
   const dyn = (function computeQuantileBreaksFromLayer(layer, key, cuts=[0.2,0.4,0.6,0.8]){
@@ -570,13 +575,15 @@ async function joinWindWeightsOnAll(){
   })(window.__countiesLayer, k);
   if (dyn) window.__WIND_BREAKS = dyn;
   if (typeof renderLegend==='function') renderLegend();
-  if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  if (typeof __AMA_renderTop10==='function') __AMA_renderTop10();
+  updateStatusLine();
 }
 
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
 
     const map = L.map('map', { preferCanvas:true, zoomControl:true });
     const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+    if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
     // move attribution to bottom-left to avoid colliding with legend
     if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
       map.attributionControl.setPosition('bottomleft');
@@ -733,7 +740,7 @@ async function actuallyLoadManifest(){
       countiesGeo_features: window.countiesGeo?.features?.length || 0,
       countySource: window.__AMA_countySource || 'unknown'
     };
-    console.log('[AMA] dump', info);
+    if(window.AMA_DEBUG) console.log('[AMA] dump', info);
     return info;
   };
 
@@ -776,7 +783,7 @@ async function actuallyLoadManifest(){
       const f = window.countiesGeo.features.find(f=> __AMA_matchPropsByName((f||{}).properties||{}, target));
       if (f){ found=f.properties||null; source='countiesGeo'; }
     }
-    console.log('[AMA] whereCounty', name, '-> source:', source, 'props:', found);
+    if(window.AMA_DEBUG) console.log('[AMA] whereCounty', name, '-> source:', source, 'props:', found);
     return found;
   };
 
@@ -799,7 +806,7 @@ async function actuallyLoadManifest(){
     if (window.countiesGeo?.features?.length){
       window.countiesGeo.features.forEach(f=> __AMA_candidateNames(f.properties||{}).forEach(nm=> push(nm, 'countiesGeo')));
     }
-    console.log('[AMA] county names', out.slice(0,20), '… total:', out.length);
+    if(window.AMA_DEBUG) console.log('[AMA] county names', out.slice(0,20), '… total:', out.length);
     return out;
   };
 
@@ -1242,12 +1249,10 @@ async function actuallyLoadManifest(){
               l.on('tooltipopen', e=>{
                 const p=e.target.feature?.properties||{};
                 const k=window.__activeWindKPI||'wind_wDensity';
-                const fmt = n=> window.__AMA_fmtNumberFa ? __AMA_fmtNumberFa(n,{digits:3}) : n;
-                let html=`${p.county||'—'}<br>${k}: ${fmt(p[k]||0)}`;
-                html += `<br>N: ${fmt(p.wind_N||0)}`;
-                html += `<br>Σw: ${fmt(p.wind_sumW||0)}`;
-                if(p.wind_class) html += `<br>${p.wind_class}`;
-                if(p.wind_sites) html += `<br>${String(p.wind_sites).slice(0,40)}`;
+                const nf = new Intl.NumberFormat('fa-IR',{ maximumFractionDigits:2 });
+                const unit = k==='wind_wDensity' ? 'MW/km²' : (k==='wind_density' ? 'سایت/km²' : '');
+                const val = nf.format(p[k]||0);
+                const html = `${p.county||'—'}<br>${val} ${unit}<br>تعداد سایت: ${nf.format(p.wind_N||0)}<br>ظرفیت: ${nf.format(p.wind_sumW||0)} MW`;
                 e.tooltip.setContent(html);
               });
             }
@@ -1321,8 +1326,8 @@ async function actuallyLoadManifest(){
           window.__AMA_topPanel = L.control({position:"topright"});
           window.__AMA_topPanel.onAdd = function(){ const wrap=L.DomUtil.create("div","ama-panel"); wrap.innerHTML = `<div class="ama-panel-hd">Top-10 باد</div><div class="ama-panel-bd"><div id="ama-top10"></div></div>`; return wrap; };
           window.__AMA_renderTop10 = function(){
-            const panel=document.querySelector('.ama-panel');
             const el=document.getElementById('ama-top10');
+            const panel=el?el.closest('.ama-panel'):null;
             if(!panel||!el) return;
             if(window.__WIND_WEIGHTS_MISSING){ panel.style.display='none'; return; }
             panel.style.display='block';
@@ -1338,33 +1343,46 @@ async function actuallyLoadManifest(){
           window.__AMA_topPanel.addTo(map);
           window.__AMA_renderTop10();
 
+          // KPI legend panel
+          window.__AMA_kpiLegend = L.control({position:"topright"});
+          window.__AMA_kpiLegend.onAdd = function(){
+            const wrap = L.DomUtil.create("div","ama-panel");
+            const body = L.DomUtil.create("div","ama-kpi-legend",wrap);
+            body.id = "ama-kpi-legend";
+            return wrap;
+          };
+          window.__AMA_kpiLegend.addTo(map);
+
           window.renderLegend = function(){
-            let el = document.getElementById('ama-kpi-legend');
-            if(!el){
-              el = document.createElement('div');
-              el.id = 'ama-kpi-legend';
-              el.className = 'ama-kpi-legend';
-              document.body.appendChild(el);
-            }
+            const el = document.getElementById('ama-kpi-legend');
+            if(!el) return;
             if(!window.__WIND_DATA_READY){
               el.innerHTML = '<div class="ama-loading">در حال بارگذاری…</div>';
               return;
             }
+            const nf = new Intl.NumberFormat('fa-IR',{ maximumFractionDigits:2 });
             const ramp=['#e0f2fe','#bae6fd','#7dd3fc','#38bdf8','#0ea5e9'];
             const br=window.__WIND_BREAKS || [0.2,0.4,0.6,0.8];
-            let html=''; let prev=0;
-            const fmt = n=>window.__AMA_fmtNumberFa?__AMA_fmtNumberFa(n,{digits:2}):n.toFixed(2);
-            for(let i=0;i<br.length;i++){
-              html += `<div class="lg"><span class="sw" style="background:${ramp[i]}"></span>${fmt(prev)}–${fmt(br[i])}</div>`;
-              prev=br[i];
+            const labels=[
+              `≤${nf.format(br[0])}`,
+              `${nf.format(br[0])}–${nf.format(br[1])}`,
+              `${nf.format(br[1])}–${nf.format(br[2])}`,
+              `${nf.format(br[2])}–${nf.format(br[3])}`,
+              `>${nf.format(br[3])}`
+            ];
+            let html='<div class="lg"><span class="sw" style="background:#e5e7eb"></span>بدون داده</div>';
+            for(let i=0;i<labels.length;i++){
+              html += `<div class="lg"><span class="sw" style="background:${ramp[i]}"></span>${labels[i]}</div>`;
             }
-            html += `<div class="lg"><span class="sw" style="background:${ramp[br.length]}"></span>${fmt(br[br.length-1])}+</div>`;
             el.innerHTML = html;
           };
+
+          window.renderLegend();
 
           map.on('kpi:change', ()=>{
             restyle();
             window.__AMA_renderTop10?.();
+            window.renderLegend?.();
           });
 
           joinWindWeightsOnAll().then(()=>{
