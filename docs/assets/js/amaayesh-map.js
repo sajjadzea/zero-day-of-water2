@@ -232,14 +232,18 @@ window.setActiveWindKPI = function(k){
 
 function parseCSV(text){
   if(!text) return [];
+  const SEP = /,|;/;
   const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
-  const headers = lines.shift().split(',').map(h=>h.trim());
-  return lines.map(line=>{
-    const cols = line.split(',');
+  const headers = lines.shift().split(SEP).map(h=>h.trim());
+  const rows = [];
+  for(const line of lines){
+    if(!line || !line.trim()) continue;
+    const cols = line.split(SEP);
     const row = {};
     headers.forEach((h,i)=> row[h] = (cols[i]||'').trim());
-    return row;
-  });
+    rows.push(row);
+  }
+  return rows;
 }
 
 function styleForCounty(feature){
@@ -253,6 +257,18 @@ function styleForCounty(feature){
   const br = window.__WIND_BREAKS || [0.2,0.4,0.6,0.8];
   let i=0; if(v>br[0]) i=1; if(v>br[1]) i=2; if(v>br[2]) i=3; if(v>br[3]) i=4;
   return {fillOpacity:.9, color:'#475569', weight:.9, fillColor:ramp[i]};
+}
+
+function computeQuantileBreaksFromLayer(layer, key, cuts=[0.2,0.4,0.6,0.8]){
+  const vals=[]; if(!layer) return null;
+  eachPolyFeatureLayer(layer, l=>{
+    const v=+((l.feature?.properties||{})[key]??0);
+    if(Number.isFinite(v) && v>0) vals.push(v);
+  });
+  if(vals.length<5) return null;
+  vals.sort((a,b)=>a-b);
+  const q=p=>vals[Math.floor(p*(vals.length-1))];
+  return cuts.map(q);
 }
 
 window.runWindSelfCheck = function(opts){
@@ -346,6 +362,20 @@ window.runWindSelfCheck = function(opts){
   return window.__WIND_SELF_CHECK;
 };
 
+window.__AMA_QA = function(){
+  let has=0, rows=[];
+  if(!window.__countiesLayer){ console.warn('no counties layer'); return; }
+  eachPolyFeatureLayer(window.__countiesLayer, l=>{
+    const p=l.feature?.properties||{};
+    if(p.__hasWindData){
+      has++;
+      rows.push({county:p.NAME||p.name||p.county, N:p.wind_N, MW:p.wind_sumW, d:p.wind_wDensity});
+    }
+  });
+  console.table(rows.slice(0,10));
+  console.log('counties with wind data =', has);
+};
+
 // Debug flag and fetch logger
 if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   const _origFetch = window.fetch;
@@ -437,17 +467,18 @@ async function joinWindWeightsOnAll(){
     return;
   }
 
-  const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
-  const headers = lines.shift().split(',').map(h=>h.trim());
-  const idx = Object.create(null);
-  lines.forEach(line=>{
-    const cols=line.split(',');
-    const row={}; headers.forEach((h,i)=>row[h]=(cols[i]||'').trim());
-    const raw=row['county']||'';
-    const canon = canonicalCountyName(raw);
-    row.county = canon;
-    idx[keyOf(canon)]=row;
-  });
+  const rows = parseCSV(txt);
+  const idx = {};
+  for (const r of rows) {
+    const c = canonicalCountyName(r.county || r.name || r.shahrestan);
+    idx[c] = {
+      n_sites: +r.n_sites || 0,
+      sum_w  : +r.sum_w  || 0,
+      area_km2: +r.area_km2 || 0,
+      sites: r.sites || '',
+      wind_class: r.wind_class || ''
+    };
+  }
   window.__weightsIdx = idx;
   // Expose weight index for diagnostics
   try { window.__AMA_windIdx = idx; } catch(_) {}
@@ -457,32 +488,46 @@ async function joinWindWeightsOnAll(){
   let mapCount=0, hasData=0, noData=0; const onlyInMap=[], mapKeys=[];
   eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
     const f=leaf.feature, p=f.properties||(f.properties={}); mapCount++;
-    const county = canonicalCountyName(p.county || deriveCountyFromProps(p));
-    p.county = county;
-    const k = keyOf(county);
-    mapKeys.push(k);
+    const key = canonicalCountyName(p.county || deriveCountyFromProps(p));
+    p.county = key;
+    mapKeys.push(key);
 
-    const w = idx[k];
-    if(w){
-      const n=+w.n_sites||0, s=+w.sum_w||0, avg=+w.w_avg||0;
-      p.wind_N=n; p.wind_sumW=s; p.wind_avgW=avg;
-      const a = p.area_km2>0 ? p.area_km2 : 0;
-      p.wind_density = a? (n/a):0; p.wind_wDensity = a? (s/a):0;
-      const hasKPI = (n>0) || (s>0) || (avg>0);
-      p.__hasWindData = !!hasKPI;
-      if(hasKPI) hasData++; else noData++;
-    }else{
-      p.wind_N=p.wind_sumW=p.wind_avgW=0; p.wind_density=p.wind_wDensity=0;
-      p.__hasWindData=false; noData++; onlyInMap.push(p.county||p.name_fa||p.name||county||'؟');
-    }
-    if(typeof styleForCounty==='function') leaf.setStyle(styleForCounty(f));
+    const w = idx[key] || {};
+    p.wind_N    = w.n_sites;
+    p.wind_sumW = w.sum_w;
+    let areaKm2 = +p.area_km2 || 0;
+    if(!areaKm2 && w.area_km2>0) areaKm2 = w.area_km2;
+    p.wind_avgW = p.wind_N ? (p.wind_sumW / p.wind_N) : 0;
+    p.wind_density  = areaKm2 ? (p.wind_N / areaKm2) : 0;
+    p.wind_wDensity = areaKm2 ? (p.wind_sumW / areaKm2) : 0;
+    p.wind_sites = w.sites;
+    p.wind_class = w.wind_class;
+    p.__hasWindData = (p.wind_N > 0 || p.wind_sumW > 0);
+    if (p.__hasWindData) hasData++; else { noData++; onlyInMap.push(key); }
   });
 
-  const onlyInIdx = Object.keys(idx).filter(k=>!mapKeys.includes(k)).map(k=>idx[k].county);
+  const onlyInIdx = Object.keys(idx).filter(k=>!mapKeys.includes(k));
   window.__WIND_DATA_READY = true;
   window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
   if(AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
-  if(typeof renderLegend==='function') renderLegend();
+  const k = window.__activeWindKPI || 'wind_wDensity';
+  const dyn = computeQuantileBreaksFromLayer(window.__countiesLayer, k);
+  if(dyn) window.__WIND_BREAKS = dyn;
+  const el = document.getElementById('info');
+  if(el){
+    let has=0;
+    eachPolyFeatureLayer(window.__countiesLayer, l=>{
+      const p=l.feature?.properties||{};
+      if(p.__hasWindData) has++;
+    });
+    el.textContent = `دادهٔ باد آماده — ${Object.keys(window.__weightsIdx||{}).length} ردیف، ${has} شهرستان دارای داده`;
+    el.classList.remove('text-slate-300');
+    el.classList.add('text-slate-400');
+  }
+  if (typeof renderLegend === 'function') renderLegend();
+  if (window.__countiesLayer) {
+    eachPolyFeatureLayer(window.__countiesLayer, l => l.setStyle(styleForCounty(l.feature)));
+  }
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
 
@@ -1046,13 +1091,16 @@ async function actuallyLoadManifest(){
             const csvUrl = (window.AMA_DATA_BASE||'/data/amaayesh/') + 'wind_weights_by_county.csv';
             const res = await fetch(csvUrl, {cache:'no-store'});
             if(!res.ok) return [];
-            const text = await res.text();
+            const text = (await res.text()).replace(/^\uFEFF/,'');
             const lines = text.split(/\r?\n/).filter(Boolean);
             if(lines.length < 2) return [];
-            const hdr = lines[0].split(',').map(h=>h.trim());
+            const SEP = /,|;/;
+            const hdr = lines[0].split(SEP).map(h=>h.trim());
             const iCounty = hdr.findIndex(h=> /^(county|شهرستان)$/i.test(h));
             for(let i=1;i<lines.length;i++){
-              const cols = lines[i].split(',');
+              const line = lines[i];
+              if(!line || !line.trim()) continue;
+              const cols = line.split(SEP);
               const nm = canonicalCountyName((cols[iCounty]||'').trim());
               if(nm) names.add(nm);
             }
@@ -1142,7 +1190,20 @@ async function actuallyLoadManifest(){
           windChoroplethLayer = L.geoJSON(polysFC, {
             pane:'polygons',
             style: f => styleForCounty(f),
-            onEachFeature:(f,l)=> l.bindTooltip((f.properties?.county || '—'), {sticky:true, direction:'auto', className:'label'})
+            onEachFeature:(f,l)=>{
+              l.bindTooltip('', {sticky:true, direction:'auto', className:'label'});
+              l.on('tooltipopen', e=>{
+                const p=e.target.feature?.properties||{};
+                const k=window.__activeWindKPI||'wind_wDensity';
+                const fmt = n=> window.__AMA_fmtNumberFa ? __AMA_fmtNumberFa(n,{digits:3}) : n;
+                let html=`${p.county||'—'}<br>${k}: ${fmt(p[k]||0)}`;
+                html += `<br>N: ${fmt(p.wind_N||0)}`;
+                html += `<br>Σw: ${fmt(p.wind_sumW||0)}`;
+                if(p.wind_class) html += `<br>${p.wind_class}`;
+                if(p.wind_sites) html += `<br>${String(p.wind_sites).slice(0,40)}`;
+                e.tooltip.setContent(html);
+              });
+            }
           }).addTo(map);
           window.__countiesLayer = windChoroplethLayer;
           map.removeLayer(windLayer);
