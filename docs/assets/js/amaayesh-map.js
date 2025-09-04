@@ -232,14 +232,18 @@ window.setActiveWindKPI = function(k){
 
 function parseCSV(text){
   if(!text) return [];
+  const SEP = /,|;/;
   const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
-  const headers = lines.shift().split(',').map(h=>h.trim());
-  return lines.map(line=>{
-    const cols = line.split(',');
+  const headers = lines.shift().split(SEP).map(h=>h.trim());
+  const rows = [];
+  for(const line of lines){
+    if(!line || !line.trim()) continue;
+    const cols = line.split(SEP);
     const row = {};
     headers.forEach((h,i)=> row[h] = (cols[i]||'').trim());
-    return row;
-  });
+    rows.push(row);
+  }
+  return rows;
 }
 
 function styleForCounty(feature){
@@ -346,6 +350,15 @@ window.runWindSelfCheck = function(opts){
   return window.__WIND_SELF_CHECK;
 };
 
+window.__AMA_QA = function() {
+  const found = [];
+  eachPolyFeatureLayer(window.__countiesLayer, l => {
+    const p = l.feature?.properties || {};
+    if (p.__hasWindData && (p.wind_sumW > 0 || p.wind_N > 0)) found.push(p.NAME || p.name || p.county);
+  });
+  console.log('Counties with wind data:', found.length, found.slice(0, 10));
+};
+
 // Debug flag and fetch logger
 if (window.AMA_DEBUG && typeof window.fetch === 'function') {
   const _origFetch = window.fetch;
@@ -437,11 +450,13 @@ async function joinWindWeightsOnAll(){
     return;
   }
 
+  const SEP = /,|;/;
   const lines = txt.replace(/^\uFEFF/,'').split(/\r?\n/).filter(Boolean);
-  const headers = lines.shift().split(',').map(h=>h.trim());
+  const headers = lines.shift().split(SEP).map(h=>h.trim());
   const idx = Object.create(null);
   lines.forEach(line=>{
-    const cols=line.split(',');
+    if(!line || !line.trim()) return;
+    const cols=line.split(SEP);
     const row={}; headers.forEach((h,i)=>row[h]=(cols[i]||'').trim());
     const raw=row['county']||'';
     const canon = canonicalCountyName(raw);
@@ -1046,13 +1061,16 @@ async function actuallyLoadManifest(){
             const csvUrl = (window.AMA_DATA_BASE||'/data/amaayesh/') + 'wind_weights_by_county.csv';
             const res = await fetch(csvUrl, {cache:'no-store'});
             if(!res.ok) return [];
-            const text = await res.text();
+            const text = (await res.text()).replace(/^\uFEFF/,'');
             const lines = text.split(/\r?\n/).filter(Boolean);
             if(lines.length < 2) return [];
-            const hdr = lines[0].split(',').map(h=>h.trim());
+            const SEP = /,|;/;
+            const hdr = lines[0].split(SEP).map(h=>h.trim());
             const iCounty = hdr.findIndex(h=> /^(county|شهرستان)$/i.test(h));
             for(let i=1;i<lines.length;i++){
-              const cols = lines[i].split(',');
+              const line = lines[i];
+              if(!line || !line.trim()) continue;
+              const cols = line.split(SEP);
               const nm = canonicalCountyName((cols[iCounty]||'').trim());
               if(nm) names.add(nm);
             }
