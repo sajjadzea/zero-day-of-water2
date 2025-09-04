@@ -35,12 +35,11 @@ function keyOf(s=''){
     .toLowerCase();
 }
 const sameCounty = (a,b)=> keyOf(a) === keyOf(b);
-function normalizeFaName(s){
-  if(!s) return '';
-  return keyOf(s);
-}
+// ---- County/Province normalization helpers (union, not replace) ----
+const ACTIVE_PROVINCE = 'خراسان رضوی';
+
 // alias map for common Persian variations / city-to-county mappings (extendable)
-const __AMA_ALIAS = {
+const __AMA_ALIASES = {
   // spacing / ZWNJ / spelling
   'مهولات': 'مه ولات',
   'مه‌ولات': 'مه ولات',
@@ -63,12 +62,46 @@ const __AMA_ALIAS = {
   'تربت‌حيدريه': 'تربت حیدریه',
   'تربت حیدریه‌': 'تربت حیدریه'
 };
-function canonicalCountyName(name=''){
-  const k = keyOf(name);
-  for(const [raw,to] of Object.entries(__AMA_ALIAS)){
-    if(keyOf(raw) === k) return to;
-  }
-  return name;
+// Union of legacy aliases and new entries; keep existing mappings on conflict
+const __COUNTY_ALIASES = Object.assign(
+  {},
+  {
+    'تربتحیدریه':'تربت حیدریه',
+    'مهولات':'مه ولات',
+    'زیرنجفام':'زبرخان',
+    'بينالود':'بینالود', 'فیروزه ':'فیروزه', ' نیشابور':'نیشابور'
+  },
+  (typeof __AMA_ALIASES === 'object' && __AMA_ALIASES) || {}
+);
+function canonicalCountyName(s=''){
+  let t = (s||'').toString()
+    .replace(/[يى]/g,'ی').replace(/ك/g,'ک')
+    .replace(/[\u200c\u200f]/g,'')      // ZWNJ, RTL marks
+    .replace(/[ـ]+/g,'')                // کشیده
+    .replace(/[-–—]+/g,' ')             // dash → space
+    .replace(/\s+/g,' ')
+    .trim();
+  // فیکس‌های عمومی بدون نیاز به آلیاس
+  if (t === 'تربتحیدریه') t = 'تربت حیدریه';
+  if (/^مه.?ولات$/.test(t)) t = 'مه ولات';
+  return __COUNTY_ALIASES[t] || t;
+}
+function getProvinceNameFromProps(p={}){
+  const cand = p.ostan || p.province || p['نام استان'] || p['استان'] || '';
+  return canonicalCountyName(cand);
+}
+// استخراج نام شهرستان از پراپرتی‌های متنوع
+function deriveCountyFromProps(p={}){
+  const candProps = [
+    p.county, p.shahrestan, p['شهرستان'], p.NAME, p.name, p.adm2name, p.ADM2_NAME,
+    p['نام شهرستان'], p['نام'], p['نام_شهرستان'], p['label']
+  ].filter(Boolean);
+  let s = (candProps[0]||'').toString();
+  s = s.replace(/^بخش مرکزی شهرستان\s+/,'')
+       .replace(/^شهرستان\s+/,'')
+       .replace(/\s+شهرستان$/,'')
+       .replace(/^بخش\s+مرکزی\s+/,'');
+  return canonicalCountyName(s);
 }
 function showToast(msg){
   try{
@@ -182,45 +215,13 @@ function eachPolyFeatureLayer(root, fn){
   walk(root);
 }
 
-function getCountyProp(props){
-  const map = {};
-  Object.keys(props||{}).forEach(k=>{
-    map[keyOf(k)] = props[k];
-  });
-  const candidates = [
-    'شهرستان','نامشهرستان','county','shahrestan','admin2','adm2name','countyname'
-  ];
-  for(const c of candidates){
-    if(map[c]!=null && String(map[c]).trim()!=='') return String(map[c]);
-  }
-  return null;
-}
-
-function deriveCountyFromProps(props){
-  const direct = getCountyProp(props);
-  if (direct) return normalizeFaName(direct);
-
-  const nameLike = props?.county || props?.name_fa || props?.name || props?.TITLE || props?.Name || props?.نام || '';
-  const s = normalizeFaName(nameLike);
-  // patterns:
-  //   "بخش مرکزی شهرستان تایباد" → "تایباد"
-  //   "دهستان xyz ، شهرستان نیشابور" → "نیشابور"
-  let m = s.match(/شهرستان\s+([^\s،]+(?:\s+[^\s،]+)*)/);
-  if (m && m[1]) return normalizeFaName(m[1]);
-
-  // another pattern: "... شهرستان تایباد بخش ..." → pick token after 'شهرستان'
-  const i = s.indexOf('شهرستان ');
-  if (i>=0) {
-    const rest = s.slice(i+'شهرستان '.length).split(/[،\s]/)[0];
-    if (rest) return normalizeFaName(rest);
-  }
-  return '';
-}
 // expose active KPI (default)
 window.__activeWindKPI = localStorage.getItem('ama-wind-metric') || 'wind_wDensity';
 window.setActiveWindKPI = function(k){
   window.__activeWindKPI = k; localStorage.setItem('ama-wind-metric', k);
   if (window.__countiesLayer) {
+    const dyn = computeQuantileBreaksFromLayer(window.__countiesLayer, k);
+    if (dyn) window.__WIND_BREAKS = dyn;
     eachPolyFeatureLayer(window.__countiesLayer, l=>{
       if (l.feature) l.setStyle(styleForCounty(l.feature));
     });
@@ -458,76 +459,101 @@ async function fetchTextFromManifest(rel){
 }
 
 async function joinWindWeightsOnAll(){
-  let txt = '';
+  let text='';
   try {
-    txt = await fetchTextFromManifest('amaayesh/wind_weights_by_county.csv');
+    text = await fetchTextFromManifest('amaayesh/wind_weights_by_county.csv');
   } catch (e) {
     window.__WIND_WEIGHTS_MISSING = true;
     if(AMA_DEBUG) console.warn('[join] CSV missing');
     return;
   }
 
-  const rows = parseCSV(txt);
+  const rows = parseCSV(text);
   const idx = {};
   for (const r of rows) {
-    const c = canonicalCountyName(r.county || r.name || r.shahrestan);
+    const c = canonicalCountyName(r.county);
+    if (!c) continue;
     idx[c] = {
-      n_sites: +r.n_sites || 0,
-      sum_w  : +r.sum_w  || 0,
-      area_km2: +r.area_km2 || 0,
-      sites: r.sites || '',
-      wind_class: r.wind_class || ''
+      n_sites:+r.n_sites||0,
+      sum_w:+r.sum_w||0,
+      area_km2:+r.area_km2||0,
+      sites:r.sites||'',
+      wind_class:r.wind_class||''
     };
   }
   window.__weightsIdx = idx;
-  // Expose weight index for diagnostics
   try { window.__AMA_windIdx = idx; } catch(_) {}
-
   if(!window.__countiesLayer){ if(AMA_DEBUG) console.warn('[join] no counties layer'); return; }
 
-  let mapCount=0, hasData=0, noData=0; const onlyInMap=[], mapKeys=[];
-  eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
-    const f=leaf.feature, p=f.properties||(f.properties={}); mapCount++;
-    const key = canonicalCountyName(p.county || deriveCountyFromProps(p));
-    p.county = key;
-    mapKeys.push(key);
+  (function windJoinReport(){
+    const csvKeys = Object.keys(window.__weightsIdx||{});
+    const mapKeys = new Set();
+    eachPolyFeatureLayer(window.__countiesLayer, l=>{
+      const p=l.feature?.properties||{};
+      mapKeys.add(deriveCountyFromProps(p)); // already canonical
+    });
+    const onlyInCSV = csvKeys.filter(k=>!mapKeys.has(k));       // ❌ مشکل واقعی
+    const onlyInMap = [...mapKeys].filter(k=>!(window.__weightsIdx||{})[k]); // ℹ️ اطلاعاتی
+    console.group('[wind join]');
+    console.log('CSV count:', csvKeys.length, 'Map count (filtered):', mapKeys.size);
+    if (onlyInCSV.length){
+      console.error('Only in CSV (no polygon match):', onlyInCSV);
+      console.error('❌ join QA (subset) failed.');
+    } else {
+      if (onlyInMap.length) console.info('Only in Map (no CSV row):', onlyInMap);
+      console.log('✅ join QA (subset) passed.');
+    }
+    console.groupEnd();
+  })();
 
-    const w = idx[key] || {};
-    p.wind_N    = w.n_sites;
-    p.wind_sumW = w.sum_w;
+  eachPolyFeatureLayer(window.__countiesLayer, leaf=>{
+    const p = leaf.feature?.properties || {};
+    const key = deriveCountyFromProps(p); // خودش canonical می‌کند
+    const w = window.__weightsIdx[key] || {};
     let areaKm2 = +p.area_km2 || 0;
-    if(!areaKm2 && w.area_km2>0) areaKm2 = w.area_km2;
-    p.wind_avgW = p.wind_N ? (p.wind_sumW / p.wind_N) : 0;
-    p.wind_density  = areaKm2 ? (p.wind_N / areaKm2) : 0;
-    p.wind_wDensity = areaKm2 ? (p.wind_sumW / areaKm2) : 0;
-    p.wind_sites = w.sites;
-    p.wind_class = w.wind_class;
-    p.__hasWindData = (p.wind_N > 0 || p.wind_sumW > 0);
-    if (p.__hasWindData) hasData++; else { noData++; onlyInMap.push(key); }
+    if (!areaKm2 && +w.area_km2) areaKm2 = +w.area_km2;
+
+    p.wind_N       = +w.n_sites||0;
+    p.wind_sumW    = +w.sum_w||0;
+    p.wind_avgW    = p.wind_N ? (p.wind_sumW/p.wind_N) : 0;
+    p.wind_density = areaKm2 ? (p.wind_N/areaKm2) : 0;
+    p.wind_wDensity= areaKm2 ? (p.wind_sumW/areaKm2) : 0;
+    p.wind_sites   = w.sites||'';
+    p.wind_class   = w.wind_class||'';
+    p.__hasWindData= (p.wind_N>0 || p.wind_sumW>0);
+
+    leaf.setStyle(styleForCounty(leaf.feature));
   });
 
-  const onlyInIdx = Object.keys(idx).filter(k=>!mapKeys.includes(k));
   window.__WIND_DATA_READY = true;
-  window.__WIND_SELF_CHECK = { mapCount, hasData, noData, onlyInMap, onlyInIdx };
-  if(AMA_DEBUG){ console.group('[join report]'); console.log(window.__WIND_SELF_CHECK); console.groupEnd(); }
-  const k = window.__activeWindKPI || 'wind_wDensity';
-  const dyn = computeQuantileBreaksFromLayer(window.__countiesLayer, k);
-  if(dyn) window.__WIND_BREAKS = dyn;
+
+  // status line
   const el = document.getElementById('info');
-  if(el){
+  if (el){
     let has=0;
     eachPolyFeatureLayer(window.__countiesLayer, l=>{
       const p=l.feature?.properties||{};
-      if(p.__hasWindData) has++;
+      if (p.__hasWindData) has++;
     });
     el.textContent = `دادهٔ باد آماده — ${Object.keys(window.__weightsIdx||{}).length} ردیف، ${has} شهرستان دارای داده`;
     el.classList.remove('text-slate-300');
     el.classList.add('text-slate-400');
   }
-  if (typeof renderLegend === 'function') renderLegend();
-  if (window.__countiesLayer) {
-    eachPolyFeatureLayer(window.__countiesLayer, l => l.setStyle(styleForCounty(l.feature)));
-  }
+
+  // dynamic breaks + restyle
+  const k = window.__activeWindKPI || 'wind_wDensity';
+  const dyn = (function computeQuantileBreaksFromLayer(layer, key, cuts=[0.2,0.4,0.6,0.8]){
+    const vals=[]; eachPolyFeatureLayer(layer, l=>{
+      const v=+((l.feature?.properties||{})[key]??0);
+      if (Number.isFinite(v)&&v>0) vals.push(v);
+    });
+    if (vals.length<5) return null;
+    vals.sort((a,b)=>a-b);
+    const q=p=>vals[Math.floor(p*(vals.length-1))];
+    return cuts.map(q);
+  })(window.__countiesLayer, k);
+  if (dyn) window.__WIND_BREAKS = dyn;
+  if (typeof renderLegend==='function') renderLegend();
   if(typeof __AMA_renderTop10==='function') __AMA_renderTop10();
 }
 
@@ -1188,6 +1214,11 @@ async function actuallyLoadManifest(){
           }
 
           windChoroplethLayer = L.geoJSON(polysFC, {
+            filter: (f)=>{
+              const p = f?.properties || {};
+              const ostan = getProvinceNameFromProps(p);
+              return !ACTIVE_PROVINCE || ostan === ACTIVE_PROVINCE; // فقط خراسان رضوی
+            },
             pane:'polygons',
             style: f => styleForCounty(f),
             onEachFeature:(f,l)=>{
