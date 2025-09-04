@@ -24,7 +24,7 @@
 .is-disabled{opacity:.5;pointer-events:none}
 
 /* === Tool Dock === */
-.tool-dock{display:flex;flex-direction:column;background:rgba(10,15,28,.88);padding:8px;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.2);gap:8px}
+.tool-dock{display:flex;flex-direction:column;background:rgba(10,15,28,.88);padding:8px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);gap:12px}
 .tool-dock .dock-btn{background:#0b1220;color:#e5e7eb;border:1px solid #324155;border-radius:9999px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .tool-dock .dock-btn:hover{background:#0ea5e9;color:#04121f;border-color:#0ea5e9}
 .tool-dock .dock-reset{margin-top:auto}
@@ -43,7 +43,7 @@
 .leaflet-top.leaflet-right,
 .leaflet-top.leaflet-left,
 .leaflet-bottom.leaflet-right,
-.leaflet-bottom.leaflet-left{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.leaflet-bottom.leaflet-left{display:flex;flex-direction:column;gap:12px;align-items:flex-end}
 .leaflet-top.leaflet-left,
 .leaflet-bottom.leaflet-left{align-items:flex-start}
 
@@ -69,7 +69,7 @@
 .ama-legend-warning{background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:6px;font-size:12px;margin-top:6px;text-align:center}
 
 /* === Top-10 panel === */
-.ama-panel{background:rgba(10,15,28,.88);color:#fff;padding:10px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.25);width:320px;font-size:14px;}
+.ama-panel{background:rgba(10,15,28,.88);color:#fff;padding:12px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.25);width:320px;font-size:14px;}
 .ama-panel-hd{font-weight:700;margin-bottom:8px;}
 .ama-panel-hd .sort{cursor:pointer;margin-right:6px;user-select:none;}
 .ama-panel-bd{max-height:300px;overflow-y:auto;}
@@ -93,7 +93,7 @@
 .ama-loading{font-size:12px;text-align:center;opacity:.8;padding:4px;}
 
 /* KPI legend */
-.ama-kpi-legend{background:rgba(10,15,28,.88);color:#fff;padding:8px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.2);position:fixed;left:8px;bottom:8px;z-index:999;font-size:12px}
+.ama-kpi-legend{font-size:12px}
 .ama-kpi-legend .lg{display:flex;align-items:center;gap:6px;margin:2px 0}
 .ama-kpi-legend .sw{width:20px;height:12px;border-radius:4px;display:inline-block;border:1px solid rgba(255,255,255,.25)}
 
@@ -104,7 +104,11 @@
 /* site labels */
 .site-label{background:transparent;border:none;color:#e5e7eb;font-size:12px;text-shadow:0 0 2px #000;}
 
-.ama-dock { display:flex; flex-direction:column; gap:8px; background:#0b1220cc; padding:10px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.25); }
+.ama-dock { display:flex; flex-direction:column; gap:12px; background:#0b1220cc; padding:10px; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 .ama-dock .btn { width:44px; height:44px; border-radius:10px; background:#111827; color:#e5e7eb; border:1px solid #374151; font-size:18px; display:grid; place-items:center; cursor:pointer; }
 .ama-dock .btn:hover { background:#1f2937; }
 .ama-dock .btn:active { transform: translateY(1px); }
+
+/* Zoom control tweaks */
+.leaflet-control-zoom{box-shadow:0 4px 16px rgba(0,0,0,.25);border-radius:12px;overflow:hidden}
+.leaflet-control-zoom a{border-radius:0}
