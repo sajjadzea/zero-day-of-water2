@@ -713,7 +713,7 @@ async function actuallyLoadManifest(){
   try {
     const { json, url } = await loadLayerManifestOnce();
     setManifestBase(url);
-    window.__LAYER_MANIFEST = new Set(json.files || []);
+    window.__LAYER_MANIFEST = new Set((json.files || []).map(normalizeName));
     window.__LAYER_MANIFEST_URL = url;
     window.__LAYER_MANIFEST_JSON = json;
     if (AMA_DEBUG) console.log('[ama:manifest] using', url);
@@ -724,7 +724,7 @@ async function actuallyLoadManifest(){
 
   window.__dumpAmaState = function(){
     const arr = Array.isArray(window.__LAYER_MANIFEST) ? window.__LAYER_MANIFEST : Array.from(window.__LAYER_MANIFEST||[]);
-    const inManifest = (k)=> arr.includes(k);
+    const inManifest = (k)=> arr.includes(normalizeName(k));
     const info = {
       manifestUrl: window.__LAYER_MANIFEST_URL,
       manifestSize: arr.length,
@@ -982,8 +982,7 @@ async function actuallyLoadManifest(){
       if(!combined?.features?.length){ return; }
 
       const damsPath = cfg?.baseData?.dams;
-    const damsRel = damsPath ? normalizeName(damsPath) : null;
-    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams' }) : null;
+      const damsGeojson = damsPath ? await loadJSON(damsPath, { layerKey:'dams', fallbacks:[ normalizeName(damsPath) ] }) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
@@ -1034,7 +1033,7 @@ async function actuallyLoadManifest(){
       pane:'polygons',
       style: f => ({ color:'#374151', weight:1, fillColor:scaleSolar(f.properties.solar_mw), fillOpacity:0.35, opacity:0.7 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-      }).addTo(map);
+      });
     ensureCountiesLayer(map);
     solarLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.solar_mw);
     tabs.push(solarLegendCfg);
@@ -1044,7 +1043,7 @@ async function actuallyLoadManifest(){
       style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
                       fillOpacity:0.35, color:'rgba(39,48,63,.4)', weight:.8 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-      }).addTo(map);
+      });
     ensureCountiesLayer(map);
     windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
     tabs.push(windLegendCfg);
@@ -1064,10 +1063,21 @@ async function actuallyLoadManifest(){
           marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون m³`);
           return marker;
         }
-      }).addTo(map);
+      });
       ensureCountiesLayer(map);
       tabs.push(damsLegendCfg);
     }
+
+    const solarSitesLayer = await optionalGeoJSONFile('amaayesh/solar_sites.geojson', {
+      pane: 'points',
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+        radius: 5,
+        color: '#0a0a0a',
+        weight: 1,
+        fillColor: '#fde047',
+        fillOpacity: 0.85
+      })
+    });
 
     boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'rgba(31,41,55,.6)', weight:1.2, fill:false } }).addTo(map);
     ensureCountiesLayer(map);
@@ -1415,7 +1425,6 @@ async function actuallyLoadManifest(){
             })));
             windSitesLayer = L.layerGroup();
             window.windSitesLayer = windSitesLayer;
-            map.addLayer(windSitesLayer);
             const render = () => {
               const z = map.getZoom();
               const b = map.getBounds();
@@ -1496,11 +1505,6 @@ async function actuallyLoadManifest(){
             function syncZoomVisibility(){
               const z = map.getZoom();
               if (window.windSitesLayer) {
-                if (z >= Z_SITES_ON) {
-                  if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
-                } else {
-                  if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
-                }
                 window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
               }
             }
@@ -1798,6 +1802,7 @@ async function actuallyLoadManifest(){
         ['کلاس بادی (Choropleth)', window.windChoroplethLayer ?? (typeof windLayer!=='undefined'? windLayer : null)],
         ['سایت‌های بادی (برآوردی)', window.windSitesLayer],
         ['سدها', damsLayer],
+        ['سایت‌های خورشیدی', solarSitesLayer],
         ['شهرها/نقاط', pointLayer],
       ];
       const missing = [];
