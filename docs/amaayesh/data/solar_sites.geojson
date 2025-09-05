@@ -1,0 +1,761 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 1,
+        "name_fa": "مشهد ریزه",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.50698,
+          34.79511
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 2,
+        "name_fa": "قمی",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.83333,
+          34.74417
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 3,
+        "name_fa": "تایباد",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.7756,
+          34.74
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 4,
+        "name_fa": "حاج‌آباد",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.805,
+          34.845
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 5,
+        "name_fa": "محسن‌آباد",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.81613,
+          34.90412
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 6,
+        "name_fa": "سرداب",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.77333,
+          34.85028
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 7,
+        "name_fa": "عباس‌آباد ۲",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 1
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.7197,
+          34.9956
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 8,
+        "name_fa": "عباس‌آباد ۳",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 1
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.7197,
+          34.9956
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 9,
+        "name_fa": "طرح توسعه ۲",
+        "county": "تایباد",
+        "county_norm": "تایباد",
+        "capacity_mw": 120,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 2
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.7756,
+          34.74
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 10,
+        "name_fa": "علی‌آباد کشمر",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.1014,
+          35.29181
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 11,
+        "name_fa": "کوه ارسنگ",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.11327,
+          35.34787
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 12,
+        "name_fa": "طرح توسعه ۱",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.9722,
+          35.2631
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 13,
+        "name_fa": "ابراهیم‌آباد",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.98,
+          35.06
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 14,
+        "name_fa": "سیف‌آباد",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.02,
+          35.25
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 15,
+        "name_fa": "ابراهیم‌آباد ۲",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 3
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.98,
+          35.06
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 16,
+        "name_fa": "زر مهر",
+        "county": "بردسکن",
+        "county_norm": "بردسکن",
+        "capacity_mw": 77.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.8,
+          35.35
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 17,
+        "name_fa": "شهر جنگل",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.2225,
+          34.70333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 18,
+        "name_fa": "زرگری",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 5
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.72215,
+          34.91616
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 19,
+        "name_fa": "شهر جنگل ۲",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 4
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.2225,
+          34.70333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 20,
+        "name_fa": "ابنیه",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 6
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.6167,
+          34.9667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 21,
+        "name_fa": "زرغری",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 5
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.72215,
+          34.91616
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 22,
+        "name_fa": "— (نام ششم در تصویر مبهم)",
+        "county": "رشتخوار",
+        "county_norm": "رشتخوار",
+        "capacity_mw": 57.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 6
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.6167,
+          34.9667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 23,
+        "name_fa": "کوثر",
+        "county": "گناباد",
+        "county_norm": "گناباد",
+        "capacity_mw": 47.8,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.80084,
+          34.36861
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 24,
+        "name_fa": "بیدخت",
+        "county": "گناباد",
+        "county_norm": "گناباد",
+        "capacity_mw": 47.8,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 7
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.82388,
+          34.34709
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 25,
+        "name_fa": "بیدخت ۲",
+        "county": "گناباد",
+        "county_norm": "گناباد",
+        "capacity_mw": 47.8,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 7
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.82388,
+          34.34709
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 26,
+        "name_fa": "حاجی‌آباد",
+        "county": "گناباد",
+        "county_norm": "گناباد",
+        "capacity_mw": 47.8,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.83083,
+          34.4475
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 27,
+        "name_fa": "گنبدلی",
+        "county": "سرخس",
+        "county_norm": "سرخس",
+        "capacity_mw": 38.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.85917,
+          36.38583
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 28,
+        "name_fa": "قوش عظیم ۱",
+        "county": "سرخس",
+        "county_norm": "سرخس",
+        "capacity_mw": 38.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          61.0439,
+          36.2321
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 29,
+        "name_fa": "قوش عظیم ۲",
+        "county": "سرخس",
+        "county_norm": "سرخس",
+        "capacity_mw": 38.5,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          61.05,
+          36.24
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 30,
+        "name_fa": "نامن",
+        "county": "داورزن",
+        "county_norm": "داورزن",
+        "capacity_mw": 30,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 8
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.35917,
+          36.15528
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 31,
+        "name_fa": "نامن ۲",
+        "county": "داورزن",
+        "county_norm": "داورزن",
+        "capacity_mw": 30,
+        "confidence": 0.9,
+        "source": "user_list",
+        "layer": "solar_sites",
+        "coincident_group": 8
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.35917,
+          36.15528
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 32,
+        "name_fa": "سنگان ۱",
+        "county": "خواف",
+        "county_norm": "خواف",
+        "capacity_mw": 150,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          60.25722,
+          34.39611
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 33,
+        "name_fa": "سبزوار",
+        "county": "سبزوار",
+        "county_norm": "سبزوار",
+        "capacity_mw": 150,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          57.68191,
+          36.2126
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 34,
+        "name_fa": "نصرآباد",
+        "county": "خلیل‌آباد",
+        "county_norm": "خلیلآباد",
+        "capacity_mw": 150,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.26556,
+          35.24889
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 35,
+        "name_fa": "سرداغ",
+        "county": "بجستان",
+        "county_norm": "بجستان",
+        "capacity_mw": 150.5,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.1111,
+          34.7877
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 36,
+        "name_fa": "ماهنه – طرح توسعه ۳",
+        "county": "مه‌ولات",
+        "county_norm": "مه ولات",
+        "capacity_mw": 116.5,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          58.84667,
+          34.98778
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": 37,
+        "name_fa": "سنگ‌بست ۲",
+        "county": "فریمان",
+        "county_norm": "فریمان",
+        "capacity_mw": 30,
+        "confidence": 0.92,
+        "source": "user_list",
+        "layer": "solar_sites"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          59.77167,
+          35.99194
+        ]
+      }
+    }
+  ]
+}
