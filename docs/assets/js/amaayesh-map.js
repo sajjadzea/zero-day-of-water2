@@ -713,7 +713,7 @@ async function actuallyLoadManifest(){
   try {
     const { json, url } = await loadLayerManifestOnce();
     setManifestBase(url);
-    window.__LAYER_MANIFEST = new Set(json.files || []);
+    window.__LAYER_MANIFEST = new Set((json.files || []).map(normalizeName));
     window.__LAYER_MANIFEST_URL = url;
     window.__LAYER_MANIFEST_JSON = json;
     if (AMA_DEBUG) console.log('[ama:manifest] using', url);
@@ -724,7 +724,7 @@ async function actuallyLoadManifest(){
 
   window.__dumpAmaState = function(){
     const arr = Array.isArray(window.__LAYER_MANIFEST) ? window.__LAYER_MANIFEST : Array.from(window.__LAYER_MANIFEST||[]);
-    const inManifest = (k)=> arr.includes(k);
+    const inManifest = (k)=> arr.includes(normalizeName(k));
     const info = {
       manifestUrl: window.__LAYER_MANIFEST_URL,
       manifestSize: arr.length,
@@ -982,8 +982,9 @@ async function actuallyLoadManifest(){
       if(!combined?.features?.length){ return; }
 
       const damsPath = cfg?.baseData?.dams;
-    const damsRel = damsPath ? normalizeName(damsPath) : null;
-    const damsGeojson = damsRel ? await loadJSON(damsRel, { layerKey:'dams' }) : null;
+      const damsGeojson = damsPath ? await loadJSON(damsPath, { layerKey:'dams', fallbacks:[ normalizeName(damsPath) ] }) : null;
+      const solarPath = cfg?.baseData?.solar;
+      const solarGeojson = solarPath ? await loadJSON(solarPath, { layerKey:'solar', fallbacks:[ normalizeName(solarPath) ] }) : null;
 
     const polys = { type:'FeatureCollection', features:[] }, points = { type:'FeatureCollection', features:[] };
     for(const f of combined.features){
@@ -1034,7 +1035,7 @@ async function actuallyLoadManifest(){
       pane:'polygons',
       style: f => ({ color:'#374151', weight:1, fillColor:scaleSolar(f.properties.solar_mw), fillOpacity:0.35, opacity:0.7 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-      }).addTo(map);
+      });
     ensureCountiesLayer(map);
     solarLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.solar_mw);
     tabs.push(solarLegendCfg);
@@ -1044,7 +1045,7 @@ async function actuallyLoadManifest(){
       style: f => ({ fillColor: ({1:'#bdbdbd',2:'#f6c945',3:'#29cc7a'})[f.properties.wind_class_num] || '#9e9e9e',
                       fillOpacity:0.35, color:'rgba(39,48,63,.4)', weight:.8 }),
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
-      }).addTo(map);
+      });
     ensureCountiesLayer(map);
     windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
     tabs.push(windLegendCfg);
@@ -1052,10 +1053,12 @@ async function actuallyLoadManifest(){
     let damsLayer = null;
     let windChoroplethLayer = null;
     let windSitesLayer = null;
+    const pointLayers = [];
     if(damsGeojson){
       const fillColorByPct = p => p<=20?'#ef4444':p<=40?'#fb923c':p<=60?'#f59e0b':p<=80?'#84cc16':'#22c55e';
       const rByMCM = v => Math.max(6, Math.sqrt(v||1)/2);
       damsLayer = L.geoJSON(damsGeojson, {
+        pane:'points',
         pointToLayer:(f,latlng)=>{
           const p=f.properties, pct=+p.dam_fill_pct||0, mcm=+p.dam_storage_mcm||0;
           const marker=L.circleMarker(latlng,{ radius:rByMCM(mcm), color:'#0a0a0a', weight:1,
@@ -1064,9 +1067,27 @@ async function actuallyLoadManifest(){
           marker.bindPopup(`<b>${p.name||'سد'}</b><br>پرشدگی: ${pct}% | ظرفیت: ${mcm} میلیون m³`);
           return marker;
         }
-      }).addTo(map);
+      });
       ensureCountiesLayer(map);
+      pointLayers.push(damsLayer);
+      damsLayer.__wanted = false;
       tabs.push(damsLegendCfg);
+    }
+
+    let solarSitesLayer = null;
+    if (solarGeojson) {
+      solarSitesLayer = L.geoJSON(solarGeojson, {
+        pane: 'points',
+        pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+          radius: 5,
+          color: '#0a0a0a',
+          weight: 1,
+          fillColor: '#fde047',
+          fillOpacity: 0.85
+        })
+      });
+      pointLayers.push(solarSitesLayer);
+      solarSitesLayer.__wanted = false;
     }
 
     boundary = L.geoJSON(polys, { pane:'boundary', style:{ color:'rgba(31,41,55,.6)', weight:1.2, fill:false } }).addTo(map);
@@ -1109,99 +1130,76 @@ async function actuallyLoadManifest(){
       const fmt = (x, d=1) => (x==null || isNaN(x)) ? '—' : Number(x).toFixed(d);
       const radiusFromMW = mw => Math.max(5, 1.6*Math.sqrt(Math.max(0, mw||0)));
 
-        // counties (select central districts as county representatives)
-        async function __ama_loadCentralDistrictCounties(){
-          let combined=null;
-          try { combined = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson'); } catch(_){ }
-          const feats = [];
-          const re = /^بخش مرکزی شهرستان\s+(.+)\s*$/;
-          for (const f of (combined?.features||[])) {
-            const p = Object.assign({}, f.properties||{});
-            const nm = String(p.name||'');
-            const m = nm.match(re);
-            if (!m) continue;
-            const county = canonicalCountyName(m[1].trim());
-            p.county = county;
-            feats.push({ type:'Feature', geometry:f.geometry, properties:p });
+        let countiesLayer = await optionalGeoJSONFile('amaayesh/counties.geojson', { pane:'polygons' });
+        let polysFC = null;
+        if (countiesLayer) {
+          polysFC = countiesLayer.toGeoJSON();
+          window.__AMA_countySource = 'file:counties.geojson';
+        } else {
+          async function __ama_loadCentralDistrictCounties(){
+            let combined=null;
+            try { combined = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson'); } catch(_){ }
+            const feats = [];
+            const re = /^بخش مرکزی شهرستان\s+(.+)\s*$/;
+            for (const f of (combined?.features||[])) {
+              const p = Object.assign({}, f.properties||{});
+              const nm = String(p.name||'');
+              const m = nm.match(re);
+              if (!m) continue;
+              const county = canonicalCountyName(m[1].trim());
+              p.county = county;
+              feats.push({ type:'Feature', geometry:f.geometry, properties:p });
+            }
+            return { type:'FeatureCollection', features:feats, __combined:combined };
           }
-          return { type:'FeatureCollection', features:feats, __combined:combined };
-        }
-        let polysFC = await __ama_loadCentralDistrictCounties();
+          polysFC = await __ama_loadCentralDistrictCounties();
 
-        // --- CSV-guided fallback: add representatives for CSV counties not matched yet ---
-        async function __ama_loadCSVCountyNames(){
-          // Prefer existing index if available; else fetch CSV directly
-          const names = new Set();
-          if (window.__AMA_windIdx && typeof window.__AMA_windIdx==='object'){
-            Object.keys(window.__AMA_windIdx).forEach(n=> names.add(canonicalCountyName(n)));
-            return Array.from(names);
+          // --- CSV-guided fallback: add representatives for CSV counties not matched yet ---
+          async function __ama_loadCSVCountyNames(){
+            const names = new Set();
+            if (window.__AMA_windIdx && typeof window.__AMA_windIdx==='object'){
+              Object.keys(window.__AMA_windIdx).forEach(n=> names.add(canonicalCountyName(n)));
+              return Array.from(names);
+            }
+            try{
+              const csvUrl = (window.AMA_DATA_BASE||'/data/amaayesh/') + 'wind_weights_by_county.csv';
+              const res = await fetch(csvUrl, {cache:'no-store'});
+              if(!res.ok) return [];
+              const text = (await res.text()).replace(/^\uFEFF/,'');
+              const lines = text.split(/\r?\n/).filter(Boolean);
+              if(lines.length < 2) return [];
+              const SEP = /,|;/;
+              const hdr = lines[0].split(SEP).map(h=>h.trim());
+              const iCounty = hdr.findIndex(h=> /^(county|شهرستان)$/i.test(h));
+              for(let i=1;i<lines.length;i++){
+                const line = lines[i];
+                if(!line || !line.trim()) continue;
+                const cols = line.split(SEP);
+                const nm = canonicalCountyName((cols[iCounty]||'').trim());
+                if(nm) names.add(nm);
+              }
+              return Array.from(names);
+            }catch(_){ return []; }
           }
+
           try{
-            const csvUrl = (window.AMA_DATA_BASE||'/data/amaayesh/') + 'wind_weights_by_county.csv';
-            const res = await fetch(csvUrl, {cache:'no-store'});
-            if(!res.ok) return [];
-            const text = (await res.text()).replace(/^\uFEFF/,'');
-            const lines = text.split(/\r?\n/).filter(Boolean);
-            if(lines.length < 2) return [];
-            const SEP = /,|;/;
-            const hdr = lines[0].split(SEP).map(h=>h.trim());
-            const iCounty = hdr.findIndex(h=> /^(county|شهرستان)$/i.test(h));
-            for(let i=1;i<lines.length;i++){
-              const line = lines[i];
-              if(!line || !line.trim()) continue;
-              const cols = line.split(SEP);
-              const nm = canonicalCountyName((cols[iCounty]||'').trim());
-              if(nm) names.add(nm);
-            }
-            return Array.from(names);
-          }catch(_){ return []; }
-        }
+            const csvCountyNames = await __ama_loadCSVCountyNames();
+            const have = new Set((polysFC.features||[]).map(f=> keyOf(canonicalCountyName(f.properties?.county||''))));
+            const combinedL6 = (polysFC.__combined?.features||[]).filter(f=> String(f?.properties?.admin_level||'')==='6');
+            const candProps = ['county','name_fa','name','NAME_2','NAME_1','shahrestan','نام','نام_شهرستان'];
+            let addedL6=0, addedCountyFile=0;
 
-        try{
-          const csvCountyNames = await __ama_loadCSVCountyNames();
-          const have = new Set((polysFC.features||[]).map(f=> keyOf(canonicalCountyName(f.properties?.county||''))));
-          const combinedL6 = (polysFC.__combined?.features||[]).filter(f=> String(f?.properties?.admin_level||'')==='6');
-          const candProps = ['county','name_fa','name','NAME_2','NAME_1','shahrestan','نام','نام_شهرستان'];
-          let addedL6=0, addedCountyFile=0;
-
-          // Stage 2: admin_level=6 guided by CSV
-          for(const rawName0 of csvCountyNames){
-            const rawName = canonicalCountyName(rawName0);
-            const k = keyOf(rawName);
-            if(!k || have.has(k)) continue;
-            let hit = combinedL6.find(f=>{
-              const p=f.properties||{};
-              return candProps.some(prop=> sameCounty(canonicalCountyName(p[prop]), rawName));
-            });
-            if(!hit){
-              hit = combinedL6.find(f=>{
-                const p=f.properties||{};
-                return candProps.some(prop=> p[prop] && keyOf(String(canonicalCountyName(p[prop]))).includes(k));
-              });
-            }
-            if(hit){
-              const p = Object.assign({}, hit.properties||{});
-              p.county = rawName.trim();
-              polysFC.features.push({ type:'Feature', geometry: hit.geometry, properties: p });
-              have.add(k); addedL6++;
-            }
-          }
-
-          // Stage 3: fallback to counties.geojson (if present) for remaining names
-          const remaining = csvCountyNames
-            .map(canonicalCountyName)
-            .filter(n => !have.has(keyOf(n)));
-          let countiesFile=null;
-          try { countiesFile = await fetchJSONFromManifest('amaayesh/counties.geojson'); } catch(_){ }
-          if (countiesFile && Array.isArray(countiesFile.features) && remaining.length){
-            for(const rawName of remaining){
+            // Stage 2: admin_level=6 guided by CSV
+            for(const rawName0 of csvCountyNames){
+              const rawName = canonicalCountyName(rawName0);
               const k = keyOf(rawName);
-              let hit = countiesFile.features.find(f=>{
+              if(!k || have.has(k)) continue;
+              let hit = combinedL6.find(f=>{
                 const p=f.properties||{};
                 return candProps.some(prop=> sameCounty(canonicalCountyName(p[prop]), rawName));
               });
               if(!hit){
-                hit = countiesFile.features.find(f=>{
+                hit = combinedL6.find(f=>{
                   const p=f.properties||{};
                   return candProps.some(prop=> p[prop] && keyOf(String(canonicalCountyName(p[prop]))).includes(k));
                 });
@@ -1210,19 +1208,49 @@ async function actuallyLoadManifest(){
                 const p = Object.assign({}, hit.properties||{});
                 p.county = rawName.trim();
                 polysFC.features.push({ type:'Feature', geometry: hit.geometry, properties: p });
-                have.add(k); addedCountyFile++;
+                have.add(k); addedL6++;
               }
             }
-          }
 
-          window.__AMA_countySource = 'combined/central-districts+guided-fallback' + (addedCountyFile?'+county-fallback':'');
-          if (window.AMA_DEBUG) console.warn('[ama-data] county source:', window.__AMA_countySource,
-            'addedL6=', addedL6, 'addedCountyFile=', addedCountyFile,
-            'unmatchedAfterAll=', csvCountyNames.filter(n=> !have.has(keyOf(canonicalCountyName(n)))).length);
-        }catch(e){
-          window.__AMA_countySource = 'combined/central-districts-as-county';
-          if (window.AMA_DEBUG) console.warn('[ama-data] fallback skipped', e?.message);
+            // Stage 3: fallback to counties.geojson (if present) for remaining names
+            const remaining = csvCountyNames
+              .map(canonicalCountyName)
+              .filter(n => !have.has(keyOf(n)));
+            let countiesFile=null;
+            try { countiesFile = await fetchJSONFromManifest('amaayesh/counties.geojson'); } catch(_){ }
+            if (countiesFile && Array.isArray(countiesFile.features) && remaining.length){
+              for(const rawName of remaining){
+                const k = keyOf(rawName);
+                let hit = countiesFile.features.find(f=>{
+                  const p=f.properties||{};
+                  return candProps.some(prop=> sameCounty(canonicalCountyName(p[prop]), rawName));
+                });
+                if(!hit){
+                  hit = countiesFile.features.find(f=>{
+                    const p=f.properties||{};
+                    return candProps.some(prop=> p[prop] && keyOf(String(canonicalCountyName(p[prop]))).includes(k));
+                  });
+                }
+                if(hit){
+                  const p = Object.assign({}, hit.properties||{});
+                  p.county = rawName.trim();
+                  polysFC.features.push({ type:'Feature', geometry: hit.geometry, properties: p });
+                  have.add(k); addedCountyFile++;
+                }
+              }
+            }
+
+            window.__AMA_countySource = 'combined/central-districts+guided-fallback' + (addedCountyFile?'+county-fallback':'');
+            if (window.AMA_DEBUG) console.warn('[ama-data] county source:', window.__AMA_countySource,
+              'addedL6=', addedL6, 'addedCountyFile=', addedCountyFile,
+              'unmatchedAfterAll=', csvCountyNames.filter(n=> !have.has(keyOf(canonicalCountyName(n)))).length);
+          }catch(e){
+            window.__AMA_countySource = 'combined/central-districts-as-county';
+            if (window.AMA_DEBUG) console.warn('[ama-data] fallback skipped', e?.message);
+          }
+          countiesLayer = L.geoJSON(polysFC, { pane:'polygons' });
         }
+        window.__countiesLayer = countiesLayer;
         countiesGeo = polysFC; window.countiesGeo = countiesGeo; window.polysFC = polysFC;
         if (polysFC?.features?.length) {
           createSidepanel();
@@ -1256,8 +1284,7 @@ async function actuallyLoadManifest(){
                 e.tooltip.setContent(html);
               });
             }
-          }).addTo(map);
-          window.__countiesLayer = windChoroplethLayer;
+          });
           map.removeLayer(windLayer);
           window.windChoroplethLayer = windChoroplethLayer;
 
@@ -1413,9 +1440,10 @@ async function actuallyLoadManifest(){
               properties: f.properties || {},
               geometry: { type: 'Point', coordinates: f.geometry.coordinates }
             })));
-            windSitesLayer = L.layerGroup();
+            windSitesLayer = L.layerGroup([], { pane:'points' });
             window.windSitesLayer = windSitesLayer;
-            map.addLayer(windSitesLayer);
+            pointLayers.push(windSitesLayer);
+            windSitesLayer.__wanted = false;
             const render = () => {
               const z = map.getZoom();
               const b = map.getBounds();
@@ -1427,6 +1455,7 @@ async function actuallyLoadManifest(){
                 if (f.properties.cluster) {
                   const count = f.properties.point_count;
                   const m = L.circleMarker([lat, lng], {
+                    pane:'points',
                     radius: Math.max(12, Math.min(32, count)),
                     weight: 1.5, color:'#111827', opacity:1,
                     fillColor:'#1e3a8a', fillOpacity:.8
@@ -1437,6 +1466,7 @@ async function actuallyLoadManifest(){
                   const p = f.properties || {};
                   const low = (p.quality === 'low');
                   const m = L.circleMarker([lat, lng], {
+                    pane:'points',
                     radius: radiusFromMW(p.capacity_mw_est),
                     weight: 1.5, color:'#111827', opacity:1,
                     fillColor:'#111827', fillOpacity:.85,
@@ -1491,16 +1521,13 @@ async function actuallyLoadManifest(){
               updateWhenZooming: false
             });
             window.windSitesLayer = windSitesLayer;
+            pointLayers.push(windSitesLayer);
+            windSitesLayer.__wanted = false;
 
             const Z_SITES_ON = 9;
             function syncZoomVisibility(){
               const z = map.getZoom();
               if (window.windSitesLayer) {
-                if (z >= Z_SITES_ON) {
-                  if (!map.hasLayer(window.windSitesLayer)) map.addLayer(window.windSitesLayer);
-                } else {
-                  if (map.hasLayer(window.windSitesLayer))  map.removeLayer(window.windSitesLayer);
-                }
                 window.windSitesLayer.eachLayer(l=>{ const tt=l.getTooltip(); if(tt) tt.setOpacity(z>=11?0.9:0); });
               }
             }
@@ -1768,7 +1795,9 @@ async function actuallyLoadManifest(){
           const name = labelFa(f.properties);
           l.bindTooltip(`مرکز شهرستان: ${name}`, {sticky:true, direction:'auto', className:'label'});
         }
-      }).addTo(map);
+      });
+      pointLayer.__wanted = true;
+      pointLayers.push(pointLayer);
       ensureCountiesLayer(map);
 
       // به‌روزرسانی اندازه‌ی مارکرها هنگام تغییر زوم
@@ -1781,39 +1810,25 @@ async function actuallyLoadManifest(){
           innerM?.setStyle?.({radius: inner});
         });
       }
-      // نمایش/عدم‌نمایش در زوم مناسب
+      // نمایش/عدم‌نمایش در زوم مناسب برای تمام لایه‌های نقطه‌ای
       function togglePointsByZoom(){
         const z = map.getZoom();
-        const shouldShow = z >= 8;
-        if (shouldShow && !map.hasLayer(pointLayer)) map.addLayer(pointLayer);
-        if (!shouldShow && map.hasLayer(pointLayer)) map.removeLayer(pointLayer);
+        pointLayers.forEach(l=>{
+          if(!l) return;
+          const shouldShow = z >= 8 && l.__wanted;
+          if (shouldShow && !map.hasLayer(l)) map.addLayer(l);
+          if (!shouldShow && map.hasLayer(l)) map.removeLayer(l);
+        });
       }
       map.on('zoomend', ()=>{ updatePointMarkerSizes(); togglePointsByZoom(); });
       // اجرا در بار اول
       togglePointsByZoom();
 
       const overlayEntries = [
-        ['مرز شهرستان‌ها', boundary],
-        ['ظرفیت تجمیعی خورشیدی', solarLayer],
-        ['کلاس بادی (Choropleth)', window.windChoroplethLayer ?? (typeof windLayer!=='undefined'? windLayer : null)],
         ['سایت‌های بادی (برآوردی)', window.windSitesLayer],
+        ['سایت‌های خورشیدی', solarSitesLayer],
         ['سدها', damsLayer],
-        ['شهرها/نقاط', pointLayer],
       ];
-      const missing = [];
-      for(const th of (cfg?.themes || [])){
-        const file = th.file;
-        const layer = inManifest(file)
-          ? await optionalGeoJSONFile(file, { pane:'polygons', style: th.style || {color:'#ef4444',weight:3} })
-          : null;
-        if(layer){
-          overlayEntries.push([th.title, layer]);
-          layer.addTo(map);
-          ensureCountiesLayer(map);
-        } else if(inManifest(file)){
-          missing.push(th.title);
-        }
-      }
       const overlays = Object.fromEntries(overlayEntries.filter(([_, layer]) => !!layer));
       ensureCountiesLayer(map);
       // original Leaflet layers control kept for debugging only
@@ -1847,7 +1862,8 @@ async function actuallyLoadManifest(){
           const displayPane = L.DomUtil.create('div', 'ld-pane', body);
           displayPane.style.display = 'none';
 
-          function makeSwitch(parent, label, layer, disabled){
+          const overlaySwitches = [];
+          function makeSwitch(parent, label, layer, disabled, {track=false}={}){
             const lbl = L.DomUtil.create('label', '', parent);
             if(disabled){ lbl.classList.add('is-disabled'); lbl.title='غیرفعال'; }
             const inp = L.DomUtil.create('input', '', lbl);
@@ -1855,22 +1871,39 @@ async function actuallyLoadManifest(){
             inp.setAttribute('role','switch');
             if(disabled){ inp.disabled=true; }
             else {
-              const init = m.hasLayer(layer);
+              const init = track ? !!layer.__wanted : m.hasLayer(layer);
               inp.checked = init; inp.setAttribute('aria-checked', init);
+              if(track) overlaySwitches.push({inp, layer});
               inp.addEventListener('change', ()=>{
                 const ch = inp.checked; inp.setAttribute('aria-checked', ch);
-                ch ? m.addLayer(layer) : m.removeLayer(layer);
+                if(track){
+                  layer.__wanted = ch;
+                  if(ch){
+                    overlaySwitches.forEach(sw=>{
+                      if(sw.inp!==inp){
+                        sw.inp.checked = false;
+                        sw.inp.setAttribute('aria-checked','false');
+                        sw.layer.__wanted = false;
+                      }
+                    });
+                  }
+                  togglePointsByZoom();
+                } else {
+                  ch ? m.addLayer(layer) : m.removeLayer(layer);
+                }
               });
-              const sync = e => { if(e.layer===layer){ const p=m.hasLayer(layer); inp.checked=p; inp.setAttribute('aria-checked',p); } };
-              m.on('layeradd', sync); m.on('layerremove', sync);
-              m.on('overlayadd', sync); m.on('overlayremove', sync);
+              if(!track){
+                const sync = e => { if(e.layer===layer){ const p=m.hasLayer(layer); inp.checked=p; inp.setAttribute('aria-checked',p); } };
+                m.on('layeradd', sync); m.on('layerremove', sync);
+                m.on('overlayadd', sync); m.on('overlayremove', sync);
+              }
             }
             const span = L.DomUtil.create('span', '', lbl); span.textContent = label;
           }
 
-          // data overlays (exclude boundary)
-          overlayEntries.filter(([t,_])=>t!=='مرز شهرستان‌ها').forEach(([t,l])=>{
-            makeSwitch(dataPane, t, l, !l);
+          // data overlays
+          overlayEntries.forEach(([t,l])=>{
+            makeSwitch(dataPane, t, l, !l, {track:true});
           });
 
           // display/basemap tab
@@ -1968,9 +2001,7 @@ async function actuallyLoadManifest(){
       }
     });
 
-    document.getElementById('info').innerHTML = missing.length
-      ? `لایه‌های در صف بارگذاری: ${missing.join('، ')}`
-      : 'همه‌ی لایه‌ها بارگذاری شدند.';
+    document.getElementById('info').innerHTML = 'همه‌ی لایه‌ها بارگذاری شدند.';
   })().catch(()=>{ /* بدون خطا روی UI */ });
 
   function __amaHealthReport(mapCtx){
@@ -2040,26 +2071,6 @@ async function actuallyLoadManifest(){
         const _re = window.reevaluateLegendPosition || window.reEvaluateLegendPosition;
         if (typeof _re === 'function') { try { _re(); } catch(_){} }
 
-        // layer presets (minimal defaults)
-        const show = (layer, yes) => { if (!layer) return; if (yes && !map.hasLayer(layer)) map.addLayer(layer); if (!yes && map.hasLayer(layer)) map.removeLayer(layer); };
-        switch (currentMode) {
-          case 'owner':     // 👤: پاسخ سریع و ساده
-            show(window.windChoroplethLayer, true);
-            show(window.windSitesLayer,     false);
-            show(boundary,                  true);
-            break;
-          case 'edu':       // 🎓: آزمودن آستانه‌ها
-            show(window.windChoroplethLayer, true);
-            show(window.windSitesLayer,      true);
-            show(boundary,                   true);
-            break;
-          case 'invest':    // 💼: غربال سریع + Top-10
-          case 'ind':       // 🏭: مشابه
-            show(window.windChoroplethLayer, true);
-            show(window.windSitesLayer,      true);
-            show(boundary,                   true);
-            break;
-        }
       }
 
       function resetAll(){
