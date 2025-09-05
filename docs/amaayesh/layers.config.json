@@ -1,4 +1,5 @@
 {
   "title": "مانیفست لایه‌های آمایش — خراسان رضوی",
-  "files": ["counties.geojson", "wind_sites.geojson", "khorasan_razavi_combined.geojson"]
+  "files": ["amaayesh/counties.geojson", "amaayesh/wind_sites.geojson", "amaayesh/khorasan_razavi_combined.geojson", "amaayesh/solar_sites.geojson", "amaayesh/dams.geojson"],
+  "baseData": { "dams": "amaayesh/dams.geojson", "solar": "amaayesh/solar_sites.geojson" }
 }
