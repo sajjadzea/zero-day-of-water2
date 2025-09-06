@@ -5,7 +5,9 @@ function readJSON(fp){ try{ return JSON.parse(fs.readFileSync(fp,'utf8')); }catc
 function exists(fp){ return fs.existsSync(fp) && fs.statSync(fp).isFile(); }
 
 const root = p.resolve(__dirname, '..');
-const manifestPath = p.join(root, 'docs/amaayesh/layers.config.json');
+const manifestPathStd = p.join(root, 'docs/data/layers.config.json');
+const manifestPathLegacy = p.join(root, 'docs/amaayesh/layers.config.json');
+const manifestPath = exists(manifestPathStd) ? manifestPathStd : manifestPathLegacy;
 const jsPath       = p.join(root, 'docs/assets/js/amaayesh-map.js');
 const htmlPath     = p.join(root, 'docs/amaayesh/index.html');
 

@@ -90,8 +90,8 @@
       { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
     // 2) Manifest
-    const manifest = await fetchJsonSafe('amaayesh/layers.config.json')
-                   || await fetchJsonSafe('./layers.config.json');
+    const manifest = await fetchJsonSafe('/data/layers.config.json')
+                   || await fetchJsonSafe('/amaayesh/layers.config.json');
     if (!manifest || !manifest.files) {
       warn('manifest missing → only base map will render');
       return;

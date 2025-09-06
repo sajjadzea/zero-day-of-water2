@@ -8,15 +8,12 @@
     "amaayesh/solar_sites.geojson",
     "amaayesh/dams.geojson"
   ],
-  "baseData": {
-    "counties": "amaayesh/counties.geojson",
-    "combined": "amaayesh/khorasan_razavi_combined.geojson",
-    "wind_sites": "amaayesh/wind_sites.geojson",
-    "solar_sites": "amaayesh/solar_sites.geojson",
-    "dams": "amaayesh/dams.geojson",
-    "wind_raw_csv": "amaayesh/wind_sites_raw.csv",
-    "wind_weights_csv": "amaayesh/wind_weights_by_county.csv",
-    "version": "2025-09-05",
-    "updated": "2025-09-05T00:00:00Z"
+  "baseData": "amaayesh/",
+  "layers": {
+    "province": "khorasan_razavi_combined.geojson",
+    "counties": "counties.geojson",
+    "wind_sites": "wind_sites.geojson",
+    "solar_sites": "solar_sites.geojson",
+    "dams": "dams.geojson"
   }
 }
