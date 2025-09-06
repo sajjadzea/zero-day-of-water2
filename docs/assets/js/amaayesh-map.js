@@ -140,11 +140,16 @@ function normalizeDataPath(p){
   return s.replace(/\/\/+/g,'/');
 }
 
-window.__AMA_BOOTING = window.__AMA_BOOTING || false;
 window.__AMA_BOOTSTRAPPED = window.__AMA_BOOTSTRAPPED || false;
 window.AMA_DEBUG = window.AMA_DEBUG || /(?:^|[?&])ama_debug=1\b/.test(location.search);
 
 let boundary;
+
+function __resolveMapContainer(){
+  const el = document.querySelector('#ama-map, #map, #map-wrap, .map-wrap');
+  if (!el) throw new Error('[AMA] map container not found');
+  return el;
+}
 
 function safeRemoveLayer(map, layer) {
   if (!layer) return;
@@ -1960,14 +1965,12 @@ async function actuallyLoadManifest(){
 }
 
 async function ama_bootstrap(){
-  if (window.__AMA_BOOTSTRAPPED || window.__AMA_BOOTING) return;
-  window.__AMA_BOOTING = true;
+  if (document.readyState === 'loading') {
+    await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once:true }));
+  }
+  if (window.__AMA_BOOTSTRAPPED) return;
+  window.__AMA_BOOTSTRAPPED = true;
   const t0 = performance.now?performance.now():Date.now();
-
-  await new Promise(r=>{
-    if (document.readyState!=='loading') r(); else
-      document.addEventListener('DOMContentLoaded', r, {once:true});
-  });
 
   const manifestUrl = normalizeDataPath('layers.config.json') + '?v=' + (window.__BUILD_ID || Date.now());
   if (window.AMA_DEBUG) console.log('[AMA] manifest path', manifestUrl);
@@ -2007,13 +2010,22 @@ async function ama_bootstrap(){
   window.__combinedGeo = combinedFC;
   if (window.AMA_DEBUG) console.log('[AHA] all-counties.features =', all.features.length);
 
-  const map = L.map('map', { preferCanvas:true, zoomControl:true });
+  const map = L.map(__resolveMapContainer(), { preferCanvas:true, zoomControl:true });
+  window.map = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
   if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
   if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
     map.attributionControl.setPosition('bottomleft');
   }
   map.setView([36.3,59.6],7);
+  (function ensureMapHasHeight(){
+    const el = __resolveMapContainer();
+    const h = el.getBoundingClientRect().height;
+    if (h < 200) {
+      el.style.minHeight = 'calc(100vh - 110px)';
+      setTimeout(()=> window.map?.invalidateSize?.(), 0);
+    }
+  })();
 
   map.createPane('polygons');  map.getPane('polygons').style.zIndex = 400;
   map.createPane('points');    map.getPane('points').style.zIndex   = 500;
@@ -2046,9 +2058,6 @@ async function ama_bootstrap(){
   });
 
   await buildOverlaysAfterBoundary(paths);
-
-  window.__AMA_BOOTSTRAPPED = true;
-  window.__AMA_BOOTING = false;
   if (window.AMA_DEBUG) {
     const t1 = performance.now?performance.now():Date.now();
     console.log('[AMA] bootstrap done in', Math.round(t1-t0),'ms');
