@@ -32,6 +32,15 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
+# --- Ensure SPA rewrite does not catch data files ---
+# If there is a catch-all like /* -> /index.html 200, keep it LAST,
+# and add explicit passthrough rules above it:
+[[redirects]]
+from = "/amaayesh/*"
+to = "/amaayesh/:splat"
+status = 200
+force = false
+
 # نکته: چون publish=docs است، مسیرهای runtime از ریشه‌ی سایت هستند ("/"),
 # بنابراین برای فونت‌ها "/fonts/..." درست است نه "/docs/fonts/..."
 [[headers]]
@@ -75,3 +84,17 @@ for = "/data/amaayesh/*"
   Access-Control-Allow-Origin = "*"
   Access-Control-Allow-Methods = "GET,OPTIONS"
   Access-Control-Allow-Headers = "Content-Type"
+
+# --- Data headers (GeoJSON/CSV) ---
+[[headers]]
+for = "/amaayesh/*.geojson"
+  [headers.values]
+  Cache-Control = "public, max-age=900"
+  Access-Control-Allow-Origin = "*"
+  Content-Type = "application/geo+json; charset=utf-8"
+
+[[headers]]
+for = "/amaayesh/*.csv"
+  [headers.values]
+  Cache-Control = "public, max-age=900"
+  Access-Control-Allow-Origin = "*"
