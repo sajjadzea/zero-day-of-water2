@@ -1,24 +1,16 @@
 (function(){
-  const MAP_ID = 'map';
-
-  if (!document.getElementById('map')) {
-    console.error('[AMA] #map container not found; abort bootstrap');
-    return;
-  }
-  // single-run guard
-  if (window.__AMA_BOOTED__) { console.warn('[AMA] already bootstrapped'); return; }
+  if (!document.getElementById('map')) { console.error('[AMA] #map missing'); throw new Error('no-map'); }
+  if (window.__AMA_BOOTED__) { console.warn('[AMA] already booted'); return; }
   window.__AMA_BOOTED__ = true;
 
-  // expose quick checks
-  window.AMA_DEBUG = false;
-  window.AMA_CHECK = () => ({
-    hasMap: !!document.getElementById('map'),
-    overlays: {
-      wind: !!(window.AMA && AMA.groups && AMA.groups.wind && AMA.groups.wind.getLayers().length),
-      solar: !!(window.AMA && AMA.groups && AMA.groups.solar && AMA.groups.solar.getLayers().length),
-      dams: !!(window.AMA && AMA.groups && AMA.groups.dams && AMA.groups.dams.getLayers().length),
-    }
+  window.AMA = window.AMA || {};
+  window.AMA.CHECK = () => ({
+    booted: !!window.__AMA_BOOTED__,
+    hasMap: !!document.getElementById('map')
   });
+
+  const MAP_ID = 'map';
+  window.AMA_DEBUG = false;
 
   function dbg(){ if (window.AMA_DEBUG) console.log('[AMA]', ...arguments); }
   function warn(){ console.warn('[AMA]', ...arguments); }
