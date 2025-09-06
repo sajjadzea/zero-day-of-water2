@@ -2,7 +2,12 @@ const args = process.argv.slice(2);
 const paths = args.length ? args : [
   '/amaayesh/layers.config.json',
   '/data/amaayesh/counties.geojson',
-  '/data/amaayesh/wind_sites.geojson'
+  '/data/amaayesh/khorasan_razavi_combined.geojson',
+  '/data/amaayesh/wind_sites.geojson',
+  '/data/amaayesh/solar_sites.geojson',
+  '/data/amaayesh/dams.geojson',
+  '/data/amaayesh/wind_sites_raw.csv',
+  '/data/amaayesh/wind_weights_by_county.csv'
 ];
 
 const base = process.env.VERIFY_BASE || 'http://localhost:8888';
