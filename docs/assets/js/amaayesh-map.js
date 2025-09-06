@@ -2007,7 +2007,7 @@ async function ama_bootstrap(){
   window.__combinedGeo = combinedFC;
   if (window.AMA_DEBUG) console.log('[AHA] all-counties.features =', all.features.length);
 
-  const map = L.map('map', { preferCanvas:true, zoomControl:true });
+  const map = L.map('ama-map', { preferCanvas:true, zoomControl:true });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
   if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
   if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
