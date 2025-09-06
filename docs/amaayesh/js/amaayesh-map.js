@@ -1,6 +1,9 @@
 (function(){
-  if (!document.getElementById('map')) { console.error('[AMA] #map missing'); throw new Error('no-map'); }
-  if (window.__AMA_BOOTED__) { console.warn('[AMA] already booted'); return; }
+  // --- Safe boot guard ---
+  if (!document.getElementById('map') && !document.getElementById('ama-map')) {
+    console.error('[AMA] map container missing'); throw new Error('no-map');
+  }
+  if (window.__AMA_BOOTED__) { console.warn('[AMA] already booted'); }
   window.__AMA_BOOTED__ = true;
 
   window.AMA = window.AMA || {};
@@ -12,34 +15,36 @@
   const MAP_ID = 'map';
   window.AMA_DEBUG = false;
 
-  function dbg(){ if (window.AMA_DEBUG) console.log('[AMA]', ...arguments); }
-  function warn(){ console.warn('[AMA]', ...arguments); }
+    function dbg(){ if (window.AMA_DEBUG) console.log('[AMA]', ...arguments); }
+    function warn(){ console.warn('[AMA]', ...arguments); }
 
-  async function fetchJsonSafe(url) {
-    try {
-      const res = await fetch(url, { cache: 'no-cache' });
-      if (!res.ok) { warn('fetch failed', url, res.status); return null; }
-      const ct = (res.headers.get('content-type') || '').toLowerCase();
-      const text = await res.text();
-      // Reject obvious HTML rewrites (e.g., 404 -> index.html)
-      if (ct.includes('html') || text.trim().startsWith('<!DOCTYPE')) {
-        warn('HTML instead of JSON', url);
+    // --- URL resolver: مسیرها را نسبت به همین صفحه مطلق می‌کند ---
+    function toAbs(u) {
+      try { return new URL(u, window.location.href).toString(); }
+      catch { return u; }
+    }
+
+    // --- JSON fetch with HTML-guard ---
+    async function fetchJsonSafe(url) {
+      const abs = toAbs(url);
+      try {
+        const res = await fetch(abs, { cache: 'no-cache' });
+        if (!res.ok) { console.warn('[AMA] fetch failed', abs, res.status); return null; }
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        const txt = await res.text();
+        if (ct.includes('html') || txt.trim().startsWith('<!DOCTYPE')) {
+          console.warn('[AMA] HTML instead of JSON', abs);
+          return null;
+        }
+        return JSON.parse(txt);
+      } catch (e) {
+        console.warn('[AMA] network error', abs, e);
         return null;
       }
-      try { return JSON.parse(text); }
-      catch(e){ warn('invalid JSON', url); return null; }
-    } catch (e) {
-      warn('network error', url, e);
-      return null;
     }
-  }
 
-  // Global handles for debug
-  const AMA = (window.AMA = window.AMA || {});
-  AMA.layers = { wind:null, solar:null, dams:null };
-  const G = { wind:L.layerGroup(), solar:L.layerGroup(), dams:L.layerGroup() };
-  AMA.groups = G;
-  window.AMA.G = G;
+    // Global handles for debug
+    // (groups assigned later after manifest)
 
   function popupHTML(props){
     const n = props.name_fa || props.name || '—';
@@ -83,99 +88,55 @@
       </tr>`).join('');
   }
 
-  async function ama_bootstrap(){
-    // 1) Base map
-    const map = L.map(MAP_ID, { zoomControl:true }).setView([35.6, 59.0], 7);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
+    async function ama_bootstrap(){
+      // 1) Base map
+      const map = L.map(MAP_ID, { zoomControl:true }).setView([35.6, 59.0], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-    // 2) Manifest
-    const manifest = await fetchJsonSafe('amaayesh/layers.config.json')
-                   || await fetchJsonSafe('./layers.config.json');
-    if (!manifest || !manifest.files) {
-      warn('manifest missing → only base map will render');
-      return;
+      // --- manifest ---
+      const manifest = await fetchJsonSafe('./layers.config.json');
+      if (!manifest?.files) { console.warn('[AMA] manifest missing'); throw new Error('no-manifest'); }
+      const files = Object.fromEntries(Object.entries(manifest.files).map(([k, v]) => [k, toAbs(v)]));
+      const { counties, province, wind_sites, solar_sites, dams } = files;
+
+      // --- draw boundaries (پایدار؛ اگر نبود فقط warn) ---
+      const gjCounties = await fetchJsonSafe(counties);
+      if (gjCounties?.type === 'FeatureCollection') {
+        L.geoJSON(gjCounties, { style: { color: '#111', weight: 2, fillOpacity: 0 } }).addTo(map);
+      } else { console.warn('[AMA] missing counties'); }
+
+      const gjProvince = await fetchJsonSafe(province);
+      if (gjProvince?.type === 'FeatureCollection') {
+        L.geoJSON(gjProvince, { style: { color: '#6b7280', weight: 3, dashArray: '4 4', fillOpacity: 0 } }).addTo(map);
+      }
+
+      // --- points (گروه‌ها) ---
+      const G = { wind: L.layerGroup(), solar: L.layerGroup(), dams: L.layerGroup() };
+      async function addPoints(url, group, color, radius = 6) {
+        if (!url) return 'missing';
+        const gj = await fetchJsonSafe(url);
+        if (!gj || gj.type !== 'FeatureCollection') return 'missing';
+        L.geoJSON(gj, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius, color, fillOpacity: .6 }) }).addTo(group);
+        return 'ok';
+      }
+      await addPoints(wind_sites,  G.wind,  '#2563eb');
+      await addPoints(solar_sites, G.solar, '#f59e0b', 5);
+      await addPoints(dams,       G.dams,  '#0ea5e9', 5);
+
+      function bindToggle(sel, group) {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        el.addEventListener('change', () => el.checked ? group.addTo(map) : map.removeLayer(group), { passive: true });
+      }
+      bindToggle('#chk-wind-sites',  G.wind);
+      bindToggle('#chk-solar-sites', G.solar);
+      bindToggle('#chk-dam-sites',   G.dams);
+
+      window.AMA = Object.assign(window.AMA || {}, { G, files });
+
+      dbg('bootstrap done');
     }
-
-    // 3) Boundaries
-    const counties = manifest.files.counties ? await fetchJsonSafe(manifest.files.counties) : null;
-    if (counties && counties.type === 'FeatureCollection') {
-      L.geoJSON(counties, {
-        style:{ color:'#111', weight:2, opacity:1, fillOpacity:0 }
-      }).addTo(map);
-      AMA.counties = counties;
-    } else if (manifest.files.counties) warn('missing counties');
-
-    const province = manifest.files.province ? await fetchJsonSafe(manifest.files.province) : null;
-    if (province && province.type === 'FeatureCollection') {
-      L.geoJSON(province, {
-        style:{ color:'#6b7280', weight:3, dashArray:'4 4', fillOpacity:0 }
-      }).addTo(map);
-      AMA.province = province;
-    }
-
-    // 4) Overlays (point layers) + LayerGroups
-    async function buildPoints(url, group, makeStyle){
-      const gj = url ? await fetchJsonSafe(url) : null;
-      if (!gj || gj.type !== 'FeatureCollection') return 'missing';
-      L.geoJSON(gj, {
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, makeStyle(f))
-      }).addTo(group);
-      return 'ok';
-    }
-
-    const windState  = await buildPoints(manifest.files.wind_sites,  G.wind,  () => ({ radius:6, color:'#2563eb', fillOpacity:.6 }));
-    const solarState = await buildPoints(manifest.files.solar_sites, G.solar, () => ({ radius:5, color:'#f59e0b', fillOpacity:.6 }));
-    const damsState  = await buildPoints(manifest.files.dams,       G.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
-
-    dbg('OVERLAYS', { wind:windState, solar:solarState, dams:damsState });
-
-    // make points clickable (bindPopup)
-    function bindPopups(group){
-      group.eachLayer(l => {
-        if (l.feature && l.feature.properties)
-          l.bindPopup(popupHTML(l.feature.properties));
-      });
-    }
-    bindPopups(G.wind);
-    bindPopups(G.solar);
-    bindPopups(G.dams);
-
-    // Legend + Top-10
-    buildLegendDock();
-
-    // crude Top-10 based on capacity_mw if exists (wind or solar)
-    let top = [];
-    function collectTop(g){
-      g.eachLayer(l => {
-        const p = l.feature?.properties || {};
-        const mw = p.capacity_mw ?? p.capacity ?? p.mw ?? null;
-        const name = p.name_fa || p.name || '—';
-        if (mw!=null) top.push({ name, mw:Number(mw) });
-      });
-    }
-    collectTop(G.wind);
-    collectTop(G.solar);
-    top.sort((a,b)=> (b.mw||0)-(a.mw||0));
-    fillTop10(top.slice(0,10));
-
-    // 5) Wire checkboxes
-    function bindToggle(id, group){
-      const el = document.querySelector(id);
-      if (!el) return;
-      el.addEventListener('change', () => {
-        if (el.checked) group.addTo(map); else map.removeLayer(group);
-      }, { passive:true });
-    }
-    bindToggle('#chk-wind-sites',  G.wind);
-    bindToggle('#chk-solar-sites', G.solar);
-    bindToggle('#chk-dam-sites',   G.dams);
-
-    // Start with all off (UI decides)
-    // (بگذارید کاربر خودش تیک بزند؛ تغییر اولیه نمی‌دهیم)
-
-    dbg('bootstrap done');
-  }
 
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', ama_bootstrap, { once:true });
