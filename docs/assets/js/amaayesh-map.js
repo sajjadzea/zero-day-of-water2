@@ -133,6 +133,42 @@ function showToast(msg){
   }catch(e){}
 }
 
+function normalizeDataPath(p){
+  if(!p) return p;
+  if(/^https?:\/\//i.test(p)) return p;
+  const s = p.startsWith('/') ? p : '/data/' + p.replace(/^(\.\/)?/,'');
+  return s.replace(/\/\/+/g,'/');
+}
+
+window.__AMA_BOOTING = window.__AMA_BOOTING || false;
+window.__AMA_BOOTSTRAPPED = window.__AMA_BOOTSTRAPPED || false;
+window.AMA_DEBUG = window.AMA_DEBUG || /(?:^|[?&])ama_debug=1\b/.test(location.search);
+
+let boundary;
+
+function safeRemoveLayer(map, layer) {
+  if (!layer) return;
+  if (layer.__AMA_PROTECTED && !layer.__AMA_ALLOW_REPLACE) return;
+  if (map.hasLayer(layer)) map.removeLayer(layer);
+  if (layer.__AMA_ALLOW_REPLACE) layer.__AMA_ALLOW_REPLACE = false;
+}
+
+async function __refreshBoundary(map, opts={}) {
+  const src = window.__countiesGeoAll || { type:'FeatureCollection', features:[] };
+  if (window.boundary && !opts.keepOld) {
+    window.boundary.__AMA_ALLOW_REPLACE = true;
+    safeRemoveLayer(map, window.boundary);
+  }
+  window.boundary = L.geoJSON(src, {
+    pane:'boundary',
+    style:{ color:'#111827', weight:1.5, fill:false }
+  }).addTo(map);
+  window.boundary.__AMA_PROTECTED = true;
+  boundary = window.boundary;
+  if (window.boundary.bringToFront) window.boundary.bringToFront();
+  if (window.AMA_DEBUG) console.log('[AHA] boundary src features =', src.features?.length||0);
+}
+
 function ama_popupContent(f, kind){
   const p = f?.properties||{};
   const name = p.name_fa || p.name || '—';
@@ -476,10 +512,12 @@ window.addEventListener('error', e => {
   }
 });
 
-// (IIFE wrapper) — must be async to allow top-level await inside
-(async function(){
+// (IIFE wrapper) — now converted to callable function
+async function buildOverlaysAfterBoundary(paths){
 // === AMA HELPERS (top-level, safe scope) ===
-const AMA_DEBUG = /(?:^|[?&])ama_debug=1\b/.test(location.search);
+const map = window.__AMA_MAP;
+const canvasRenderer = window.__AMA_canvasRenderer;
+const AMA_DEBUG = window.AMA_DEBUG;
 let __LAYER_MANIFEST_BASE = '/data/';
 const __jsonCache = new Map();
 
@@ -499,7 +537,8 @@ function absFromManifest(rel){
 }
 
 async function fetchJSONFromManifest(rel){
-  const url = absFromManifest(rel);
+  let url = absFromManifest(rel);
+  url = normalizeDataPath(url);
   if (__jsonCache.has(url)) return __jsonCache.get(url);
   const res = await fetch(url, { cache: 'no-store' });
   if (AMA_DEBUG) console.log('[ama:data]', 'GET', url, '->', res.status);
@@ -616,93 +655,22 @@ async function joinWindWeightsOnAll(){
 
   const labelFa = p => (p?.['name:fa'] || p?.['alt_name:fa'] || p?.name || '—');
 
-    const map = L.map('map', { preferCanvas:true, zoomControl:true });
-    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
-    if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
-    // move attribution to bottom-left to avoid colliding with legend
-    if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
-      map.attributionControl.setPosition('bottomleft');
-    }
-    map.setView([36.3, 59.6], 7);
-
-    map.createPane('polygons');  map.getPane('polygons').style.zIndex = 400;
-    map.createPane('points');    map.getPane('points').style.zIndex   = 500;
-    map.createPane('boundary');  map.getPane('boundary').style.zIndex = 650;
-    if (window.AMA_DEBUG) console.log('[AHA] panes zIndex=', {
-      polygons: getComputedStyle(map.getPane('polygons')).zIndex,
-      points:   getComputedStyle(map.getPane('points')).zIndex,
-      boundary: getComputedStyle(map.getPane('boundary')).zIndex
-    });
-
     let baseAdminGroup = null,
         countiesFill    = null;
 
-    const canvasRenderer = L.canvas({padding:0.5});
-
-    function safeRemoveLayer(map, layer) {
-      if (!layer) return;
-      if (layer.__AMA_PROTECTED && !layer.__AMA_ALLOW_REPLACE) return;
-      if (map.hasLayer(layer)) map.removeLayer(layer);
-      if (layer.__AMA_ALLOW_REPLACE) layer.__AMA_ALLOW_REPLACE = false;
-    }
     function safeClearGroup(group) {
       if (!group || group.__AMA_PROTECTED) return;
       group.clearLayers();
     }
 
-    const _rm = map.removeLayer.bind(map);
-    map.removeLayer = (lyr) => {
-      if (lyr?.__AMA_PROTECTED && !lyr.__AMA_ALLOW_REPLACE) {
-        if (window.AMA_DEBUG) console.warn('[AMA] blocked remove on protected layer');
-        return map;
-      }
-      return _rm(lyr);
-    };
-
     async function __getAllCountiesFC() {
-      if (window.__countiesGeoAll?.features?.length > 10) return window.__countiesGeoAll;
-      let fc = null;
-      try {
-        const c = await fetchJSONFromManifest('amaayesh/counties.geojson');
-        if (Array.isArray(c?.features) && c.features.length > 10) fc = c;
-      } catch {}
-      if (!fc) {
-        try {
-          const comb = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson');
-          const f = (comb?.features || []).filter(
-            f => String(f?.properties?.admin_level) === '6'
-          );
-          if (f.length > 0) fc = { type:'FeatureCollection', features:f };
-        } catch {}
-      }
-      if (!fc) fc = { type:'FeatureCollection', features:[] };
-      window.__countiesGeoAll = fc;
-      if (window.AMA_DEBUG) console.log('[AHA] all-counties.features =', fc.features.length);
-      return fc;
+      return window.__countiesGeoAll || { type:'FeatureCollection', features:[] };
     }
 
-    async function __refreshBoundary(map, opts={}) {
-      const src = await __getAllCountiesFC();
-      if (window.boundary && !opts.keepOld) {
-        window.boundary.__AMA_ALLOW_REPLACE = true;
-        safeRemoveLayer(map, window.boundary);
-      }
-      window.boundary = L.geoJSON(src, {
-        pane:'boundary',
-        style:{ color:'#111827', weight:1.5, fill:false }
-      }).addTo(map);
-      window.boundary.__AMA_PROTECTED = true;
-      boundary = window.boundary;
-      if (window.boundary.bringToFront) window.boundary.bringToFront();
-      if (window.AMA_DEBUG) console.log('[AHA] boundary src features =', src.features?.length||0);
-    }
 
     async function ensureAdminBase(){
       if (baseAdminGroup) return;
-      let countiesGJ = null;
-      try { countiesGJ = await fetchJSONFromManifest('amaayesh/counties.geojson'); }
-      catch(_){ countiesGJ = null; }
-      if (!countiesGJ) { showToast('عدم دسترسی به داده‌ها: amaayesh/counties.geojson'); return; }
+      const countiesGJ = window.__countiesGeoAll;
       baseAdminGroup = L.featureGroup([], { pane:'polygons' });
       baseAdminGroup.__AMA_PROTECTED = true;
       baseAdminGroup.addTo(map);
@@ -711,9 +679,9 @@ async function joinWindWeightsOnAll(){
       baseAdminGroup.addLayer(countiesFill);
       window.__AMA_COUNTIES_SOURCE = countiesGJ;
       window.__countiesLayer = countiesFill;
-      window.__AMA_countySource = 'counties.geojson (authoritative)';
+      window.__AMA_countySource = 'preloaded all-counties';
       window.__countiesGeoAll = countiesGJ;
-      if (window.AMA_DEBUG) console.log('[AHA] county source=amaayesh/counties.geojson');
+      if (window.AMA_DEBUG) console.log('[AHA] county source=preloaded');
       if (window.AMA_DEBUG) console.log('[AMA] base groups protected:', !!baseAdminGroup, !!countiesFill?.__AMA_PROTECTED, !!boundary?.__AMA_PROTECTED);
     }
 
@@ -756,7 +724,6 @@ async function joinWindWeightsOnAll(){
     }
 
   let searchLayer = L.layerGroup().addTo(map);
-  let boundary;
   let countiesGeo = null;
   let windSitesGeo = null;
   let __focused = null;
@@ -818,6 +785,9 @@ async function joinWindWeightsOnAll(){
 
 let __MANIFEST_P = null;
 async function loadLayerManifestOnce(){
+  if (window.__LAYER_MANIFEST_JSON && window.__LAYER_MANIFEST_URL) {
+    return { json: window.__LAYER_MANIFEST_JSON, url: window.__LAYER_MANIFEST_URL };
+  }
   if (__MANIFEST_P) return __MANIFEST_P;
   __MANIFEST_P = actuallyLoadManifest();
   return __MANIFEST_P;
@@ -1101,29 +1071,14 @@ async function actuallyLoadManifest(){
   }
 
     (async () => {
-      const cfg = window.__LAYER_MANIFEST_JSON || {};
-
       await ensureAdminBase();
-      await __refreshBoundary(map);
-      map.fitBounds(boundary.getBounds(), { padding:[12,12] });
-      map.setMaxBounds(boundary.getBounds().pad(0.25));
-      boundary.setStyle({ className: 'neon-edge' });
-      map.on('layeradd overlayadd overlayremove', () => {
-        if (boundary?.bringToFront) boundary.bringToFront();
-      });
 
-      let combined = null;
-      try {
-        combined = await fetchJSONFromManifest('amaayesh/khorasan_razavi_combined.geojson');
-      } catch (e) {
-        if (window.showToast) showToast('عدم دسترسی به داده‌ها: amaayesh/khorasan_razavi_combined.geojson');
-        return;
-      }
+      let combined = window.__combinedGeo;
       if(!combined?.features?.length){ return; }
 
-      const windPath  = cfg?.baseData?.wind_sites;
-      const solarPath = cfg?.baseData?.solar_sites;
-      const damsPath  = cfg?.baseData?.dams;
+      const windPath  = paths.wind;
+      const solarPath = paths.solar;
+      const damsPath  = paths.dams;
 
       const windGeojson  = windPath  ? await loadJSON(windPath,  { layerKey:'wind_sites' }) : null;
       const solarGeojson = solarPath ? await loadJSON(solarPath, { layerKey:'solar', fallbacks:[ normalizeName(solarPath) ] }) : null;
@@ -2002,4 +1957,102 @@ async function actuallyLoadManifest(){
       panels.layers.onAdd = (function(orig){ return function(){ const wrap=orig.call(this); const body=wrap.querySelector('.ama-panel-bd'); body.innerHTML='<label><input type="checkbox" data-layer="wind" checked/> لایه باد</label><label><input type="checkbox" data-layer="sites" checked/> سایت‌ها</label>'; body.querySelectorAll('input[data-layer]').forEach(ch=>{ ch.addEventListener('change',()=>{ const lay=ch.dataset.layer; const LAY = lay==='wind'?window.windChoroplethLayer:window.windSitesLayer; if(LAY){ if(ch.checked) map.addLayer(LAY); else safeRemoveLayer(map, LAY);} });}); return wrap; }; })(panels.layers.onAdd);
       panels.download.onAdd = (function(orig){ return function(){ const wrap=orig.call(this); const btn=wrap.querySelector('#ama-dl-csv'); btn?.addEventListener('click',()=>{ const rows=polysFC.features.map(f=>f.properties); const csv=makeTopCSV(rows); downloadBlob('kpi.csv',csv); }); return wrap; }; })(panels.download.onAdd);
     })();
-})();
+}
+
+async function ama_bootstrap(){
+  if (window.__AMA_BOOTSTRAPPED || window.__AMA_BOOTING) return;
+  window.__AMA_BOOTING = true;
+  const t0 = performance.now?performance.now():Date.now();
+
+  await new Promise(r=>{
+    if (document.readyState!=='loading') r(); else
+      document.addEventListener('DOMContentLoaded', r, {once:true});
+  });
+
+  const manifestUrl = normalizeDataPath('layers.config.json') + '?v=' + (window.__BUILD_ID || Date.now());
+  if (window.AMA_DEBUG) console.log('[AMA] manifest path', manifestUrl);
+  const manifest = await fetch(manifestUrl).then(r=>r.json()).catch(_=>null);
+  const base = (manifest && manifest.baseData) || {};
+  const paths = {
+    counties: normalizeDataPath(base.counties || 'amaayesh/counties.geojson'),
+    combined: normalizeDataPath(base.combined || 'amaayesh/khorasan_razavi_combined.geojson'),
+    wind:     normalizeDataPath(base.wind_sites || 'amaayesh/wind_sites.geojson'),
+    solar:    normalizeDataPath(base.solar_sites || 'amaayesh/solar_sites.geojson'),
+    dams:     normalizeDataPath(base.dams || 'amaayesh/dams.geojson'),
+  };
+  if (window.AMA_DEBUG) console.log('[AMA] paths', paths);
+
+  window.__LAYER_MANIFEST_JSON = manifest;
+  window.__LAYER_MANIFEST_URL = manifestUrl;
+  window.__AMA_BASE_PATHS = paths;
+
+  function getJSON(url){ return Promise.race([
+    fetch(url).then(r=>{ if(!r.ok) throw new Error(url+' '+r.status); return r.json(); }),
+    new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout '+url)), 9000))
+  ]).catch(e=>{ console.error('[AHA] fetch fail:',e.message); return null; }); }
+
+  const [countiesFC, combinedFC] = await Promise.all([
+    getJSON(paths.counties), getJSON(paths.combined)
+  ]);
+
+  let all = null;
+  if (Array.isArray(countiesFC?.features) && countiesFC.features.length > 10) {
+    all = countiesFC;
+  } else if (Array.isArray(combinedFC?.features)) {
+    const f = combinedFC.features.filter(x => String(x?.properties?.admin_level) === '6');
+    if (f.length) all = { type:'FeatureCollection', features:f };
+  }
+  if (!all) all = { type:'FeatureCollection', features:[] };
+  window.__countiesGeoAll = all;
+  window.__combinedGeo = combinedFC;
+  if (window.AMA_DEBUG) console.log('[AHA] all-counties.features =', all.features.length);
+
+  const map = L.map('map', { preferCanvas:true, zoomControl:true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+  if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
+  if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
+    map.attributionControl.setPosition('bottomleft');
+  }
+  map.setView([36.3,59.6],7);
+
+  map.createPane('polygons');  map.getPane('polygons').style.zIndex = 400;
+  map.createPane('points');    map.getPane('points').style.zIndex   = 500;
+  map.createPane('boundary');  map.getPane('boundary').style.zIndex = 650;
+  if (window.AMA_DEBUG) console.log('[AHA] panes zIndex=', {
+    polygons: getComputedStyle(map.getPane('polygons')).zIndex,
+    points:   getComputedStyle(map.getPane('points')).zIndex,
+    boundary: getComputedStyle(map.getPane('boundary')).zIndex
+  });
+
+  const canvasRenderer = L.canvas({padding:0.5});
+  window.__AMA_canvasRenderer = canvasRenderer;
+  window.__AMA_MAP = map;
+
+  const _rm = map.removeLayer.bind(map);
+  map.removeLayer = (lyr) => {
+    if (lyr?.__AMA_PROTECTED && !lyr.__AMA_ALLOW_REPLACE) {
+      if (window.AMA_DEBUG) console.warn('[AMA] blocked remove on protected layer');
+      return map;
+    }
+    return _rm(lyr);
+  };
+
+  await __refreshBoundary(map, { keepOld:false });
+  map.fitBounds(boundary.getBounds(), { padding:[12,12] });
+  map.setMaxBounds(boundary.getBounds().pad(0.25));
+  boundary.setStyle({ className: 'neon-edge' });
+  map.on('layeradd overlayadd overlayremove', () => {
+    if (boundary?.bringToFront) boundary.bringToFront();
+  });
+
+  await buildOverlaysAfterBoundary(paths);
+
+  window.__AMA_BOOTSTRAPPED = true;
+  window.__AMA_BOOTING = false;
+  if (window.AMA_DEBUG) {
+    const t1 = performance.now?performance.now():Date.now();
+    console.log('[AMA] bootstrap done in', Math.round(t1-t0),'ms');
+  }
+}
+
+ama_bootstrap();
