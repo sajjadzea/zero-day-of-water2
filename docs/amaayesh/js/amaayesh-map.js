@@ -1,4 +1,23 @@
 (function(){
+  // === AMA path resolver (page-dir relative) ===
+  const AMA_PAGE_BASE = (function () {
+    // مسیر دایرکتوری صفحه، مثلا "/amaayesh/"
+    const p = location.pathname;
+    return p.endsWith('/') ? p : p.slice(0, p.lastIndexOf('/') + 1);
+  })();
+  function amaResolve(p) {
+    if (!p) return AMA_PAGE_BASE;
+    // حذف پیشوندهای ناخواسته
+    p = String(p).replace(/^(\.\/|\/)/, '');
+    if (p.startsWith('amaayesh/')) p = p.slice('amaayesh/'.length);
+    return AMA_PAGE_BASE + p;
+  }
+  async function fetchJsonSafe(url) {
+    const res = await fetch(url, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    return res.json();
+  }
+
   if (!document.getElementById('map')) { console.error('[AMA] #map missing'); throw new Error('no-map'); }
   if (window.__AMA_BOOTED__) { console.warn('[AMA] already booted'); return; }
   window.__AMA_BOOTED__ = true;
@@ -14,25 +33,6 @@
 
   function dbg(){ if (window.AMA_DEBUG) console.log('[AMA]', ...arguments); }
   function warn(){ console.warn('[AMA]', ...arguments); }
-
-  async function fetchJsonSafe(url) {
-    try {
-      const res = await fetch(url, { cache: 'no-cache' });
-      if (!res.ok) { warn('fetch failed', url, res.status); return null; }
-      const ct = (res.headers.get('content-type') || '').toLowerCase();
-      const text = await res.text();
-      // Reject obvious HTML rewrites (e.g., 404 -> index.html)
-      if (ct.includes('html') || text.trim().startsWith('<!DOCTYPE')) {
-        warn('HTML instead of JSON', url);
-        return null;
-      }
-      try { return JSON.parse(text); }
-      catch(e){ warn('invalid JSON', url); return null; }
-    } catch (e) {
-      warn('network error', url, e);
-      return null;
-    }
-  }
 
   // Global handles for debug
   const AMA = (window.AMA = window.AMA || {});
@@ -90,23 +90,44 @@
       { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
     // 2) Manifest
-    const manifest = await fetchJsonSafe('amaayesh/layers.config.json')
-                   || await fetchJsonSafe('./layers.config.json');
+    const manifestUrl = amaResolve('layers.config.json');
+    let manifest;
+    try {
+      manifest = await fetchJsonSafe(manifestUrl);
+      console.debug('[AMA] loaded', manifestUrl, manifest);
+    } catch (e) {
+      warn('manifest load failed', e);
+      return;
+    }
     if (!manifest || !manifest.files) {
       warn('manifest missing → only base map will render');
       return;
     }
 
     // 3) Boundaries
-    const counties = manifest.files.counties ? await fetchJsonSafe(manifest.files.counties) : null;
+    let counties = null;
+    try {
+      const countiesUrl = amaResolve(manifest.files.counties || 'counties.geojson');
+      counties = await fetchJsonSafe(countiesUrl);
+      console.debug('[AMA] loaded', countiesUrl, counties);
+    } catch (e) {
+      warn('counties load failed', e);
+    }
     if (counties && counties.type === 'FeatureCollection') {
       L.geoJSON(counties, {
         style:{ color:'#111', weight:2, opacity:1, fillOpacity:0 }
       }).addTo(map);
       AMA.counties = counties;
-    } else if (manifest.files.counties) warn('missing counties');
+    }
 
-    const province = manifest.files.province ? await fetchJsonSafe(manifest.files.province) : null;
+    let province = null;
+    try {
+      const provinceUrl = amaResolve(manifest.files.province || 'khorasan_razavi_combined.geojson');
+      province = await fetchJsonSafe(provinceUrl);
+      console.debug('[AMA] loaded', provinceUrl, province);
+    } catch (e) {
+      warn('province load failed', e);
+    }
     if (province && province.type === 'FeatureCollection') {
       L.geoJSON(province, {
         style:{ color:'#6b7280', weight:3, dashArray:'4 4', fillOpacity:0 }
@@ -115,8 +136,7 @@
     }
 
     // 4) Overlays (point layers) + LayerGroups
-    async function buildPoints(url, group, makeStyle){
-      const gj = url ? await fetchJsonSafe(url) : null;
+    function buildPoints(gj, group, makeStyle){
       if (!gj || gj.type !== 'FeatureCollection') return 'missing';
       L.geoJSON(gj, {
         pointToLayer: (f, latlng) => L.circleMarker(latlng, makeStyle(f))
@@ -124,9 +144,26 @@
       return 'ok';
     }
 
-    const windState  = await buildPoints(manifest.files.wind_sites,  G.wind,  () => ({ radius:6, color:'#2563eb', fillOpacity:.6 }));
-    const solarState = await buildPoints(manifest.files.solar_sites, G.solar, () => ({ radius:5, color:'#f59e0b', fillOpacity:.6 }));
-    const damsState  = await buildPoints(manifest.files.dams,       G.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
+    let wind = null, solar = null, dams = null;
+    try {
+      const windUrl = amaResolve(manifest.files.wind || 'wind_sites.geojson');
+      wind = await fetchJsonSafe(windUrl);
+      console.debug('[AMA] loaded', windUrl, wind);
+    } catch (e) { warn('wind load failed', e); }
+    try {
+      const solarUrl = amaResolve(manifest.files.solar || 'solar_sites.geojson');
+      solar = await fetchJsonSafe(solarUrl);
+      console.debug('[AMA] loaded', solarUrl, solar);
+    } catch (e) { warn('solar load failed', e); }
+    try {
+      const damsUrl = amaResolve(manifest.files.dams || 'dams.geojson');
+      dams = await fetchJsonSafe(damsUrl);
+      console.debug('[AMA] loaded', damsUrl, dams);
+    } catch (e) { warn('dams load failed', e); }
+
+    const windState  = buildPoints(wind,  G.wind,  () => ({ radius:6, color:'#2563eb', fillOpacity:.6 }));
+    const solarState = buildPoints(solar, G.solar, () => ({ radius:5, color:'#f59e0b', fillOpacity:.6 }));
+    const damsState  = buildPoints(dams,  G.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
 
     dbg('OVERLAYS', { wind:windState, solar:solarState, dams:damsState });
 
