@@ -23,7 +23,8 @@
     "vendor:supercluster": "node tools/vendorize_supercluster.js",
     "audit:ama": "node tools/audit_amaayesh.js",
     "verify:publish": "node tools/verify_publish_paths.js https://wesh360.ir/amaayesh/layers.config.json https://wesh360.ir/amaayesh/data/counties.geojson https://wesh360.ir/amaayesh/data/wind_sites.geojson || true",
-    "rca:publish": "node tools/rca_publish.js --base=$SITE_URL"
+    "rca:publish": "node tools/rca_publish.js --base=$SITE_URL",
+    "fix:eof": "node tools/fix_eof.js docs/assets/js/amaayesh-map.js"
   },
   "keywords": [],
   "author": "",
