@@ -213,7 +213,8 @@ function dataBases(){
     new URL('./data/',  here).pathname,
     new URL('../data/', here).pathname
   ];
-  const bases = [...new Set([...preferred, ...relatives])] // dedupe, keep order
+  const legacy = ['/amaayesh/'];
+  const bases = [...new Set([...preferred, ...relatives, ...legacy])] // dedupe, keep order
     .map(p => (p || '/')
       .replace(/\/{2,}/g,'/')
       .replace(/([^/])$/,'$1/'));
@@ -1969,9 +1970,15 @@ async function ama_bootstrap(){
       document.addEventListener('DOMContentLoaded', r, {once:true});
   });
 
-  const manifestUrl = normalizeDataPath('layers.config.json') + '?v=' + (window.__BUILD_ID || Date.now());
+  const manifestUrl1 = normalizeDataPath('layers.config.json') + '?v=' + (window.__BUILD_ID || Date.now());
+  const manifestUrl2 = '/amaayesh/layers.config.json?v=' + (window.__BUILD_ID || Date.now());
+  let manifestUrl = manifestUrl1;
   if (window.AMA_DEBUG) console.log('[AMA] manifest path', manifestUrl);
-  const manifest = await fetch(manifestUrl).then(r=>r.json()).catch(_=>null);
+  let manifest = await fetch(manifestUrl1).then(r=>r.ok ? r.json() : null).catch(_=>null);
+  if(!manifest){
+    manifestUrl = manifestUrl2;
+    manifest = await fetch(manifestUrl2).then(r=>r.ok ? r.json() : null).catch(_=>null);
+  }
   const base = (manifest && manifest.baseData) || {};
   const paths = {
     counties: normalizeDataPath(base.counties || 'amaayesh/counties.geojson'),

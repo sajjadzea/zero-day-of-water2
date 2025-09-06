@@ -22,7 +22,7 @@
     "build:wind": "python3 tools/build_wind_geojson.py",
     "vendor:supercluster": "node tools/vendorize_supercluster.js",
     "audit:ama": "node tools/audit_amaayesh.js",
-    "verify:publish": "node tools/verify_publish_paths.js https://wesh360.ir/amaayesh/layers.config.json https://wesh360.ir/amaayesh/data/counties.geojson https://wesh360.ir/amaayesh/data/wind_sites.geojson || true",
+    "verify:publish": "node tools/verify_publish_paths.js https://wesh360.ir/data/layers.config.json https://wesh360.ir/data/amaayesh/counties.geojson https://wesh360.ir/data/amaayesh/wind_sites.geojson || true",
     "rca:publish": "node tools/rca_publish.js --base=$SITE_URL"
   },
   "keywords": [],
