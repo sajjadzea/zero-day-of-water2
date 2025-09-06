@@ -67,3 +67,11 @@ for = "/assets/*"
 #   for = "/*"
 #   [headers.values]
 #   Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; worker-src 'self'; connect-src 'self'"
+
+[[headers]]
+for = "/data/amaayesh/*"
+  [headers.values]
+  Cache-Control = "public, max-age=900, stale-while-revalidate=60"
+  Access-Control-Allow-Origin = "*"
+  Access-Control-Allow-Methods = "GET,OPTIONS"
+  Access-Control-Allow-Headers = "Content-Type"
