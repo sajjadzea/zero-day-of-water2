@@ -140,11 +140,16 @@ function normalizeDataPath(p){
   return s.replace(/\/\/+/g,'/');
 }
 
-window.__AMA_BOOTING = window.__AMA_BOOTING || false;
 window.__AMA_BOOTSTRAPPED = window.__AMA_BOOTSTRAPPED || false;
 window.AMA_DEBUG = window.AMA_DEBUG || /(?:^|[?&])ama_debug=1\b/.test(location.search);
 
 let boundary;
+
+function __resolveMapContainer(){
+  const el = document.querySelector('#ama-map, #map, #map-wrap, .map-wrap');
+  if (!el) throw new Error('[AMA] map container not found');
+  return el;
+}
 
 function safeRemoveLayer(map, layer) {
   if (!layer) return;
@@ -1960,14 +1965,12 @@ async function actuallyLoadManifest(){
 }
 
 async function ama_bootstrap(){
-  if (window.__AMA_BOOTSTRAPPED || window.__AMA_BOOTING) return;
-  window.__AMA_BOOTING = true;
+  if (document.readyState === 'loading') {
+    await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once:true }));
+  }
+  if (window.__AMA_BOOTSTRAPPED) return;
+  window.__AMA_BOOTSTRAPPED = true;
   const t0 = performance.now?performance.now():Date.now();
-
-  await new Promise(r=>{
-    if (document.readyState!=='loading') r(); else
-      document.addEventListener('DOMContentLoaded', r, {once:true});
-  });
 
   const manifestUrl = normalizeDataPath('layers.config.json') + '?v=' + (window.__BUILD_ID || Date.now());
   if (window.AMA_DEBUG) console.log('[AMA] manifest path', manifestUrl);
@@ -2007,13 +2010,22 @@ async function ama_bootstrap(){
   window.__combinedGeo = combinedFC;
   if (window.AMA_DEBUG) console.log('[AHA] all-counties.features =', all.features.length);
 
-  const map = L.map('map', { preferCanvas:true, zoomControl:true });
+  const map = L.map(__resolveMapContainer(), { preferCanvas:true, zoomControl:true });
+  window.map = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
   if (map.zoomControl && typeof map.zoomControl.setPosition==='function') map.zoomControl.setPosition('bottomleft');
   if (map.attributionControl && typeof map.attributionControl.setPosition === 'function') {
     map.attributionControl.setPosition('bottomleft');
   }
   map.setView([36.3,59.6],7);
+  (function ensureMapHasHeight(){
+    const el = __resolveMapContainer();
+    const h = el.getBoundingClientRect().height;
+    if (h < 200) {
+      el.style.minHeight = 'calc(100vh - 110px)';
+      setTimeout(()=> window.map?.invalidateSize?.(), 0);
+    }
+  })();
 
   map.createPane('polygons');  map.getPane('polygons').style.zIndex = 400;
   map.createPane('points');    map.getPane('points').style.zIndex   = 500;
@@ -2046,9 +2058,6 @@ async function ama_bootstrap(){
   });
 
   await buildOverlaysAfterBoundary(paths);
-
-  window.__AMA_BOOTSTRAPPED = true;
-  window.__AMA_BOOTING = false;
   if (window.AMA_DEBUG) {
     const t1 = performance.now?performance.now():Date.now();
     console.log('[AMA] bootstrap done in', Math.round(t1-t0),'ms');
@@ -2056,3 +2065,105 @@ async function ama_bootstrap(){
 }
 
 ama_bootstrap();
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+
+  // دکمه‌های تب
+  const tabs = { wind: $('#tab-wind'), solar: $('#tab-solar'), dams: $('#tab-dams') };
+  function setActiveTab(key){
+    Object.entries(tabs).forEach(([k,btn])=>{
+      if(!btn) return;
+      if(k===key){ btn.classList.remove('bg-gray-200','text-gray-700'); btn.classList.add('bg-blue-600','text-white'); btn.setAttribute('aria-pressed','true'); }
+      else { btn.classList.remove('bg-blue-600','text-white'); btn.classList.add('bg-gray-200','text-gray-700'); btn.setAttribute('aria-pressed','false'); }
+    });
+  }
+
+  // دسترسی به لایه‌ها/گروه‌ها به‌صورت ایمن
+  function getOverlay(keyCandidates){
+    const ov = (window.overlays || {});
+    for(const k of keyCandidates){
+      if(ov[k]) return ov[k];
+    }
+    return null;
+  }
+  // کلروپلث باد (پلیگون/فیل)
+  const windPoly = getOverlay(['wind','باد','windChoropleth','wind_poly']);
+  // نقاط
+  const windPts  = getOverlay(['wind_sites','سایت‌های بادی (برآوردی)','wind_points']);
+  const solarPts = getOverlay(['solar_sites','سایت‌های خورشیدی','solar']);
+  const damsPts  = getOverlay(['dams','سدها','dams_points']);
+
+  function addL(layer){ try{ if(layer && layer.addTo) layer.addTo(window.map); }catch(_){/*noop*/} }
+  function rmL(layer){ try{ if(layer && window.map && window.map.removeLayer) window.map.removeLayer(layer); }catch(_){/*noop*/} }
+  function bringBoundary(){ try{ if(window.boundary?.bringToFront) window.boundary.bringToFront(); }catch(_){} }
+
+  // تب‌ها: single-select روی نمای بالایی
+  on(tabs.wind, 'click', ()=>{ setActiveTab('wind'); if(windPoly){ addL(windPoly); } /* نمایش باد */ bringBoundary(); });
+  on(tabs.solar,'click', ()=>{ setActiveTab('solar'); if(windPoly){ rmL(windPoly); } bringBoundary(); });
+  on(tabs.dams, 'click', ()=>{ setActiveTab('dams'); if(windPoly){ rmL(windPoly); } bringBoundary(); });
+
+  // چک‌باکس‌ها
+  const chkWind  = $('#chk-wind-sites');
+  const chkSolar = $('#chk-solar-sites');
+  const chkDams  = $('#chk-dam-sites');
+
+  on(chkWind,  'change', e=>{ (e.target.checked? addL: rmL)(windPts); bringBoundary(); applyZoomGating(); });
+  on(chkSolar, 'change', e=>{ (e.target.checked? addL: rmL)(solarPts); bringBoundary(); applyZoomGating(); });
+  on(chkDams,  'change', e=>{ (e.target.checked? addL: rmL)(damsPts); bringBoundary(); applyZoomGating(); });
+
+  // جستجوی شهرستان
+  const search = $('#ama-search');
+  on(search, 'keydown', e=>{
+    if(e.key!=='Enter') return;
+    const q = (search.value||'').trim();
+    const fc = window.__countiesGeoAll;
+    if(!q || !fc?.features?.length) return;
+    const f = fc.features.find(f=>{
+      const p=f.properties||{};
+      const n=(p.name_fa||p.name||'').toString();
+      const c=(p.county||p.shahrestan||'').toString();
+      return n.includes(q) || c.includes(q);
+    });
+    if(!f) return;
+    try{
+      const g = L.geoJSON(f);
+      window.map.fitBounds(g.getBounds(), {padding:[24,24]});
+      g.remove();
+    }catch(_){}}
+  );
+
+  // دکمه‌های پایین چپ
+  on($('#btn-zoom-in'),  'click', ()=> window.map.zoomIn());
+  on($('#btn-zoom-out'), 'click', ()=> window.map.zoomOut());
+  on($('#btn-geolocate'),'click', async ()=>{
+    try { window.map.locate({setView:true, maxZoom:10}); } catch(e){ if(window.AMA_DEBUG) console.log('geolocate blocked',e); }
+  });
+
+  // Gating نقاط زیر زوم 8
+  const Z_GATE = 8;
+  function applyZoomGating(){
+    const z = window.map?.getZoom?.() ?? 0;
+    const show = z >= Z_GATE;
+    function toggle(layer, shouldShow, chk){
+      if(!layer) return;
+      if(!chk?.checked){ rmL(layer); return; }
+      if(shouldShow) addL(layer); else rmL(layer);
+    }
+    toggle(windPts,  show, chkWind);
+    toggle(solarPts, show, chkSolar);
+    toggle(damsPts,  show, chkDams);
+    bringBoundary();
+  }
+  window.map?.on?.('zoomend', applyZoomGating);
+
+  // حالت اولیه: تب باد فعال، ولی نقاط خاموش تا کاربر انتخاب کند
+  setActiveTab('wind');
+  if(chkWind)  chkWind.checked  = false;
+  if(chkSolar) chkSolar.checked = false;
+  if(chkDams)  chkDams.checked  = false;
+  if(windPoly) addL(windPoly);
+  applyZoomGating();
+
+  if(window.AMA_DEBUG) console.log('[AMA-UI] wired controls; overlays=', Object.keys(window.overlays||{}));
+})();
