@@ -18,6 +18,11 @@
   node_bundler = "esbuild"
 
 [[redirects]]
+  from = "/amaayesh/*"
+  to = "/amaayesh/:splat"
+  status = 200
+
+[[redirects]]
   from = "/agrivoltaics"
   to = "/agrivoltaics/"
   status = 301
