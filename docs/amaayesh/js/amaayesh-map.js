@@ -23,7 +23,7 @@
       const text = await res.text();
       // Reject obvious HTML rewrites (e.g., 404 -> index.html)
       if (ct.includes('html') || text.trim().startsWith('<!DOCTYPE')) {
-        warn('unexpected HTML for JSON', url);
+        warn('HTML instead of JSON', url);
         return null;
       }
       try { return JSON.parse(text); }
@@ -37,7 +37,9 @@
   // Global handles for debug
   const AMA = (window.AMA = window.AMA || {});
   AMA.layers = { wind:null, solar:null, dams:null };
-  AMA.groups = { wind:L.layerGroup(), solar:L.layerGroup(), dams:L.layerGroup() };
+  const G = { wind:L.layerGroup(), solar:L.layerGroup(), dams:L.layerGroup() };
+  AMA.groups = G;
+  window.AMA.G = G;
 
   function popupHTML(props){
     const n = props.name_fa || props.name || '—';
@@ -89,7 +91,7 @@
 
     // 2) Manifest
     const manifest = await fetchJsonSafe('amaayesh/layers.config.json')
-                   || await fetchJsonSafe('layers.config.json');
+                   || await fetchJsonSafe('./layers.config.json');
     if (!manifest || !manifest.files) {
       warn('manifest missing → only base map will render');
       return;
@@ -122,9 +124,9 @@
       return 'ok';
     }
 
-    const windState  = await buildPoints(manifest.files.wind_sites,  AMA.groups.wind,  () => ({ radius:6, color:'#2563eb', fillOpacity:.6 }));
-    const solarState = await buildPoints(manifest.files.solar_sites, AMA.groups.solar, () => ({ radius:5, color:'#f59e0b', fillOpacity:.6 }));
-    const damsState  = await buildPoints(manifest.files.dams,       AMA.groups.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
+    const windState  = await buildPoints(manifest.files.wind_sites,  G.wind,  () => ({ radius:6, color:'#2563eb', fillOpacity:.6 }));
+    const solarState = await buildPoints(manifest.files.solar_sites, G.solar, () => ({ radius:5, color:'#f59e0b', fillOpacity:.6 }));
+    const damsState  = await buildPoints(manifest.files.dams,       G.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
 
     dbg('OVERLAYS', { wind:windState, solar:solarState, dams:damsState });
 
@@ -135,9 +137,9 @@
           l.bindPopup(popupHTML(l.feature.properties));
       });
     }
-    bindPopups(AMA.groups.wind);
-    bindPopups(AMA.groups.solar);
-    bindPopups(AMA.groups.dams);
+    bindPopups(G.wind);
+    bindPopups(G.solar);
+    bindPopups(G.dams);
 
     // Legend + Top-10
     buildLegendDock();
@@ -152,8 +154,8 @@
         if (mw!=null) top.push({ name, mw:Number(mw) });
       });
     }
-    collectTop(AMA.groups.wind);
-    collectTop(AMA.groups.solar);
+    collectTop(G.wind);
+    collectTop(G.solar);
     top.sort((a,b)=> (b.mw||0)-(a.mw||0));
     fillTop10(top.slice(0,10));
 
@@ -165,9 +167,9 @@
         if (el.checked) group.addTo(map); else map.removeLayer(group);
       }, { passive:true });
     }
-    bindToggle('#chk-wind-sites',  AMA.groups.wind);
-    bindToggle('#chk-solar-sites', AMA.groups.solar);
-    bindToggle('#chk-dam-sites',   AMA.groups.dams);
+    bindToggle('#chk-wind-sites',  G.wind);
+    bindToggle('#chk-solar-sites', G.solar);
+    bindToggle('#chk-dam-sites',   G.dams);
 
     // Start with all off (UI decides)
     // (بگذارید کاربر خودش تیک بزند؛ تغییر اولیه نمی‌دهیم)
