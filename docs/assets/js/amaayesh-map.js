@@ -132,6 +132,44 @@ function showToast(msg){
     setTimeout(()=>{ if(el && el.parentNode) el.parentNode.removeChild(el); }, 6000);
   }catch(e){}
 }
+
+function ama_popupContent(f, kind){
+  const p = f?.properties||{};
+  const name = p.name_fa || p.name || '—';
+  const county = p.county || p.shahrestan || p.admin2 || '—';
+  const kv = [];
+  if(kind==='solar'){
+    const cap = (p.capacity_mw ?? p.capacity ?? p.cap_mw);
+    const conf = (p.confidence ?? p.conf ?? p.cnf);
+    if(cap!=null) kv.push(`ظرفیت: ${cap} MW`);
+    if(conf!=null) kv.push(`اطمینان: ${conf}`);
+  }else if(kind==='dam'){
+    const approx = (p.approx===true || p.approx==='true');
+    if(approx) kv.push(`<span class="text-[10px] opacity-75">تقریبی</span>`);
+    // اگر بعداً درصد پرشدگی داشت: kv.push(`پرشدگی: ${p.fill_pct}%`);
+  }
+  return `
+    <div class="ama-pop text-[12px] leading-5">
+      <div class="font-bold mb-1">${name}</div>
+      <div class="opacity-80">شهرستان: ${county}</div>
+      ${kv.length?`<div class="mt-1">${kv.join(' · ')}</div>`:''}
+    </div>`;
+}
+
+function solarStyle(f){
+  const p=f.properties||{};
+  const cap=Number(p.capacity_mw ?? p.capacity ?? 0);
+  const conf=p.confidence;
+  const radius = cap>=50?8: cap>=10?6:4;
+  const alpha = (typeof conf==='number')? Math.min(Math.max(conf,0),1)
+                   : (conf==='high'?0.95: conf==='med'?0.75: 0.55);
+  return { pane:'points', radius, fillOpacity:alpha, opacity:1, weight:1 };
+}
+
+function damStyle(/*f*/){
+  return { pane:'points', radius:6, fillOpacity:0.85, opacity:1, weight:1 };
+}
+
 function dataBases(){
   const here = new URL(location.href);
   const preferred = ['/data/'];
@@ -1112,7 +1150,8 @@ async function actuallyLoadManifest(){
         {min:233,max:774, color:'#8b5cf6', label:'۲۳۳–۷۷۴'},
         {min:774,max:1200,color:'#5b21b6', label:'۷۷۴–۱۲۰۰'},
       ],
-      source:'ساتبا (برآورد استانی)', confidence:'متوسط'
+      source:'ساتبا (برآورد استانی)', confidence:'متوسط',
+      sub:'ظرفیت (MW) · شفافیت=اطمینان'
     };
     const windLegendCfg = {
       key:'wind', icon:'🌬️', title:'کلاس بادی', unit:'کلاس', type:'choropleth',
@@ -1121,7 +1160,8 @@ async function actuallyLoadManifest(){
         {min:2,max:2,color:'#f6c945',label:'کلاس ۲'},
         {min:3,max:3,color:'#29cc7a',label:'کلاس ۳'},
       ],
-      source:'جدول ۸', confidence:'متوسط'
+      source:'جدول ۸', confidence:'متوسط',
+      sub:'متریک: تراکم باد'
     };
     const damsLegendCfg = {
       key:'dams', icon:'🟦', title:'سدها', type:'dams',
@@ -1133,7 +1173,8 @@ async function actuallyLoadManifest(){
         {min:80, max:100, color:'#22c55e', label:'۸۰–۱۰۰٪'},
       ],
       samples:[{v:50,r:8},{v:200,r:14},{v:800,r:20}],
-      source:'پایش لحظه‌ای آب', confidence:'پایین'
+      source:'پایش لحظه‌ای آب', confidence:'پایین',
+      sub:'وضعیت: ثابت/یونیفرم (در نبود دادهٔ پرشدگی)'
     };
     const tabs = [];
     const scaleSolar = v => {
@@ -1146,7 +1187,6 @@ async function actuallyLoadManifest(){
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       });
     solarLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.solar_mw);
-    tabs.push(solarLegendCfg);
 
     const windLayer = L.geoJSON(polys, {
       pane:'polygons',
@@ -1155,7 +1195,6 @@ async function actuallyLoadManifest(){
       onEachFeature: (f,l)=> l.bindTooltip(labelFa(f.properties), {sticky:true, direction:'auto', className:'label'})
       });
     windLayer.eachLayer(l=>l.feature.properties.__legend_value = l.feature.properties.wind_class_num);
-    tabs.push(windLegendCfg);
 
     let windSitesLayer = null, solarSitesLayer = null, damsLayer = null, windChoroplethLayer = null;
 
@@ -1169,20 +1208,25 @@ async function actuallyLoadManifest(){
 
     if (solarGeojson) {
       solarSitesLayer = L.geoJSON(solarGeojson, {
-        pane: 'points',
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius:6, weight:1 })
+        pane:'points',
+        pointToLayer: (f,latlng)=> L.circleMarker(latlng, solarStyle(f)),
+        onEachFeature: (f,l)=> l.bindPopup(ama_popupContent(f,'solar'))
       });
       window.solarSitesLayer = solarSitesLayer;
     }
 
     if (damsGeojson) {
       damsLayer = L.geoJSON(damsGeojson, {
-        pane: 'points',
-        pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius:6, weight:1 })
+        pane:'points',
+        pointToLayer: (f,latlng)=> L.circleMarker(latlng, damStyle(f)),
+        onEachFeature: (f,l)=> l.bindPopup(ama_popupContent(f,'dam'))
       });
       window.damsLayer = damsLayer;
-      tabs.push(damsLegendCfg);
     }
+
+    tabs.push(windLegendCfg);
+    tabs.push(solarLegendCfg);
+    if (damsLayer) tabs.push(damsLegendCfg);
 
     // === Province focus & toggle ===
     (function(){
@@ -1522,6 +1566,7 @@ async function actuallyLoadManifest(){
             const classChip = `<span class="chip">کلاس‌ها: ${fmt(k)}</span>`;
             body.innerHTML = `
         <div class="legend-head"><b>${g.title}</b>${g.unit?`<span class="unit">${g.unit}</span>`:''}${periodChip}${methodChip}${classChip}</div>
+        ${g.sub?`<div class="subhead text-[10px] opacity-70">${g.sub}</div>`:''}
         <ul class="swatches">${g.classes.map(c=>`
           <li data-min="${c.min}" data-max="${c.max}" aria-label="از ${fmt(c.min)} تا ${fmt(c.max)}">
             <span class="sw" style="background:${c.color}"></span>
@@ -1532,6 +1577,7 @@ async function actuallyLoadManifest(){
           if(g.type==='dams'){
             body.innerHTML = `
         <div class="legend-head"><b>${g.title}</b></div>
+        ${g.sub?`<div class="subhead text-[10px] opacity-70">${g.sub}</div>`:''}
         <div class="subhead">رنگ = درصد پرشدگی</div>
         <ul class="swatches">${g.classes.map(c=>`
           <li data-min="${c.min}" data-max="${c.max}">
