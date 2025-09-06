@@ -28,6 +28,48 @@
   AMA.layers = { wind:null, solar:null, dams:null };
   AMA.groups = { wind:L.layerGroup(), solar:L.layerGroup(), dams:L.layerGroup() };
 
+  function popupHTML(props){
+    const n = props.name_fa || props.name || '—';
+    const c = props.county || props.shahrestan || '';
+    const cap = props.capacity_mw ?? props.capacity ?? props.mw ?? null;
+    const conf = props.confidence ?? props.conf ?? null;
+    let lines = [`<div style="font:600 13px system-ui">${n}</div>`];
+    if (c) lines.push(`<div style="opacity:.8">شهرستان: ${c}</div>`);
+    if (cap!=null) lines.push(`<div>ظرفیت (MW): ${cap}</div>`);
+    if (conf!=null) lines.push(`<div>اطمینان: ${conf}</div>`);
+    return lines.join('');
+  }
+
+  function buildLegendDock(){
+    const dock = document.querySelector('#ama-layer-dock');
+    if (!dock) return;
+    let host = dock.querySelector('.legend-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'legend-host';
+      host.style.cssText = 'margin-top:10px;border-top:1px solid rgba(0,0,0,.08);padding-top:8px';
+      dock.appendChild(host);
+    }
+    host.innerHTML = `
+      <div style="font:600 13px system-ui; margin-bottom:6px">راهنمای رنگ‌ها</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#2563eb"></span><span>باد</span>
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#f59e0b;margin-inline-start:10px"></span><span>خورشیدی</span>
+        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#0ea5e9;margin-inline-start:10px"></span><span>سد</span>
+      </div>`;
+  }
+
+  function fillTop10(rows){
+    const tbody = document.querySelector('#ama-top10');
+    if (!tbody) return;
+    tbody.innerHTML = rows.map((r,i)=>`
+      <tr>
+        <td style="padding:6px">${i+1}</td>
+        <td style="padding:6px">${r.name}</td>
+        <td style="padding:6px">${r.mw?.toLocaleString?.('fa-IR') ?? '—'}</td>
+      </tr>`).join('');
+  }
+
   async function ama_bootstrap(){
     // 1) Base map
     const map = L.map(MAP_ID, { zoomControl:true }).setView([35.6, 59.0], 7);
@@ -74,6 +116,35 @@
     const damsState  = await buildPoints(manifest.files.dams,       AMA.groups.dams,  () => ({ radius:5, color:'#0ea5e9', fillOpacity:.6 }));
 
     dbg('OVERLAYS', { wind:windState, solar:solarState, dams:damsState });
+
+    // make points clickable (bindPopup)
+    function bindPopups(group){
+      group.eachLayer(l => {
+        if (l.feature && l.feature.properties)
+          l.bindPopup(popupHTML(l.feature.properties));
+      });
+    }
+    bindPopups(AMA.groups.wind);
+    bindPopups(AMA.groups.solar);
+    bindPopups(AMA.groups.dams);
+
+    // Legend + Top-10
+    buildLegendDock();
+
+    // crude Top-10 based on capacity_mw if exists (wind or solar)
+    let top = [];
+    function collectTop(g){
+      g.eachLayer(l => {
+        const p = l.feature?.properties || {};
+        const mw = p.capacity_mw ?? p.capacity ?? p.mw ?? null;
+        const name = p.name_fa || p.name || '—';
+        if (mw!=null) top.push({ name, mw:Number(mw) });
+      });
+    }
+    collectTop(AMA.groups.wind);
+    collectTop(AMA.groups.solar);
+    top.sort((a,b)=> (b.mw||0)-(a.mw||0));
+    fillTop10(top.slice(0,10));
 
     // 5) Wire checkboxes
     function bindToggle(id, group){
